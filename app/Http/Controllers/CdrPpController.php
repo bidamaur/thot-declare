@@ -16,7 +16,7 @@ class CdrPpController extends Controller
         NOM_PAYS AS (
             SELECT 
                 n.ctab, n.cacc, TRIM(n.lib2) AS lib2
-            FROM bknom n
+            FROM dbprod.bknom n
             WHERE n.ctab = '040'
         ),
         ADRESSE_INFO AS (
@@ -25,15 +25,15 @@ class CdrPpController extends Controller
                 MAX(ad.reg) AS reg,
                 MAX(ad.ville) AS ville,
                 MAX(ad.adr1) AS adr1
-            FROM bkadcli ad
+            FROM dbprod.bkadcli ad
             GROUP BY ad.cli
         ),
         TELEPHONE AS (
             SELECT 
                 t.cli,
                 t.num AS phone
-            FROM bktelcli t
-            WHERE t.typ = (SELECT MAX(t1.typ) FROM bktelcli t1 WHERE t1.cli = t.cli)
+            FROM dbprod.bktelcli t
+            WHERE t.typ = (SELECT MAX(t1.typ) FROM dbprod.bktelcli t1 WHERE t1.cli = t.cli)
         ),
         VILLE_REGION AS (
             SELECT 
@@ -95,7 +95,7 @@ class CdrPpController extends Controller
         '' AS DATDEBINT,
         '' AS DATEFININT,
         TRIM(TO_CHAR(c.dou, 'DDMMYYYY')) AS DATENTRELPAR,
-        (SELECT MAX(TRIM(em.email)) FROM bkemacli em WHERE c.cli = em.cli) AS EMAIL,
+        (SELECT MAX(TRIM(em.email)) FROM dbprod.bkemacli em WHERE c.cli = em.cli) AS EMAIL,
         REPLACE('00237' || COALESCE(t.phone, ''), ' ', '') AS MOBILE,
         TO_CHAR(SYSDATE, 'DDMMYYYY') AS DATEVE,
         CASE 
@@ -126,7 +126,7 @@ class CdrPpController extends Controller
         '' AS REVMENNET,
         '' AS CODDEV
     FROM 
-        bkcli c
+        dbprod.bkcli c
         LEFT JOIN NOM_PAYS np1 ON np1.cacc = c.payn
         LEFT JOIN NOM_PAYS np2 ON np2.cacc = c.nat
         LEFT JOIN ADRESSE_INFO ai ON ai.cli = c.cli

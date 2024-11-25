@@ -53,19 +53,19 @@ $query="SELECT DISTINCT trim(c.cli) as cli,
           d.eve,
           d.ave,
           (SELECT cdr_parce_ncp(p.ncp)
-          FROM bkcptprt p
+          FROM dbprod.bkcptprt p
           WHERE p.eve=d.eve
           AND p.nat  ='004'
           AND p.ave  =
-            (SELECT MAX(ave) FROM bkcptprt WHERE eve=p.eve
+            (SELECT MAX(ave) FROM dbprod.bkcptprt WHERE eve=p.eve
             )
           ) RefContCmpt,
               (SELECT p.ncp
-          FROM bkcptprt p
+          FROM dbprod.bkcptprt p
           WHERE p.eve=d.eve
           AND p.nat  ='004'
           AND p.ave  =
-            (SELECT MAX(ave) FROM bkcptprt WHERE eve=p.eve
+            (SELECT MAX(ave) FROM dbprod.bkcptprt WHERE eve=p.eve
             )
           ) ncp_ori,
           '10030' CodAge,
@@ -156,18 +156,18 @@ $query="SELECT DISTINCT trim(c.cli) as cli,
           d.tech NbrEch,                         
           '03' MoyRem,
           '01' TypEch,
-          ( SELECT MAX(tot_ech) FROM bkechprt WHERE EXTRACT(DAY FROM dva)=EXTRACT(DAY FROM d.dpec) AND eve=d.eve and amo_cal!=0
+          ( SELECT MAX(tot_ech) FROM dbprod.bkechprt WHERE EXTRACT(DAY FROM dva)=EXTRACT(DAY FROM d.dpec) AND eve=d.eve and amo_cal!=0
           )MntEch,  
           '03' TypAmo,
           (SELECT SUM(inte)
-          FROM bkechprt
+          FROM dbprod.bkechprt
           WHERE eve=d.eve
           ) TotInt,
           ROUND( d.mon_fra) fraDos,
           (
           CASE 
           WHEN ROUND(d.mon_co1+d.mon_co2)=0 THEN  ROUND(
-          (SELECT SUM(mnt) FROM bkcanprt WHERE eve=d.eve AND ges_teg='O'
+          (SELECT SUM(mnt) FROM dbprod.bkcanprt WHERE eve=d.eve AND ges_teg='O'
           ))
           ELSE
           ROUND(d.mon_co1+d.mon_co2)
@@ -178,8 +178,8 @@ $query="SELECT DISTINCT trim(c.cli) as cli,
           TO_CHAR(d.dmep,'ddmmyyyy') DatEve,
       d.eve RefInt,
       d.cli IdInt 
-      FROM bkdosprt d,bkechprt e ,
-          bkcli c
+      FROM dbprod.bkdosprt d,dbprod.bkechprt e ,
+          dbprod.bkcli c
         WHERE 
         e.eve=d.eve
         and c.cli    =d.cli
@@ -187,7 +187,7 @@ $query="SELECT DISTINCT trim(c.cli) as cli,
         AND d.eta      in ('VA','DE')
       AND (EXTRACT(YEAR FROM d.ddec)>2022)
       
-        AND d.ave=(SELECT MAX(bb.ave) FROM bkdosprt bb WHERE bb.eve=d.eve)
+        AND d.ave=(SELECT MAX(bb.ave) FROM dbprod.bkdosprt bb WHERE bb.eve=d.eve)
         and e.ctr not in(3)
         and (cdr_date(e.dva) between cdr_date('01/".$DateArrMonth."/".$DateArrYear."') and cdr_date('$DateArr'))";
      $stid = oci_parse($connection, $query);

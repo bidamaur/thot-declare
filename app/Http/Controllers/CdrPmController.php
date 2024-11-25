@@ -60,7 +60,7 @@ class CdrPmController extends Controller
                 WHEN tcli = 1 THEN 
                     t.num
                 ELSE 
-                    (SELECT MAX(trim(t2.tel)) FROM bkcntcli t2 WHERE t2.cli = c.cli)
+                    (SELECT MAX(trim(t2.tel)) FROM dbprod.bkcntcli t2 WHERE t2.cli = c.cli)
             END, ' ', '')) AS tel,
         0 AS sitjud,
         TO_CHAR('', 'DDMMYYYY') AS DatDebInt,
@@ -70,13 +70,13 @@ class CdrPmController extends Controller
         trim(ad.adr1) AS adresse,
         'CM' AS pays,
         CASE
-            WHEN ad.ville IN (SELECT cdr_parseutf8(nom_ville) FROM cdr_ville_region) THEN
-                (SELECT code_region FROM cdr_ville_region WHERE cdr_parseutf8(nom_ville) = cdr_parseutf8(ad.ville))
+            WHEN ad.ville IN (SELECT CDR_PARSEUTF8(nom_ville) FROM cdr_ville_region) THEN
+                (SELECT code_region FROM cdr_ville_region WHERE CDR_PARSEUTF8(nom_ville) = CDR_PARSEUTF8(ad.ville))
             ELSE 0
         END AS Region,
         CASE
-            WHEN ad.ville IN (SELECT cdr_parseutf8(nom_ville) FROM cdr_ville_region) THEN
-                (SELECT code_ville FROM cdr_ville_region WHERE cdr_parseutf8(nom_ville) = cdr_parseutf8(ad.ville))
+            WHEN ad.ville IN (SELECT CDR_PARSEUTF8(nom_ville) FROM cdr_ville_region) THEN
+                (SELECT code_ville FROM cdr_ville_region WHERE CDR_PARSEUTF8(nom_ville) = CDR_PARSEUTF8(ad.ville))
             ELSE 0
         END AS ville,
         '' AS CodPost,
@@ -92,15 +92,15 @@ class CdrPmController extends Controller
         '' AS DatMajAct,
         '' AS TelAct
     FROM 
-        bkcli c
+        dbprod.bkcli c
     LEFT JOIN 
-        (SELECT cli, MAX(ville) AS ville, MAX(adr1) AS adr1 FROM bkadcli GROUP BY cli) ad 
+        (SELECT cli, MAX(ville) AS ville, MAX(adr1) AS adr1 FROM dbprod.bkadcli GROUP BY cli) ad 
         ON ad.cli = c.cli
     LEFT JOIN 
-        (SELECT cli, MAX(email) AS email FROM bkadcli GROUP BY cli) em 
+        (SELECT cli, MAX(email) AS email FROM dbprod.bkadcli GROUP BY cli) em 
         ON em.cli = c.cli
     LEFT JOIN 
-        (SELECT cli, MAX(num) AS num FROM bktelcli GROUP BY cli) t 
+        (SELECT cli, MAX(num) AS num FROM dbprod.bktelcli GROUP BY cli) t 
         ON t.cli = c.cli
     WHERE 
         c.tcli IN (2, 3)

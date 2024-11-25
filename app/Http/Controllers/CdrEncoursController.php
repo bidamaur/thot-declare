@@ -64,7 +64,7 @@ $MyRequest = "WITH MaxData AS (
         MAX(CDR_DATE(dco)) AS max_dco,
         MAX(mon) AS max_mon
     FROM 
-        bkauxprt
+        dbprod.bkauxprt
     WHERE 
         CDR_DATE(dco) < CDR_DATE('$DateArr')
     GROUP BY eve
@@ -79,7 +79,7 @@ SumMon AS (
         CASE WHEN SUM(CASE WHEN cha LIKE '3443%' OR cha LIKE '3453%' THEN mon ELSE 0 END) < 0 THEN '09' ELSE NULL END AS cla_09,
         CASE WHEN SUM(CASE WHEN cha LIKE '344%' OR cha LIKE '345%' THEN mon ELSE 0 END) < 0 THEN '06' ELSE NULL END AS cla_06
     FROM 
-        bksld
+        dbprod.bksld
     WHERE 
         dco < CDR_DATE('$DateArr')
     GROUP BY cli
@@ -90,7 +90,7 @@ NbrEch AS (
         COUNT(DISTINCT CASE WHEN ctr IN (9, 3) AND eta = 'VA' AND CDR_DATE(dva) < CDR_DATE('$DateArr') THEN dva END) AS nbrEchPay,
         COUNT(DISTINCT CASE WHEN ctr = '8' AND eta = 'VA' AND CDR_DATE(dva) < CDR_DATE('$DateArr') THEN dva END) AS nbrEchImp
     FROM 
-        bkechprt
+        dbprod.bkechprt
     GROUP BY eve
 ),
 NbrJrs AS (
@@ -101,7 +101,7 @@ NbrJrs AS (
             ELSE CDR_DATE(MIN(DVA)) - CDR_DATE('$DateArr')
         END AS nbrJrsImp
     FROM 
-        bkechprt e
+        dbprod.bkechprt e
     WHERE 
         eta = 'VA' AND ctr = 8
     GROUP BY eve, e.amo_imp
@@ -130,17 +130,17 @@ SELECT DISTINCT
     nj.nbrJrsImp,
     NVL(SumMon.cla_01, '01') AS ClaDeprec
 FROM 
-    bkdosprt d
+    dbprod.bkdosprt d
 JOIN 
-    bkechprt e ON e.eve = d.eve
+    dbprod.bkechprt e ON e.eve = d.eve
 JOIN 
-    bkcom co ON d.cli = co.cli
+    dbprod.bkcom co ON d.cli = co.cli
 LEFT JOIN 
     MaxData md ON md.eve = d.eve
 LEFT JOIN 
     SumMon ON SumMon.cli = d.cli
 LEFT JOIN 
-    bkcptprt p ON p.eve = d.eve AND p.nat = '004'
+    dbprod.bkcptprt p ON p.eve = d.eve AND p.nat = '004'
 LEFT JOIN 
     NbrEch ne ON ne.eve = d.eve
 LEFT JOIN 
@@ -150,7 +150,7 @@ WHERE
     AND d.ave = md.max_ave
     AND e.ave = md.max_ave
     AND e.dva BETWEEN '01/$DateArrMonth/$DateArrYear' AND CDR_DATE('$DateArr')
-    AND d.ave = (SELECT MAX(ave) FROM bkdosprt WHERE eve = d.eve)
+    AND d.ave = (SELECT MAX(ave) FROM dbprod.bkdosprt WHERE eve = d.eve)
 ORDER BY 
     1";
     // dd($MyRequest);
