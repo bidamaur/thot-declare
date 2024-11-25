@@ -1,0 +1,27 @@
+[ 
+    {
+        "domain":"http://127.0.0.1:8000",
+        "serverName":"PRO-PME",
+        "DBName":"BASE TESTE",
+        "endPoints":[
+            {
+                "name":"Engagements",
+                "Link":"/api/cdr_engagements"
+            },
+            {
+                "name":"Encours",
+                "Link":"/api/cdr_encours"
+            },
+            {
+                "name":"Physiques",
+                "Link":"/api/cdr_pp"
+            },
+            {
+                "name":"Morales",
+                "Link":"/api/cdr_pm"
+            }
+        
+        ]
+    }
+    
+]
