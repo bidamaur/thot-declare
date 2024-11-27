@@ -164,6 +164,9 @@ while ($row = oci_fetch_assoc($stid)) {
     $results[]=$row;
     if(!$row)
     {return false;}
+    $results = array_map(function($row) {
+        return array_change_key_case((array)$row, CASE_UPPER);
+    }, $results);
     $myData= response()->json($results);
    
 }

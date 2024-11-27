@@ -199,11 +199,17 @@ $query="SELECT DISTINCT trim(c.cli) as cli,
          $results[]=$row;
          if(!$row)
          {return false;}
+         $results = array_map(function($row) {
+          return array_change_key_case((array)$row, CASE_UPPER);
+      }, $results
+    );
          $myData= response()->json($results);
         
      }
      
-     if($myData){ return $myData;}
+     if($myData){ 
+
+      return $myData;}
      
      oci_free_statement($stid);
      oci_close($connection);

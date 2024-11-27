@@ -47,7 +47,7 @@ class CdrPpController extends Controller
         np1.lib2 AS PAYSNAI,
         '00' AS STATUT,
         '01' AS RESIDENT,
-        'CM' AS PAYRES,
+        'CM' AS PAYSRES,
         np2.lib2 AS NATCLI,
         'PND' AS NOMPERE,
         'PND' AS PREPERE,
@@ -64,17 +64,18 @@ class CdrPpController extends Controller
             ELSE '01'
         END AS SITMAT,
         CASE
-          WHEN c.catn = 2401 and c.tcli=1
-          THEN 1100
-           WHEN c.catn = 2203 and c.tcli=1
-          THEN 1080
-          ELSE TO_NUMBER(c.catn)
+            WHEN c.catn = 2401 AND c.tcli = 1
+            THEN 1100
+            WHEN c.catn = 2203 AND c.tcli = 1
+            THEN 1080
+            ELSE TO_NUMBER(c.catn)
         END AS AGEECO,
-        CASE 
-            WHEN c.catn IN (2212, 2220) THEN TRIM(c.nrc)
-            ELSE ''
-        END AS RCCM,
-        '' AS SECTACT,
+        TRIM(c.nrc) AS RCCM,
+        CASE
+            WHEN c.sec IN (SELECT sect FROM cdr_naema) THEN 
+                (SELECT val FROM cdr_naema WHERE sect = c.sec)
+            ELSE c.sec
+        END AS SECTACT,
         '' AS CA,
         '' AS NOMBEMP,
         0 AS SITJUD,
@@ -101,7 +102,7 @@ class CdrPpController extends Controller
         TRIM(ai.adr1) AS ADRESSE,
         'CM' AS PAYS,
         vr.region AS REGION,
-        trim(vr.ville_code) AS VILLE,
+        TRIM(vr.ville_code) AS VILLE,
         '' AS CODPOST,
         '' AS IDINTREL,
         '' AS NOMREL,
@@ -145,6 +146,10 @@ class CdrPpController extends Controller
             }]";
             return false;
         }
+
+        $results = array_map(function($row) {
+            return array_change_key_case((array)$row, CASE_UPPER);
+        }, $results);
          return response()->json($results);
     }
 
