@@ -107,8 +107,9 @@ NbrJrs AS (
     GROUP BY eve, e.amo_imp
 )
 SELECT DISTINCT 
-    d.eve,
-    d.cli,
+    trim(d.eve) as eve,
+    trim(d.cli) as cli,
+    trim(e.dva) as dva ,
     cdr_parce_ncp(p.ncp) AS RefContCmpt,
     md.max_dco AS datPai,
     md.max_dco AS DatEch,
