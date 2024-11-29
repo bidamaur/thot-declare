@@ -57,103 +57,147 @@ $notFound='[{"Erreur": {
     "Description": "Format date erroné, format attendu 01-05-1995"
 }}]';
 $myData= $notFound;
-$MyRequest = "WITH MaxData AS (
-    SELECT 
-        eve,
-        MAX(ave) AS max_ave,
-        MAX(CDR_DATE(dco)) AS max_dco,
-        MAX(mon) AS max_mon
-    FROM 
-        dbprod.bkauxprt
+$MyRequest = "SELECT DISTINCT d.eve,
+d.cli,
+(SELECT cdr_parce_ncp(p.ncp)
+FROM bkcptprt p
+WHERE p.eve=d.eve
+AND p.nat  ='004'
+AND p.ave  =
+  (SELECT MAX(ave) FROM bkcptprt WHERE eve=p.eve
+  )
+) RefContCmpt ,
+(SELECT MAX(aa.dco)
+FROM bkauxprt aa
+WHERE aa.sen                      ='C'
+AND aa.eve                        =d.eve
+AND CDR_DATE(aa.dco) <= CDR_DATE('$DateArr')
+)datPai,
+--max(co.ddc) datPai, --date de dernier paiement (ncp like '371%' or ncp like '372%') and cli=d.cli
+e.dva DatEch,
+(SELECT MAX(mon)
+FROM bkauxprt
+WHERE sen                      = 'C'
+AND eve                        = d.eve
+AND TO_DATE(dco, 'DD/MM/YYYY') < TO_DATE('$DateArr', 'DD/MM/YYYY')
+AND TO_DATE(dco, 'DD/MM/YYYY') =
+  (SELECT MAX(TO_DATE(dco, 'DD/MM/YYYY'))
+  FROM bkauxprt
+  WHERE sen                      = 'C'
+  AND eve                        = d.eve
+  AND TO_DATE(dco, 'DD/MM/YYYY') < TO_DATE('$DateArr', 'DD/MM/YYYY')
+  )
+) AS MntPay,  --montant dernier paiement,
+'0' MntAgi,   -- pour les découverts
+(
+    CASE
+    WHEN e.res!=0 AND  d.tech=(    (SELECT COUNT(dva)
+    FROM bkechprt
     WHERE 
-        CDR_DATE(dco) < CDR_DATE('$DateArr')
-    GROUP BY eve
-),
-SumMon AS (
-    SELECT 
-        cli,
-        CASE WHEN SUM(mon) < 0 THEN '01' ELSE NULL END AS cla_01,
-        CASE WHEN SUM(CASE WHEN cha LIKE '341%' THEN mon ELSE 0 END) < 0 THEN '04' ELSE NULL END AS cla_04,
-        CASE WHEN SUM(CASE WHEN cha LIKE '3441%' OR cha LIKE '3451%' THEN mon ELSE 0 END) < 0 THEN '07' ELSE NULL END AS cla_07,
-        CASE WHEN SUM(CASE WHEN cha LIKE '3442%' OR cha LIKE '3452%' THEN mon ELSE 0 END) < 0 THEN '08' ELSE NULL END AS cla_08,
-        CASE WHEN SUM(CASE WHEN cha LIKE '3443%' OR cha LIKE '3453%' THEN mon ELSE 0 END) < 0 THEN '09' ELSE NULL END AS cla_09,
-        CASE WHEN SUM(CASE WHEN cha LIKE '344%' OR cha LIKE '345%' THEN mon ELSE 0 END) < 0 THEN '06' ELSE NULL END AS cla_06
-    FROM 
-        dbprod.bksld
-    WHERE 
-        dco < CDR_DATE('$DateArr')
-    GROUP BY cli
-),
-NbrEch AS (
-    SELECT 
-        eve, 
-        COUNT(DISTINCT CASE WHEN ctr IN (9, 3) AND eta = 'VA' AND CDR_DATE(dva) < CDR_DATE('$DateArr') THEN dva END) AS nbrEchPay,
-        COUNT(DISTINCT CASE WHEN ctr = '8' AND eta = 'VA' AND CDR_DATE(dva) < CDR_DATE('$DateArr') THEN dva END) AS nbrEchImp
-    FROM 
-        dbprod.bkechprt
-    GROUP BY eve
-),
-NbrJrs AS (
-    SELECT 
-        eve,
-        CASE 
-            WHEN e.amo_imp = 0 THEN 0
-            ELSE CDR_DATE(MIN(DVA)) - CDR_DATE('$DateArr')
-        END AS nbrJrsImp
-    FROM 
-        dbprod.bkechprt e
-    WHERE 
-        eta = 'VA' AND ctr = 8
-    GROUP BY eve, e.amo_imp
-)
-SELECT DISTINCT 
-    trim(d.eve) as eve,
-    trim(d.cli) as cli,
-    trim(e.dva) as dva ,
-    cdr_parce_ncp(p.ncp) AS RefContCmpt,
-    md.max_dco AS datPai,
-    md.max_dco AS DatEch,
-    md.max_mon AS MntPay,
-    '0' AS MntAgi,
-    e.res AS MntCrd,
-    '0' AS estSensible,
-    d.mon AS MntTotUtil,
-    COALESCE(ne.nbrEchPay, 0) AS nbrEchPay,
-    COALESCE(ne.nbrEchImp, 0) AS nbrEchImp,
-    (d.tech - COALESCE(ne.nbrEchPay, 0)) AS nbrEchRes,
-    ROUND(e.amo_imp) AS MntCreSouf,
-    e.amo_imp AS MntCapSouf,
-    CASE WHEN e.amo_imp = 0 THEN 0 ELSE e.inte END AS MntIntSouf,
-    CASE WHEN e.amo_imp = 0 THEN 0 ELSE e.tin END AS MntTaxSouf,
-    '0' AS MntAgiosSouf,
-    e.inte AS MntCreRat,
-    '' AS MntPro,
-    nj.nbrJrsImp,
-    NVL(SumMon.cla_01, '01') AS ClaDeprec
-FROM 
-    dbprod.bkdosprt d
-JOIN 
-    dbprod.bkechprt e ON e.eve = d.eve
-JOIN 
-    dbprod.bkcom co ON d.cli = co.cli
-LEFT JOIN 
-    MaxData md ON md.eve = d.eve
-LEFT JOIN 
-    SumMon ON SumMon.cli = d.cli
-LEFT JOIN 
-    dbprod.bkcptprt p ON p.eve = d.eve AND p.nat = '004'
-LEFT JOIN 
-    NbrEch ne ON ne.eve = d.eve
-LEFT JOIN 
-    NbrJrs nj ON nj.eve = d.eve
+    ave=(select max(ave) from bkechprt where eve=e.eve)
+    AND ctr                   IN (9,3)
+    AND eta                      ='VA'
+    AND eve                      =e.eve
+    AND CDR_DATE(dva) < CDR_DATE('30/06/2023')
+    )) THEN 0
+    ELSE  (
+    CASE 
+    WHEN e.res=0 and e.num=0 THEN d.mon
+    ELSE e.res
+    END
+    )
+    END
+    ) MntCrd, --Encours
+'0' estSensible,
+--d.mdb MntTotUtil,
+d.mon MntTotUtil,
+(SELECT COUNT(dva)
+FROM bkechprt
 WHERE 
-    d.eta = 'VA'
-    AND d.ave = md.max_ave
-    AND e.ave = md.max_ave
-    AND e.dva BETWEEN '01/$DateArrMonth/$DateArrYear' AND CDR_DATE('$DateArr')
-    AND d.ave = (SELECT MAX(ave) FROM dbprod.bkdosprt WHERE eve = d.eve)
-ORDER BY 
-    1";
+ave=(select max(ave) from bkechprt where eve=e.eve)
+AND ctr                   IN (9,3)
+AND eta                      ='VA'
+AND eve                      =e.eve
+AND CDR_DATE(dva) <= CDR_DATE('$DateArr')
+) nbrEchPay,
+(SELECT COUNT(dva)
+FROM bkechprt
+WHERE 
+ave=(select max(ave) from bkechprt where eve=e.eve)
+AND ctr                    ='8'
+AND eta                      ='VA'
+AND eve                      =e.eve
+AND CDR_DATE(dva) <= CDR_DATE('$DateArr')
+) nbrEchImp,-- a revoir ici c'est le nombre d'echéances impayes
+
+
+(d.tech-(SELECT COUNT(dva)
+FROM bkechprt
+WHERE 
+ave=(select max(ave) from bkechprt where eve=e.eve)
+AND    ctr                   IN (9,3)
+AND eta                      ='VA'
+AND eve                      =e.eve
+AND CDR_DATE(dva) <= CDR_DATE('$DateArr')
+)) nbrEchRes,
+
+-------------- a ajouter ---------
+ROUND(e.amo_imp) MntCreSouf ,
+e.amo_imp MntCapSouf ,
+(CASE
+WHEN e.amo_imp=0 THEN 0
+ELSE e.inte
+END) MntIntSouf,
+    (CASE
+WHEN e.amo_imp=0 THEN 0
+ELSE e.tin
+END) MntTaxSouf ,
+-------------- fin
+'0' MntAgiosSouf,
+e.inte MntCreRat,
+'' MntPro,  
+(
+CASE
+WHEN  e.amo_imp=0 THEN 0 
+ELSE CDR_DATE((SELECT MIN(DVA) from bkechprt where eta='VA' AND ctr=8 and eve=e.eve ))-CDR_DATE('$DateArr')
+END
+)nbrJrsImp,
+
+(
+CASE
+WHEN (select sum(mon) from bksld where
+(cha like '301%' or cha like '311%' or cha like '321%' and cli=d.cli) and dco<cdr_date('$DateArr'))<0 THEN '01'
+
+WHEN (select sum(mon) from bksld where
+(cha like '341%' and cli=d.cli) and dco<cdr_date('$DateArr'))<0 THEN '04'
+
+WHEN (select sum(mon) from bksld where
+((cha like '3441%'  or cha like '3451%') and cli=d.cli) and dco<cdr_date('$DateArr'))<0 THEN '07'
+
+WHEN (select sum(mon) from bksld where
+((cha like '3442%'  or cha like '3452%') and cli=d.cli) and dco<cdr_date('$DateArr'))<0 THEN '08'
+
+WHEN (select sum(mon) from bksld where
+((cha like '3443%'  or cha like '3453%') and cli=d.cli) and dco<cdr_date('$DateArr'))<0 THEN '09'
+WHEN (select sum(mon) from bksld where
+((cha like '344%'  or cha like '345%') and cli=d.cli) and dco<cdr_date('$DateArr'))<0 THEN '06'
+
+END)
+ClaDeprec
+FROM bkdosprt d,
+bkechprt e,
+bkcom co
+WHERE e.eve=d.eve
+AND d.eta  ='VA'
+--and d.ctr not in(9,2)
+AND d.cli=co.cli
+AND (e.dva BETWEEN '01/$DateArrMonth/$DateArrYear' AND '$DateArr')
+AND d.ave=
+(SELECT MAX(ave) FROM bkdosprt WHERE eve=d.eve
+)
+AND e.ave=
+(SELECT MAX(ave) FROM bkechprt WHERE eve=e.eve
+)";
     // dd($MyRequest);
 $stid = oci_parse($connection, $MyRequest);
 // oci_bind_by_name($stid, ":id", $id);

@@ -47,7 +47,7 @@ if (count($GetPosition) !== 3 ||
     }}]';
 $myData= $notFound;
 $query="SELECT DISTINCT trim(c.cli) as cli,
-      TRIM(e.dva) as dva,
+     -- TRIM(e.dva) as dva,
       TRIM(e.ctr) as ctr,
           trim(c.tcli) as tcli,
           d.eve,
@@ -69,21 +69,38 @@ $query="SELECT DISTINCT trim(c.cli) as cli,
             )
           ) ncp_ori,
           '10030' CodAge,
-          (
-          CASE
-            WHEN d.ctr IN(9,5)
-            THEN '02'
-            ELSE '00'
-          END ) Statut,
+  (
+    CASE
+    WHEN  (d.tech+1)=((SELECT COUNT(dva)
+    FROM bkechprt
+    WHERE 
+    ave=(select max(ave) from bkechprt where eve=e.eve)
+    AND ctr                   IN (9,3)
+    AND eta                      ='VA'
+    AND eve                      =e.eve
+    AND CDR_DATE(dva) < CDR_DATE('30/06/2023')
+    )) THEN '02'
+    ELSE  '00'
+    END
+    ) Statut,
           '' NatConso,--non
           '' TypConso,--non
-          (
-          CASE
-            WHEN d.ctr='9'
-            THEN '01'
-            WHEN d.ctr='5'
-            THEN '02'
-          END ) Motif,
+(
+    CASE
+      WHEN d.ctr=9 and d.ddec>=cdr_date('30/06/2023') 
+      THEN ''
+      WHEN d.ctr=9 and d.ddec<cdr_date('30/06/2023') 
+      THEN '01'
+      
+      WHEN d.ctr=5 and d.ddec>=cdr_date('30/06/2023') 
+      THEN ''
+      WHEN d.ctr=5 and d.ddec<cdr_date('30/06/2023') 
+      THEN '02'
+      
+      WHEN d.ctr not IN(9,5) 
+      THEN ''
+      
+    END ) Motif,
           '01' TypEng, --type de credit avec échéancier
           (
           CASE
@@ -119,10 +136,15 @@ $query="SELECT DISTINCT trim(c.cli) as cli,
           '2' ModRembEpargne,                 -- on ne fait pas
           '0' TauxRenum,                      -- taux de remboursement de l'epargne
           TO_CHAR(d.dmep,'dd/mm/yyyy') DatMep,-- mise en place
-          d.tau_int TxInt,
+          REPLACE(d.tau_int,',','.') TxInt,
           '' TxComm,-- on ne fait pas
           '2' TxBonifie,
-          d.teg TxEffGlob,-- ok
+         ( 
+          CASE
+          WHEN d.tau_int<8 THEN REPLACE(CEIL(d.teg),',','.') 
+          ELSE REPLACE(d.teg,',','.')
+          END 
+          ) as TxEffGlob,
           '00' TypTxInt,  --type de taux: fixe
           '' IndRef,
           '' Sprd,
@@ -163,16 +185,16 @@ $query="SELECT DISTINCT trim(c.cli) as cli,
           FROM dbprod.bkechprt
           WHERE eve=d.eve
           ) TotInt,
-          ROUND( d.mon_fra) fraDos,
-          (
-          CASE 
-          WHEN ROUND(d.mon_co1+d.mon_co2)=0 THEN  ROUND(
-          (SELECT SUM(mnt) FROM dbprod.bkcanprt WHERE eve=d.eve AND ges_teg='O'
+          ROUND((SELECT sum(mon_fra) from bkdosprt where eve=d.eve) ) fraDos,
+    (
+    CASE 
+          WHEN ROUND((SELECT (SUM(d.mon_co1)+SUM(d.mon_co2)) from bkdosprt where eve=d.eve))=0 THEN  ROUND(
+          (SELECT SUM(mnt) FROM bkcanprt WHERE eve=d.eve AND ges_teg='O'
           ))
           ELSE
-          ROUND(d.mon_co1+d.mon_co2)
-          END
-          )fraAnnexe,
+         ROUND((SELECT (SUM(d.mon_co1)+SUM(d.mon_co2)) from bkdosprt where eve=d.eve))
+    END
+    )fraAnnexe,
           '0' MntPrm, 
             '' MntTax,                 
           TO_CHAR(d.dmep,'ddmmyyyy') DatEve,
@@ -189,7 +211,10 @@ $query="SELECT DISTINCT trim(c.cli) as cli,
       
         AND d.ave=(SELECT MAX(bb.ave) FROM dbprod.bkdosprt bb WHERE bb.eve=d.eve)
         and e.ctr not in(3)
-        and (cdr_date(e.dva) between cdr_date('01/".$DateArrMonth."/".$DateArrYear."') and cdr_date('$DateArr'))";
+       and (cdr_date(e.dva) between cdr_date('01/".$DateArrMonth."/".$DateArrYear."') and cdr_date('$DateArr'))
+      and cdr_date(e.dva)<cdr_date('$DateArr')
+      AND d.tau_int!=0";
+     
      $stid = oci_parse($connection, $query);
      // oci_bind_by_name($stid, ":id", $id);
      oci_execute($stid);
@@ -201,8 +226,7 @@ $query="SELECT DISTINCT trim(c.cli) as cli,
          {return false;}
          $results = array_map(function($row) {
           return array_change_key_case((array)$row, CASE_UPPER);
-      }, $results
-    );
+      }, $results);
          $myData= response()->json($results);
         
      }

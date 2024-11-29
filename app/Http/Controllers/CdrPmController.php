@@ -42,7 +42,7 @@ class CdrPmController extends Controller
                 WHEN c.catn IN(1302,1201) AND tcli IN(2,3)
                 THEN 1210
                 WHEN c.catn= (2202) AND tcli IN(2,3)
-                THEN 1060
+                THEN 1062
                 WHEN c.catn=1401 AND tcli IN(2,3)
                 THEN 1130
                 WHEN c.catn=2203 AND tcli IN(2,3)
@@ -118,6 +118,7 @@ class CdrPmController extends Controller
     WHERE 
         c.tcli IN (2, 3)
         AND c.cli NOT IN (000020, 100500)
+        and c.cli>100924
     ORDER BY 1
     ");
             $results = array_map(function($row) {
