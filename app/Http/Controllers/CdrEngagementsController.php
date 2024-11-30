@@ -85,9 +85,12 @@ $query="SELECT DISTINCT trim(c.cli) as cli,
   --   ) Statut,
   (CASE
  WHEN e.ctr=3 THEN '02'
- WHEN (SELECT MAX(num) FROM bkechprt where eve=e.eve)=e.num THEN '02'
+ WHEN (SELECT MAX(num) FROM bkechprt where eve=e.eve AND ave=(SELECT MAX(ave) FROM dbprod.bkechprt  WHERE eve=e.eve) )=e.num THEN '02'
+ WHEN (SELECT ctr from bkechprt where eve=e.eve AND ave=(SELECT MAX(ave) FROM dbprod.bkechprt  WHERE eve=e.eve) AND ( cdr_date(dva) 
+ between cdr_date('$DateArr') and add_months(cdr_date('$DateArr'),1)   ))=3 THEN '02'
  ELSE '00'
-  END) Statut,
+  END
+  ) Statut,
           '' NatConso,--non
           '' TypConso,--non
 (
@@ -153,7 +156,7 @@ $query="SELECT DISTINCT trim(c.cli) as cli,
           '00' TypTxInt,  --type de taux: fixe
           '' IndRef,
           '' Sprd,
-          TO_CHAR(d.dmep,'ddmmyyyy') DatDeb, -- date de premiere echeance du crédit à revoir avec les diferes
+          TO_CHAR(d.dpec,'ddmmyyyy') DatDeb, -- date de premiere echeance du crédit à revoir avec les diferes
           TO_CHAR(d.ddec,'ddmmyyyy') DatFin, --derniere echeance
           (
           CASE

@@ -91,7 +91,7 @@ AND TO_DATE(dco, 'DD/MM/YYYY') =
 '0' MntAgi,   -- pour les découverts
 (
     CASE
-    WHEN e.res!=0 AND  d.tech=(    (SELECT COUNT(dva)
+    WHEN e.res!=0 AND  (d.tech+1)=(    (SELECT COUNT(dva)
     FROM bkechprt
     WHERE 
     ave=(select max(ave) from bkechprt where eve=e.eve)
