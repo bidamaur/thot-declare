@@ -69,20 +69,25 @@ $query="SELECT DISTINCT trim(c.cli) as cli,
             )
           ) ncp_ori,
           '10030' CodAge,
-  (
-    CASE
-    WHEN  (d.tech+1)=((SELECT COUNT(dva)
-    FROM bkechprt
-    WHERE 
-    ave=(select max(ave) from bkechprt where eve=e.eve)
-    AND ctr                   IN (9,3)
-    AND eta                      ='VA'
-    AND eve                      =e.eve
-    AND CDR_DATE(dva) < CDR_DATE('30/06/2023')
-    )) THEN '02'
-    ELSE  '00'
-    END
-    ) Statut,
+  -- (
+  --   CASE
+  --   WHEN  (d.tech+1)=((SELECT COUNT(dva)
+  --   FROM bkechprt
+  --   WHERE 
+  --   ave=(select max(ave) from bkechprt where eve=e.eve)
+  --   AND ctr                   IN (9,3)
+  --   AND eta                      ='VA'
+  --   AND eve                      =e.eve
+  --   AND CDR_DATE(dva) < CDR_DATE('30/06/2023')
+  --   ))  THEN '02'
+  --   ELSE  '00'
+  --   END
+  --   ) Statut,
+  (CASE
+ WHEN e.ctr=3 THEN '02'
+ WHEN (SELECT MAX(num) FROM bkechprt where eve=e.eve)=e.num THEN '02'
+ ELSE '00'
+  END) Statut,
           '' NatConso,--non
           '' TypConso,--non
 (

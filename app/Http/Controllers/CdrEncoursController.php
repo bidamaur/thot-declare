@@ -119,7 +119,7 @@ AND ctr                   IN (9,3)
 AND eta                      ='VA'
 AND eve                      =e.eve
 AND CDR_DATE(dva) <= CDR_DATE('$DateArr')
-) nbrEchPay,
+)-1 nbrEchPay,
 (SELECT COUNT(dva)
 FROM bkechprt
 WHERE 
@@ -131,7 +131,7 @@ AND CDR_DATE(dva) <= CDR_DATE('$DateArr')
 ) nbrEchImp,-- a revoir ici c'est le nombre d'echéances impayes
 
 
-(d.tech-(SELECT COUNT(dva)
+((d.tech+1)-(SELECT COUNT(dva)
 FROM bkechprt
 WHERE 
 ave=(select max(ave) from bkechprt where eve=e.eve)
