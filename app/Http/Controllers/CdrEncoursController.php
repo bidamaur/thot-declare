@@ -98,7 +98,7 @@ AND TO_DATE(dco, 'DD/MM/YYYY') =
     AND ctr                   IN (9,3)
     AND eta                      ='VA'
     AND eve                      =e.eve
-    AND CDR_DATE(dva) < CDR_DATE('30/06/2023')
+    AND CDR_DATE(dva) < CDR_DATE('$DateArr')
     )) THEN 0
     ELSE  (
     CASE 

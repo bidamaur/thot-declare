@@ -78,7 +78,7 @@ $query="SELECT DISTINCT trim(c.cli) as cli,
   --   AND ctr                   IN (9,3)
   --   AND eta                      ='VA'
   --   AND eve                      =e.eve
-  --   AND CDR_DATE(dva) < CDR_DATE('30/06/2023')
+  --   AND CDR_DATE(dva) < CDR_DATE('$DateArr')
   --   ))  THEN '02'
   --   ELSE  '00'
   --   END
@@ -95,14 +95,14 @@ $query="SELECT DISTINCT trim(c.cli) as cli,
           '' TypConso,--non
 (
     CASE
-      WHEN d.ctr=9 and d.ddec>=cdr_date('30/06/2023') 
+      WHEN d.ctr=9 and d.ddec>=cdr_date('$DateArr') 
       THEN ''
-      WHEN d.ctr=9 and d.ddec<cdr_date('30/06/2023') 
+      WHEN d.ctr=9 and d.ddec<cdr_date('$DateArr') 
       THEN '01'
       
-      WHEN d.ctr=5 and d.ddec>=cdr_date('30/06/2023') 
+      WHEN d.ctr=5 and d.ddec>=cdr_date('$DateArr') 
       THEN ''
-      WHEN d.ctr=5 and d.ddec<cdr_date('30/06/2023') 
+      WHEN d.ctr=5 and d.ddec<cdr_date('$DateArr') 
       THEN '02'
       
       WHEN d.ctr not IN(9,5) 
