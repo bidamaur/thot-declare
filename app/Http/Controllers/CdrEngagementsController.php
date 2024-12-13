@@ -47,7 +47,7 @@ if (count($GetPosition) !== 3 ||
     }}]';
 $myData= $notFound;
 $query="SELECT DISTINCT trim(c.cli) as cli,
-     -- TRIM(e.dva) as dva,
+      TRIM(e.dva) as dva,
       TRIM(e.ctr) as ctr,
           trim(c.tcli) as tcli,
           d.eve,
@@ -86,7 +86,7 @@ $query="SELECT DISTINCT trim(c.cli) as cli,
   (CASE
  WHEN e.ctr=3 THEN '02'
  WHEN (SELECT MAX(num) FROM bkechprt where eve=e.eve AND ave=(SELECT MAX(ave) FROM dbprod.bkechprt  WHERE eve=e.eve) )=e.num THEN '02'
- WHEN (SELECT ctr from bkechprt where eve=e.eve AND ave=(SELECT MAX(ave) FROM dbprod.bkechprt  WHERE eve=e.eve) AND ( cdr_date(dva) 
+ WHEN (SELECT max(ctr) from bkechprt where eve=e.eve AND ave=(SELECT MAX(ave) FROM dbprod.bkechprt  WHERE eve=e.eve) AND ( cdr_date(dva) 
  between cdr_date('$DateArr') and add_months(cdr_date('$DateArr'),1)   ))=3 THEN '02'
  ELSE '00'
   END
@@ -149,7 +149,7 @@ $query="SELECT DISTINCT trim(c.cli) as cli,
           '2' TxBonifie,
          ( 
           CASE
-          WHEN d.tau_int<8 THEN REPLACE(CEIL(d.teg),',','.') 
+          WHEN d.tau_int<8 or  (d.tau_int >d.teg) THEN REPLACE(CEIL(d.teg),',','.') 
           ELSE REPLACE(d.teg,',','.')
           END 
           ) as TxEffGlob,
@@ -220,7 +220,8 @@ $query="SELECT DISTINCT trim(c.cli) as cli,
         AND d.ave=(SELECT MAX(bb.ave) FROM dbprod.bkdosprt bb WHERE bb.eve=d.eve)
         and e.ctr not in(3)
        and (cdr_date(e.dva) between cdr_date('01/".$DateArrMonth."/".$DateArrYear."') and cdr_date('$DateArr'))
-      and cdr_date(e.dva)<cdr_date('$DateArr')
+      and cdr_date('$DateArr')>cdr_date(e.dva)
+      and e.ave=(SELECT max(ave) from bkechprt where eve=d.eve)
       AND d.tau_int!=0";
      
      $stid = oci_parse($connection, $query);

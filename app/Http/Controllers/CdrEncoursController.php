@@ -58,6 +58,7 @@ $notFound='[{"Erreur": {
 }}]';
 $myData= $notFound;
 $MyRequest = "SELECT DISTINCT d.eve,
+e.dva,
 d.cli,
 (SELECT cdr_parce_ncp(p.ncp)
 FROM bkcptprt p
