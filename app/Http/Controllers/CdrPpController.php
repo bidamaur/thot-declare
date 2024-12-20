@@ -136,8 +136,8 @@ class CdrPpController extends Controller
         ON vr.ville = dbprod.cdr_parseUtf8(ai.ville)
     WHERE 
         c.tcli IN (1)
-        AND c.cli <> 100534
-        AND c.cli > 100914
+        -- AND c.cli <> 100534
+        -- AND c.cli > 100914
     ORDER BY 1");
         if(!$results){
             echo "[{

@@ -140,6 +140,16 @@ AND    ctr                   IN (9,3)
 AND eta                      ='VA'
 AND eve                      =e.eve
 AND CDR_DATE(dva) <= CDR_DATE('$DateArr')
+)-(
+    (SELECT COUNT(dva)
+FROM bkechprt
+WHERE 
+ave=(select max(ave) from bkechprt where eve=e.eve)
+AND ctr                    ='8'
+AND eta                      ='VA'
+AND eve                      =e.eve
+AND CDR_DATE(dva) <= CDR_DATE('$DateArr')
+)  
 )) nbrEchRes,
 
 -------------- a ajouter ---------
@@ -160,29 +170,32 @@ e.inte MntCreRat,
 (
 CASE
 WHEN  e.amo_imp=0 THEN 0 
-ELSE CDR_DATE((SELECT MIN(DVA) from bkechprt where eta='VA' AND ctr=8 and eve=e.eve ))-CDR_DATE('$DateArr')
+ELSE CDR_DATE('$DateArr')-CDR_DATE((SELECT MIN(DVA) from bkechprt where eta='VA' AND ctr=8 and eve=e.eve 
+and ave=(select max(ave) from bkechprt where eve=e.eve)))
 END
 )nbrJrsImp,
 
 (
 CASE
-WHEN (select sum(mon) from bksld where
-(cha like '301%' or cha like '311%' or cha like '321%' and cli=d.cli) and dco<cdr_date('$DateArr'))<0 THEN '01'
+
+WHEN (SELECT count(dva) from bkechprt where ctr=8 and eve=e.eve and cdr_date(dva)<cdr_date('$DateArr'))>0 THEN '04'
 
 WHEN (select sum(mon) from bksld where
-(cha like '341%' and cli=d.cli) and dco<cdr_date('$DateArr'))<0 THEN '04'
+(cha like '341%' and cli=d.cli) and dco<cdr_date('$DateArr'))>0 THEN '04'
 
 WHEN (select sum(mon) from bksld where
-((cha like '3441%'  or cha like '3451%') and cli=d.cli) and dco<cdr_date('$DateArr'))<0 THEN '07'
+((cha like '3441%'  or cha like '3451%') and cli=d.cli) and dco<cdr_date('$DateArr'))>0 THEN '07'
 
 WHEN (select sum(mon) from bksld where
-((cha like '3442%'  or cha like '3452%') and cli=d.cli) and dco<cdr_date('$DateArr'))<0 THEN '08'
+((cha like '3442%'  or cha like '3452%') and cli=d.cli) and dco<cdr_date('$DateArr'))>0 THEN '08'
 
 WHEN (select sum(mon) from bksld where
-((cha like '3443%'  or cha like '3453%') and cli=d.cli) and dco<cdr_date('$DateArr'))<0 THEN '09'
+((cha like '3443%'  or cha like '3453%') and cli=d.cli) and dco<cdr_date('$DateArr'))>0 THEN '09'
 WHEN (select sum(mon) from bksld where
-((cha like '344%'  or cha like '345%') and cli=d.cli) and dco<cdr_date('$DateArr'))<0 THEN '06'
-
+((cha like '344%'  or cha like '345%') and cli=d.cli) and dco<cdr_date('$DateArr'))>0 THEN '06'
+WHEN (select sum(mon) from bksld where
+(cha like '301%' or cha like '311%' or cha like '321%' and cli=d.cli) and dco<cdr_date('$DateArr'))>0 THEN '02'
+ELSE '01'
 END)
 ClaDeprec
 FROM bkdosprt d,
@@ -190,15 +203,17 @@ bkechprt e,
 bkcom co
 WHERE e.eve=d.eve
 AND d.eta  ='VA'
---and d.ctr not in(9,2)
+and e.ctr not in(3)
 AND d.cli=co.cli
 AND (e.dva BETWEEN '01/$DateArrMonth/$DateArrYear' AND '$DateArr')
+
 AND d.ave=
 (SELECT MAX(ave) FROM bkdosprt WHERE eve=d.eve
 )
 AND e.ave=
 (SELECT MAX(ave) FROM bkechprt WHERE eve=e.eve
-)";
+)
+AND d.tau_int!=0";
     // dd($MyRequest);
 $stid = oci_parse($connection, $MyRequest);
 // oci_bind_by_name($stid, ":id", $id);

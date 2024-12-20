@@ -118,7 +118,7 @@ class CdrPmController extends Controller
     WHERE 
         c.tcli IN (2, 3)
         AND c.cli NOT IN (000020, 100500)
-        and c.cli>100924
+        --and c.cli>100924
     ORDER BY 1
     ");
             $results = array_map(function($row) {

@@ -69,20 +69,6 @@ $query="SELECT DISTINCT trim(c.cli) as cli,
             )
           ) ncp_ori,
           '10030' CodAge,
-  -- (
-  --   CASE
-  --   WHEN  (d.tech+1)=((SELECT COUNT(dva)
-  --   FROM bkechprt
-  --   WHERE 
-  --   ave=(select max(ave) from bkechprt where eve=e.eve)
-  --   AND ctr                   IN (9,3)
-  --   AND eta                      ='VA'
-  --   AND eve                      =e.eve
-  --   AND CDR_DATE(dva) < CDR_DATE('$DateArr')
-  --   ))  THEN '02'
-  --   ELSE  '00'
-  --   END
-  --   ) Statut,
   (CASE
  WHEN e.ctr=3 THEN '02'
  WHEN (SELECT MAX(num) FROM bkechprt where eve=e.eve AND ave=(SELECT MAX(ave) FROM dbprod.bkechprt  WHERE eve=e.eve) )=e.num THEN '02'
@@ -156,7 +142,8 @@ $query="SELECT DISTINCT trim(c.cli) as cli,
           '00' TypTxInt,  --type de taux: fixe
           '' IndRef,
           '' Sprd,
-          TO_CHAR(d.dpec,'ddmmyyyy') DatDeb, -- date de premiere echeance du crédit à revoir avec les diferes
+          -- TO_CHAR(d.dpec,'ddmmyyyy') DatDeb, -- date de premiere echeance du crédit à revoir avec les diferes
+          (SELECT TO_CHAR(max(dva),'ddmmyyyy') from bkechprt where num=01 and eve=d.eve) DatDeb,
           TO_CHAR(d.ddec,'ddmmyyyy') DatFin, --derniere echeance
           (
           CASE
@@ -217,12 +204,12 @@ $query="SELECT DISTINCT trim(c.cli) as cli,
         AND d.eta      in ('VA','DE')
       AND (EXTRACT(YEAR FROM d.ddec)>2022)
       
-        AND d.ave=(SELECT MAX(bb.ave) FROM dbprod.bkdosprt bb WHERE bb.eve=d.eve)
-        and e.ctr not in(3)
-       and (cdr_date(e.dva) between cdr_date('01/".$DateArrMonth."/".$DateArrYear."') and cdr_date('$DateArr'))
-      and cdr_date('$DateArr')>cdr_date(e.dva)
-      and e.ave=(SELECT max(ave) from bkechprt where eve=d.eve)
-      AND d.tau_int!=0";
+    AND d.ave=(SELECT MAX(bb.ave) FROM dbprod.bkdosprt bb WHERE bb.eve=d.eve)
+    --and e.ctr not in(3)
+    and (cdr_date(d.dmep) between cdr_date('01/".$DateArrMonth."/".$DateArrYear."') and cdr_date('$DateArr'))
+    AND cdr_date('$DateArr')>cdr_date(e.dva)   -- on recupere uniquement les ech. avant la DateArr
+    AND e.ave=(SELECT max(ave) from bkechprt where eve=d.eve)
+    AND d.tau_int!=0";
      
      $stid = oci_parse($connection, $query);
      // oci_bind_by_name($stid, ":id", $id);
