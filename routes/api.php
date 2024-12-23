@@ -25,6 +25,7 @@ Route::get('/cdr_pp', [CdrPpController::class, 'index']);
 Route::get('/cdr_pm', [CdrPmController::class, 'index']);
 Route::get('/cdr_engagements/{DateArr}', [CdrEngagementsController::class, 'GetEngagements']);
 Route::get('/cdr_encours/{DateArr}', [CdrEncoursController::class, 'GetEncours']);
+Route::get('/cdr_encours_ajust/{DateArr}', [CdrEncoursController::class, 'GetEncoursAjust']);
 Route::get('/cdr_garanties/{DateArr}', [GarantiesController::class, 'getGaranties']);
 //route mise en application apres 
 Route::get('/cdr_encours', [CdrEncoursController::class, 'index']);
