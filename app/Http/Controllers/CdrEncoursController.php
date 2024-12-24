@@ -306,108 +306,121 @@ AND d.tau_int!=0";
     "Description": "Format date erroné, format attendu 01-05-1995"
     }}]';
         $myData = $notFound;
-        $MyRequest = "select distinct d.eve,d.cli,
-        (15||'/$DateArrMonth'||'/$DateArrYear') DVA,
-    (SELECT cdr_parce_ncp(p.ncp)
+        $MyRequest = "WITH Max_Ave AS (
+    SELECT eve, MAX(ave) AS max_ave
+    FROM bkechprt
+    GROUP BY eve
+),
+Ech_Calculations AS (
+    SELECT 
+        eve,
+        SUM(CASE WHEN ctr IN (9, 3) AND eta = 'VA' THEN 1 ELSE 0 END) AS ctr_93_va_count,
+        SUM(CASE WHEN ctr = 8 AND eta = 'VA' THEN 1 ELSE 0 END) AS ctr_8_va_count,
+        MAX(res) AS max_res
+    FROM bkechprt
+    WHERE dva < '$DateArr'
+    GROUP BY eve
+),
+Ref_Compte AS (
+    SELECT 
+        p.eve, 
+        cdr_parce_ncp(p.ncp) AS RefContCmpt
     FROM bkcptprt p
-    WHERE p.eve=d.eve
-    AND p.nat  ='004'
-    AND p.ave  =
-      (SELECT MAX(ave) FROM bkcptprt WHERE eve=p.eve
+    WHERE p.nat = '004'
+      AND p.ave = (
+          SELECT MAX(ave) 
+          FROM bkcptprt 
+          WHERE eve = p.eve
       )
-    ) RefContCmpt,
+),
+Sld_Calculations AS (
+    SELECT 
+        cli,
+        SUM(CASE WHEN cha LIKE '341%' THEN mon ELSE 0 END) AS sld_341,
+        SUM(CASE WHEN cha LIKE '3441%' OR cha LIKE '3451%' THEN mon ELSE 0 END) AS sld_3441_3451,
+        SUM(CASE WHEN cha LIKE '3442%' OR cha LIKE '3452%' THEN mon ELSE 0 END) AS sld_3442_3452,
+        SUM(CASE WHEN cha LIKE '3443%' OR cha LIKE '3453%' THEN mon ELSE 0 END) AS sld_3443_3453,
+        SUM(CASE WHEN cha LIKE '344%' OR cha LIKE '345%' THEN mon ELSE 0 END) AS sld_344_345,
+        SUM(CASE WHEN cha LIKE '301%' OR cha LIKE '311%' OR cha LIKE '321%' THEN mon ELSE 0 END) AS sld_301_311_321
+    FROM bksld
+    WHERE dco < cdr_date('$DateArr')
+    GROUP BY cli
+)
+SELECT DISTINCT 
+    d.eve,
+    d.cli,
+    (15 || '/$DateArrMonth' || '/$DateArrYear') AS DVA,
+    rc.RefContCmpt,
     NVL(
-    (
-        CASE 
-    WHEN ( select max(res) from bkechprt where (dva between (select dmep from bkdosprt where eve=d.eve and ave=
-    (SELECT MAX(AVE) FROM bkechprt where eve=d.eve)) and '$DateArr') and eve=d.eve  )=0 THEN d.mon
-    ELSE ( select max(res) from bkechprt where (dva between (select dmep from bkdosprt where eve=d.eve
-     and ave=(SELECT MAX(AVE) FROM bkechprt where eve=d.eve)) and '$DateArr') and eve=d.eve  )
-        END
-        ),d.mon)  MNTCRD ,
-        d.dmep,
-        (15||'/$DateArrMonth'||'/$DateArrYear') DATECH,
-        (15||'/$DateArrMonth'||'/$DateArrYear') DATPAI,
-        0 MNTPAY,
-        0 MNTAGI,
-        0 ESTSENSIBLE,
-    (
-    select count(dva) from bkechprt where eve=d.eve and ave=(select max(ave) from bkechprt where eve=d.eve) and dva<'$DateArr'
-    and ctr in (9,3) and eta='VA'
-    )-(CASE
-                WHEN (SELECT COUNT(e.dva) from bkechprt e where eve=e.eve and e.ave=(select MAX(ave) from bkdosprt where eve=e.eve))>d.tech and (
-                select count(dva) from bkechprt where eve=d.eve and ave=(select max(ave) from bkechprt where eve=d.eve) and dva<'$DateArr'
-    and ctr in (9,3) and eta='VA')>=1 THEN 1
-                ELSE 0
-                END) nbrEchPay,
-    (
-    select count(dva) from bkechprt where eve=d.eve and ave=(select max(ave) from bkechprt where eve=d.eve) and dva<'$DateArr'
-    and ctr in (8) and eta='VA'
-    )NBRECHIMP,
-    (d.tech+(
-                CASE
-                WHEN (SELECT COUNT(e.dva) from bkechprt e where eve=e.eve and e.ave=(select MAX(ave) from bkdosprt where eve=e.eve))>d.tech THEN 1
-                ELSE 0
-                END )
-
-                -(
-    select count(dva) from bkechprt where eve=d.eve and ave=(select max(ave) from bkechprt where eve=d.eve) and dva<'$DateArr'
-    and ctr  in(8,9,3) and eta='VA'
-    ))
-    nbrEchRes,
-    '0' MNTCRESOUF,
-    '0' MNTCAPSOUF,
-    '0' MNTINTSOUF,
-    0 MNTTAXSOUF,
-    0 MNTAGIOSSOUF,
-    0 MNTCRERAT,
-    0 MNTPRO,
-    0 NBRJRSIMP,
-    
-        d.mon MNTTOTUTIL,
-        (
         CASE
-    WHEN (SELECT count(dva) from bkechprt where ctr=8 and eve=d.eve and cdr_date(dva)<cdr_date('$DateArr'))>0 THEN '04'
-    WHEN (select sum(mon) from bksld where
-    (cha like '341%' and cli=d.cli) and dco<cdr_date('$DateArr'))>0 THEN '04'
-
-    WHEN (select sum(mon) from bksld where
-    ((cha like '3441%'  or cha like '3451%') and cli=d.cli) and dco<cdr_date('$DateArr'))>0 THEN '07'
-
-    WHEN (select sum(mon) from bksld where
-    ((cha like '3442%'  or cha like '3452%') and cli=d.cli) and dco<cdr_date('$DateArr'))>0 THEN '08'
-
-    WHEN (select sum(mon) from bksld where
-    ((cha like '3443%'  or cha like '3453%') and cli=d.cli) and dco<cdr_date('$DateArr'))>0 THEN '09'
-    WHEN (select sum(mon) from bksld where
-    ((cha like '344%'  or cha like '345%') and cli=d.cli) and dco<cdr_date('$DateArr'))>0 THEN '06'
-    WHEN (select sum(mon) from bksld where
-    (cha like '301%' or cha like '311%' or cha like '321%' and cli=d.cli) and dco<cdr_date('$DateArr'))>0 THEN '02'
-    ELSE '01'
-    END
-    ) CLADEPREC
-        
-        from bkdosprt d,
-
-    
-    bkechprt e 
-    WHERE 
-
-    --d.eve in ('001492','002094','001907','002101') and
-    --not EXISTS (SELECT dva from bkechprt where MONTHS_BETWEEN('30/08/2023',d.dmep )>=1)
-    trunc(MONTHS_BETWEEN('30/08/2023',d.dmep ))>=1
-    and d.ave=(select MAX(ave) from bkdosprt where eve=d.eve
+            WHEN ec.max_res = 0 THEN d.mon
+            ELSE ec.max_res
+        END,
+        d.mon
+    ) AS MNTCRD,
+    d.dmep,
+    (15 || '/$DateArrMonth' || '/$DateArrYear') AS DATECH,
+    (15 || '/$DateArrMonth' || '/$DateArrYear') AS DATPAI,
+    0 AS MNTPAY,
+    0 AS MNTAGI,
+    0 AS ESTSENSIBLE,
+    (
+        ec.ctr_93_va_count - 
+        CASE
+            WHEN ec.ctr_93_va_count >= 1 THEN 1
+            ELSE 0
+        END
+    ) AS nbrEchPay,
+    ec.ctr_8_va_count AS NBRECHIMP,
+    (
+        d.tech + 
+        CASE
+            WHEN ec.ctr_93_va_count > d.tech THEN 1
+            ELSE 0
+        END
+        - ec.ctr_93_va_count
+    ) AS nbrEchRes,
+    '0' AS MNTCRESOUF,
+    '0' AS MNTCAPSOUF,
+    '0' AS MNTINTSOUF,
+    0 AS MNTTAXSOUF,
+    0 AS MNTAGIOSSOUF,
+    0 AS MNTCRERAT,
+    0 AS MNTPRO,
+    0 AS NBRJRSIMP,
+    d.mon AS MNTTOTUTIL,
+    (
+        CASE
+            WHEN ec.ctr_8_va_count > 0 THEN '04'
+            WHEN sc.sld_341 > 0 THEN '04'
+            WHEN sc.sld_3441_3451 > 0 THEN '07'
+            WHEN sc.sld_3442_3452 > 0 THEN '08'
+            WHEN sc.sld_3443_3453 > 0 THEN '09'
+            WHEN sc.sld_344_345 > 0 THEN '06'
+            WHEN sc.sld_301_311_321 > 0 THEN '02'
+            ELSE '01'
+        END
+    ) AS CLADEPREC
+FROM bkdosprt d
+LEFT JOIN Max_Ave ma ON ma.eve = d.eve
+LEFT JOIN Ech_Calculations ec ON ec.eve = d.eve
+LEFT JOIN Ref_Compte rc ON rc.eve = d.eve
+LEFT JOIN Sld_Calculations sc ON sc.cli = d.cli
+WHERE 
+    trunc(MONTHS_BETWEEN('$DateArr', d.dmep)) >= 1
+    AND d.ave = ma.max_ave
+    AND NOT EXISTS (
+        SELECT 1 
+        FROM bkechprt
+        WHERE EXTRACT(MONTH FROM dva) = '$DateArrMonth'
+          AND EXTRACT(YEAR FROM cdr_date(dva)) = '$DateArrYear'
+          AND eve = d.eve
+          AND ave = ma.max_ave
     )
-    
-    AND NOT EXISTS( SELECT DVA FROM bkechprt where (
-    EXTRACT(MONTH FROM dva)='08' 
-    and EXTRACT(YEAR FROM cdr_date(dva))='2023'
-    ) and eve=d.eve
-    and ave=(SELECT MAX(AVE) FROM BKECHPRT WHERE eve=d.eve) )
-    AND cdr_date(e.dva)<cdr_date('30/08/2023')
-    AND d.eta IN ('VA','DE')
-    and d.ddec>'$DateArr'
-    order by 1 DESC";
+    AND d.eta IN ('VA', 'DE')
+    AND d.ddec > '$DateArr'
+ORDER BY d.eve DESC
+";
         // dd($MyRequest);
         $stid = oci_parse($connection, $MyRequest);
         // oci_bind_by_name($stid, ":id", $id);
