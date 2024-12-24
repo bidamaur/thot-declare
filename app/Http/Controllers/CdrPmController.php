@@ -121,10 +121,10 @@ class CdrPmController extends Controller
         --and c.cli>100924
     ORDER BY 1
     ");
-            $results = array_map(function($row) {
-                return array_change_key_case((array)$row, CASE_UPPER);
-            }, $results);
-      return response()->json($results);
+        $results = array_map(function ($row) {
+            return array_change_key_case((array) $row, CASE_UPPER);
+        }, $results);
+        return response()->json($results);
     }
 
     /**

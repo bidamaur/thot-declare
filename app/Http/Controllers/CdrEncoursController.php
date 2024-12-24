@@ -298,7 +298,7 @@ AND d.tau_int!=0";
         $dateArret = Carbon::parse($MyDateArr);
         $DateArr = $dateArret->format('d/m/y');
         $DateArrYear = $dateArret->year;
-        $DateArrMonth = $dateArret->month;
+        $DateArrMonth = $dateArret->format('m');
         $DateArrDay = $dateArret->day;
         $DateMonthYear = '/' . $DateArrMonth . '/' . $DateArrYear;
         $notFound = '[{"Erreur": {
@@ -306,7 +306,8 @@ AND d.tau_int!=0";
     "Description": "Format date erroné, format attendu 01-05-1995"
     }}]';
         $myData = $notFound;
-        $MyRequest = "select distinct d.eve,d.cli,d.ave,
+        $MyRequest = "select distinct d.eve,d.cli,
+        (15||'/$DateArrMonth'||'/$DateArrYear') DVA,
     (SELECT cdr_parce_ncp(p.ncp)
     FROM bkcptprt p
     WHERE p.eve=d.eve
@@ -318,13 +319,15 @@ AND d.tau_int!=0";
     NVL(
     (
         CASE 
-    WHEN ( select max(res) from bkechprt where (dva between (select dmep from bkdosprt where eve=d.eve and ave=0) and '30/08/23') and eve=d.eve  )=0 THEN d.mon
-    ELSE ( select max(res) from bkechprt where (dva between (select dmep from bkdosprt where eve=d.eve and ave=0) and '30/08/23') and eve=d.eve  )
+    WHEN ( select max(res) from bkechprt where (dva between (select dmep from bkdosprt where eve=d.eve and ave=
+    (SELECT MAX(AVE) FROM bkechprt where eve=d.eve)) and '$DateArr') and eve=d.eve  )=0 THEN d.mon
+    ELSE ( select max(res) from bkechprt where (dva between (select dmep from bkdosprt where eve=d.eve
+     and ave=(SELECT MAX(AVE) FROM bkechprt where eve=d.eve)) and '$DateArr') and eve=d.eve  )
         END
         ),d.mon)  MNTCRD ,
         d.dmep,
-        (15||'$DateArrMonth'||'$DateArrYear') DATECH,
-        (15||'$DateArrMonth'||'$DateArrYear') DATPAI,
+        (15||'/$DateArrMonth'||'/$DateArrYear') DATECH,
+        (15||'/$DateArrMonth'||'/$DateArrYear') DATPAI,
         0 MNTPAY,
         0 MNTAGI,
         0 ESTSENSIBLE,
