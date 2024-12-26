@@ -94,6 +94,10 @@ AND TO_DATE(dco, 'DD/MM/YYYY') =
 '0' MntAgi,   -- pour les découverts
 (
     CASE
+    --gestion des cas de tombee
+    when (select ctr from bkechprt where num=e.num+1 and eve=e.eve and
+    ave=(select max(ave) from bkechprt where eve=e.eve) )=3 THEN 0
+   -- en cas d'encours a la fin d'echeance
     WHEN e.res!=0 AND  (d.tech+1)=(    (SELECT COUNT(dva)
     FROM bkechprt
     WHERE 
@@ -103,6 +107,7 @@ AND TO_DATE(dco, 'DD/MM/YYYY') =
     AND eve                      =e.eve
     AND CDR_DATE(dva) < CDR_DATE('$DateArr')
     )) THEN 0
+    
     ELSE  (
     CASE 
     -- WHEN e.res=0 and e.num=0  THEN d.mon
@@ -119,7 +124,8 @@ AND TO_DATE(dco, 'DD/MM/YYYY') =
     ) THEN (SELECT MIN(res) from bkechprt where 
     eve=d.eve AND ave=(SELECT MAX(ave) FROM bkechprt WHERE eve=e.eve) and res!=0)
 
-    ELSE e.res
+    ELSE 
+    e.res
     END
     )
     END
@@ -127,7 +133,12 @@ AND TO_DATE(dco, 'DD/MM/YYYY') =
 '0' estSensible,
 --d.mdb MntTotUtil,
 d.mon MntTotUtil,
-(
+    (
+    CASE
+    when (select ctr from bkechprt where num=e.num+1 and eve=e.eve and
+    ave=(select max(ave) from bkechprt where eve=e.eve) )=3 THEN d.tech
+    ELSE (
+        (
 CASE 
 WHEN (e.res=0 and e.ctr!=8 and e.num>1) THEN d.tech -- gestion des paiements anticipee
 ELSE
@@ -147,49 +158,14 @@ ELSE
             ELSE 0
         END )
 END
-)+NVL(
-    (
-        CASE
-    when (select ctr from bkechprt where num=e.num+1 and eve=e.eve and
-    ave=(select max(ave) from bkechprt where eve=e.eve) )=3 THEN
-    (select count(dva) from bkechprt where ctr=3 and eve=e.eve and
-    ave=(select max(ave) from bkechprt where eve=e.eve))
-    END),0
 )
+    )
+    END
+    )
     nbrEchPay,
 
-(SELECT COUNT(dva)
-FROM bkechprt
-WHERE 
-ave=(select max(ave) from bkechprt where eve=e.eve)
-AND ctr                    ='8'
-AND eta                      ='VA'
-AND eve                      =e.eve
-AND CDR_DATE(dva) <= CDR_DATE('$DateArr')
-) nbrEchImp,-- a revoir ici c'est le nombre d'echéances impayes
 (
-CASE 
-WHEN (e.res=0 and e.ctr!=8 and e.num>1) THEN 0
-ELSE 
-(
-        (
-            d.tech+(
-            CASE
-            WHEN d.tech<(SELECT COUNT(dva) from bkechprt where eve=e.eve and ave=(select max(ave) from bkechprt where eve=e.eve)) THEN 1
-            ELSE 0
-            END
-            )
-    )-(
-        SELECT COUNT(dva)
-    FROM bkechprt
-    WHERE 
-    ave=(select max(ave) from bkechprt where eve=e.eve)
-    AND    ctr                   IN (9,3)
-    AND eta                      ='VA'
-    AND eve                      =e.eve
-    AND CDR_DATE(dva) <= CDR_DATE('$DateArr')
-    )-(
-        (SELECT COUNT(dva)
+    SELECT COUNT(dva)
     FROM bkechprt
     WHERE 
     ave=(select max(ave) from bkechprt where eve=e.eve)
@@ -197,10 +173,49 @@ ELSE
     AND eta                      ='VA'
     AND eve                      =e.eve
     AND CDR_DATE(dva) <= CDR_DATE('$DateArr')
-    )  
-    )
-) 
-END
+    ) nbrEchImp,-- a revoir ici c'est le nombre d'echéances impayes
+    
+(
+    CASE
+        when (select ctr from bkechprt where num=e.num+1 and eve=e.eve and
+        ave=(select max(ave) from bkechprt where eve=e.eve) )=3 THEN 0
+        ELSE
+           ((
+    CASE 
+    WHEN (e.res=0 and e.ctr!=8 and e.num>1) THEN 0
+    ELSE 
+    (
+            (
+                d.tech+(
+                CASE
+                WHEN d.tech<(SELECT COUNT(dva) from bkechprt where eve=e.eve and ave=(select max(ave) from bkechprt where eve=e.eve)) THEN 1
+                ELSE 0
+                END
+                )
+        )-(
+            SELECT COUNT(dva)
+        FROM bkechprt
+        WHERE 
+        ave=(select max(ave) from bkechprt where eve=e.eve)
+        AND    ctr                   IN (9,3)
+        AND eta                      ='VA'
+        AND eve                      =e.eve
+        AND CDR_DATE(dva) <= CDR_DATE('$DateArr')
+        )-(
+            (SELECT COUNT(dva)
+        FROM bkechprt
+        WHERE 
+        ave=(select max(ave) from bkechprt where eve=e.eve)
+        AND ctr                    ='8'
+        AND eta                      ='VA'
+        AND eve                      =e.eve
+        AND CDR_DATE(dva) <= CDR_DATE('$DateArr')
+        )  
+        )
+    ) 
+    END
+))
+    END
 )
 nbrEchRes,
 
