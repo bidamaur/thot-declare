@@ -220,6 +220,7 @@ AND (EXTRACT(MONTH FROM d.dmep)='$DateArrMonth' and EXTRACT(YEAR FROM CDR_DATE(d
 AND cdr_date(e.dva)<('01-'||TO_CHAR(ADD_MONTHS(CDR_DATE('$DateArr'), 1), 'MM-YYYY'))
 --AND e.ave=(SELECT max(ave) from bkechprt where eve=d.eve)
 AND d.tau_int!=0
+
 ";
 
     $stid = oci_parse($connection, $query);
