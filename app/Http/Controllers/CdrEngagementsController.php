@@ -58,6 +58,7 @@ class CdrEngagementsController extends Controller
      (SELECT cdr_parce_ncp(p.ncp)||(
     CASE
     WHEN d.dmep>'30/11/2023' THEN (SELECT clc from bkcom where ncp=p.ncp)
+    END)
      FROM dbprod.bkcptprt p
      WHERE p.eve=d.eve
      AND p.nat  ='004'
