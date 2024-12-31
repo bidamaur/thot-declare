@@ -62,9 +62,10 @@ class CdrEncoursController extends Controller
         $MyRequest = "SELECT DISTINCT d.eve,
 e.dva,
 d.cli,
-(SELECT cdr_parce_ncp(p.ncp)||(
+(SELECT cdr_parce_ncp(p.ncp)
+||(
     CASE
-    WHEN d.dmep>'30/11/2023' THEN (SELECT max(clc) from bkcom where ncp=p.ncp)
+    WHEN cdr_date(d.dmep)>cdr_date('30/11/2023') THEN (SELECT max(clc) from bkcom where ncp=p.ncp)
     END)
 FROM bkcptprt p
 WHERE p.eve=d.eve
@@ -368,21 +369,6 @@ AND d.tau_int!=0";
               
             GROUP BY eve
         ),
-        Ref_Compte AS (
-            SELECT 
-                p.eve, 
-                cdr_parce_ncp(p.ncp)||(
-    CASE
-    WHEN d.dmep>'30/11/2023' THEN (SELECT max(clc) from bkcom where ncp=p.ncp)
-    END) AS RefContCmpt
-            FROM bkcptprt p
-            WHERE p.nat = '004'
-              AND p.ave = (
-                  SELECT MAX(ave) 
-                  FROM bkcptprt 
-                  WHERE eve = p.eve
-              )
-        ),
         Sld_Calculations AS (
             SELECT 
                 cli,
@@ -400,7 +386,18 @@ AND d.tau_int!=0";
             d.eve,
             d.cli,
             (15 || '/$DateArrMonth' || '/$DateArrYear') AS DVA,
-            rc.RefContCmpt,
+            (SELECT cdr_parce_ncp(p.ncp)
+     ||(
+    CASE
+    WHEN cdr_date(d.dmep)>cdr_date('30/11/2023') THEN (SELECT clc from bkcom where ncp=p.ncp)
+    END)
+     FROM dbprod.bkcptprt p
+     WHERE p.eve=d.eve
+     AND p.nat  ='004'
+     AND p.ave  =
+       (SELECT MAX(ave) FROM dbprod.bkcptprt WHERE eve=p.eve
+       )
+     ) RefContCmpt,
             NVL(
                 CASE
                     WHEN ec.min_res = 0 THEN d.mon
@@ -454,7 +451,6 @@ AND d.tau_int!=0";
         FROM bkdosprt d
         LEFT JOIN Max_Ave ma ON ma.eve = d.eve
         LEFT JOIN Ech_Calculations ec ON ec.eve = d.eve
-        LEFT JOIN Ref_Compte rc ON rc.eve = d.eve
         LEFT JOIN Sld_Calculations sc ON sc.cli = d.cli
         WHERE 
             trunc(MONTHS_BETWEEN('$DateArr', d.dmep)) >= 1
