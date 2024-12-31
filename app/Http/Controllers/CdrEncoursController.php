@@ -62,7 +62,10 @@ class CdrEncoursController extends Controller
         $MyRequest = "SELECT DISTINCT d.eve,
 e.dva,
 d.cli,
-(SELECT cdr_parce_ncp(p.ncp)
+(SELECT cdr_parce_ncp(p.ncp)||(
+    CASE
+    WHEN d.dmep>'30/11/2023' THEN (SELECT max(clc) from bkcom where ncp=p.ncp)
+    END)
 FROM bkcptprt p
 WHERE p.eve=d.eve
 AND p.nat  ='004'
@@ -94,7 +97,7 @@ AND TO_DATE(dco, 'DD/MM/YYYY') =
 '0' MntAgi,   -- pour les découverts
 (
     CASE
-    --gestion des cas de tombee
+    --verification si c'est une tombee
     when (select ctr from bkechprt where num=e.num+1 and eve=e.eve and
     ave=(select max(ave) from bkechprt where eve=e.eve) )=3 THEN 0
    -- en cas d'encours a la fin d'echeance
@@ -368,7 +371,10 @@ AND d.tau_int!=0";
         Ref_Compte AS (
             SELECT 
                 p.eve, 
-                cdr_parce_ncp(p.ncp) AS RefContCmpt
+                cdr_parce_ncp(p.ncp)||(
+    CASE
+    WHEN d.dmep>'30/11/2023' THEN (SELECT max(clc) from bkcom where ncp=p.ncp)
+    END) AS RefContCmpt
             FROM bkcptprt p
             WHERE p.nat = '004'
               AND p.ave = (

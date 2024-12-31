@@ -55,7 +55,9 @@ class CdrEngagementsController extends Controller
      trim(c.tcli) as tcli,
      d.eve,
      d.ave,
-     (SELECT cdr_parce_ncp(p.ncp)
+     (SELECT cdr_parce_ncp(p.ncp)||(
+    CASE
+    WHEN d.dmep>'30/11/2023' THEN (SELECT clc from bkcom where ncp=p.ncp)
      FROM dbprod.bkcptprt p
      WHERE p.eve=d.eve
      AND p.nat  ='004'

@@ -12,30 +12,79 @@ class CdrPpController extends Controller
      */
     public function index()
     {
-        function parseUtf8($input_string) {
+        function parseUtf8($input_string)
+        {
             // Liste des caractères accentués et leurs remplacements
             $trans = [
-                'á' => 'a', 'à' => 'a', 'â' => 'a', 'ä' => 'a', 'ã' => 'a', 'å' => 'a',
-                'ç' => 'c', 'é' => 'e', 'è' => 'e', 'ê' => 'e', 'ë' => 'e', 'í' => 'i',
-                'ì' => 'i', 'î' => 'i', 'ï' => 'i', 'ñ' => 'n', 'ó' => 'o', 'ò' => 'o',
-                'ô' => 'o', 'ö' => 'o', 'õ' => 'o', 'ú' => 'u', 'ù' => 'u', 'û' => 'u',
-                'ü' => 'u', 'ý' => 'y', 'ÿ' => 'y',
-                '!' => '', '@' => '', '#' => '', '$' => '', '%' => '', '^' => '', '&' => '',
-                '*' => '', '(' => '', ')' => '', '_' => '', '+' => '', '{' => '', '}' => '',
-                '[' => '', ']' => '', '|' => '', ';' => '', ':' => '', '"' => '', '-' => '',
-                '<' => '', '>' => '', ',' => '', '.' => '', '?' => '', '/' => ''
+                'á' => 'a',
+                'à' => 'a',
+                'â' => 'a',
+                'ä' => 'a',
+                'ã' => 'a',
+                'å' => 'a',
+                'ç' => 'c',
+                'é' => 'e',
+                'è' => 'e',
+                'ê' => 'e',
+                'ë' => 'e',
+                'í' => 'i',
+                'ì' => 'i',
+                'î' => 'i',
+                'ï' => 'i',
+                'ñ' => 'n',
+                'ó' => 'o',
+                'ò' => 'o',
+                'ô' => 'o',
+                'ö' => 'o',
+                'õ' => 'o',
+                'ú' => 'u',
+                'ù' => 'u',
+                'û' => 'u',
+                'ü' => 'u',
+                'ý' => 'y',
+                'ÿ' => 'y',
+                '!' => '',
+                '@' => '',
+                '#' => '',
+                '$' => '',
+                '%' => '',
+                '^' => '',
+                '&' => '',
+                '*' => '',
+                '(' => '',
+                ')' => '',
+                '_' => '',
+                '+' => '',
+                '{' => '',
+                '}' => '',
+                '[' => '',
+                ']' => '',
+                '|' => '',
+                ';' => '',
+                ':' => '',
+                '"' => '',
+                '-' => '',
+                '<' => '',
+                '>' => '',
+                ',' => '',
+                '.' => '',
+                '?' => '',
+                '/' => ''
             ];
-        
+
             // Remplace les caractères accentués et autres caractères spéciaux
             $output_string = strtr($input_string, $trans);
-        
+
             // Supprime les espaces et met tout en majuscules
             return strtoupper(trim(str_replace(' ', '', $output_string)));
         }
-        
+
         $results = DB::select("SELECT 
         TRIM(c.cli) AS IDINTCLI,
-        TRIM(c.nidf) AS NIF_NIU,
+        (CASE
+            WHEN TRIM(c.nidf) is null THEN trim(c.nidn)
+            ELSE TRIM(c.nidf)
+        END) AS NIF_NIU,
         c.sext AS SEXE,
         TRIM(c.nom) AS NOM,
         '' AS NOMMAR,
@@ -139,7 +188,7 @@ class CdrPpController extends Controller
         -- AND c.cli <> 100534
         -- AND c.cli > 100914
     ORDER BY 1");
-        if(!$results){
+        if (!$results) {
             echo "[{
                 'type':'Erreur',
                 'Description':'Personne physique non disponible'
@@ -147,10 +196,10 @@ class CdrPpController extends Controller
             return false;
         }
 
-        $results = array_map(function($row) {
-            return array_change_key_case((array)$row, CASE_UPPER);
+        $results = array_map(function ($row) {
+            return array_change_key_case((array) $row, CASE_UPPER);
         }, $results);
-         return response()->json($results);
+        return response()->json($results);
     }
 
     /**
