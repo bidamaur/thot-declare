@@ -50,181 +50,184 @@ class CdrEngagementsController extends Controller
     }}]';
     $myData = $notFound;
     $query = "SELECT DISTINCT trim(c.cli) as cli,
--- TRIM(e.dva) as dva,
- TRIM(e.ctr) as ctr,
-     trim(c.tcli) as tcli,
-     d.eve,
-     d.ave,
-     (SELECT cdr_parce_ncp(p.ncp)
-     ||(
+    -- TRIM(e.dva) as dva,
+     --TRIM(e.ctr) as ctr,
+         trim(c.tcli) as tcli,
+         d.eve,
+         d.ave,
+         (SELECT cdr_parce_ncp(p.ncp)
+         ||(
+        CASE
+        WHEN cdr_date(d.dmep)>cdr_date('30/11/2023') THEN (SELECT clc from bkcom where ncp=p.ncp)
+        END)
+         FROM dbprod.bkcptprt p
+         WHERE p.eve=d.eve
+         AND p.nat  ='004'
+         AND p.ave  =
+           (SELECT MAX(ave) FROM dbprod.bkcptprt WHERE eve=p.eve
+           )
+         ) RefContCmpt,
+             (SELECT p.ncp
+         FROM dbprod.bkcptprt p
+         WHERE p.eve=d.eve
+         AND p.nat  ='004'
+         AND p.ave  =
+           (SELECT MAX(ave) FROM dbprod.bkcptprt WHERE eve=p.eve
+           )
+         ) ncp_ori,
+         '10030' CodAge,
+    (CASE
+    WHEN e.ctr=3 THEN '02'
+    WHEN (SELECT DVA FROM bkechprt where res=0 and eve=d.eve and ave=(SELECT MAX(ave) FROM dbprod.bkechprt  WHERE eve=d.eve) and 
+( cdr_date(dva) 
+between cdr_date('01$DateMonthYear') and add_months(cdr_date('01$DateMonthYear'),1)   ))=d.ddec THEN '02'
+    WHEN (SELECT max(ctr) from bkechprt where eve=d.eve AND ave=(SELECT MAX(ave) FROM dbprod.bkechprt  WHERE eve=d.eve) AND ( cdr_date(dva) 
+    between cdr_date('$DateArr') and add_months(cdr_date('$DateArr'),1)   ))=3 THEN '02'
+    ELSE '00'
+    END
+    ) Statut,
+         '' NatConso,--non
+         '' TypConso,--non
+    (
     CASE
-    WHEN cdr_date(d.dmep)>cdr_date('30/11/2023') THEN (SELECT clc from bkcom where ncp=p.ncp)
-    END)
-     FROM dbprod.bkcptprt p
-     WHERE p.eve=d.eve
-     AND p.nat  ='004'
-     AND p.ave  =
-       (SELECT MAX(ave) FROM dbprod.bkcptprt WHERE eve=p.eve
-       )
-     ) RefContCmpt,
-         (SELECT p.ncp
-     FROM dbprod.bkcptprt p
-     WHERE p.eve=d.eve
-     AND p.nat  ='004'
-     AND p.ave  =
-       (SELECT MAX(ave) FROM dbprod.bkcptprt WHERE eve=p.eve
-       )
-     ) ncp_ori,
-     '10030' CodAge,
-(CASE
-WHEN e.ctr=3 THEN '02'
-WHEN (SELECT MAX(num) FROM bkechprt where eve=e.eve AND ave=(SELECT MAX(ave) FROM dbprod.bkechprt  WHERE eve=e.eve) )=e.num THEN '02'
-WHEN (SELECT max(ctr) from bkechprt where eve=e.eve AND ave=(SELECT MAX(ave) FROM dbprod.bkechprt  WHERE eve=e.eve) AND ( cdr_date(dva) 
-between cdr_date('$DateArr') and add_months(cdr_date('$DateArr'),1)   ))=3 THEN '02'
-ELSE '00'
-END
-) Statut,
-     '' NatConso,--non
-     '' TypConso,--non
-(
-CASE
- WHEN d.ctr=9 and d.ddec>=cdr_date('$DateArr') 
- THEN ''
- WHEN d.ctr=9 and d.ddec<cdr_date('$DateArr') 
- THEN '01'
- 
- WHEN d.ctr=5 and d.ddec>=cdr_date('$DateArr') 
- THEN ''
- WHEN d.ctr=5 and d.ddec<cdr_date('$DateArr') 
- THEN '02'
- 
- WHEN d.ctr not IN(9,5) 
- THEN ''
- 
-END ) Motif,
-     '01' TypEng, --type de credit avec échéancier
-     (
-     CASE
-       WHEN (d.typ IN('200','201')
-       AND c.tcli  <>1)
-       THEN '01'
-       WHEN d.typ IN ('200','201')
-       AND c.tcli  ='1'
-       THEN '09'
-       WHEN (d.typ IN('200','201')
-       AND c.tcli  <>1)
-       THEN '03'
-       WHEN d.typ IN('099','106','107')
-       THEN '02'
-       WHEN (d.typ IN('105','104','103','105')
-       AND c.tcli   =1)
-       THEN '05'
-             WHEN (d.typ IN('105','104','103','105')
-       AND c.tcli   !=1)
-       THEN '02'
-       WHEN (c.tcli=1
-       AND d.typ   ='100')
-       THEN '05'
-       WHEN (c.tcli !=1
-       AND d.typ     ='100')
-       THEN '02'
-       ELSE '02'
-     END ) NatEng, -----------------------------
-     'XAF' CodDev,                            --devise
-     d.mon MntEng ,
-     '0' MntCrCedee,                      --l'import export ne nous concerne
-     '0' MntEpargne,                     --on ne fait pas
-     '2' ModRembEpargne,                 -- on ne fait pas
-     '0' TauxRenum,                      -- taux de remboursement de l'epargne
-     TO_CHAR(d.dmep,'dd/mm/yyyy') DatMep,-- mise en place
-     REPLACE(d.tau_int,',','.') TxInt,
-     '' TxComm,-- on ne fait pas
-     '2' TxBonifie,
-    ( 
-     CASE
-     WHEN d.tau_int<8 or  (d.tau_int >d.teg) THEN REPLACE(CEIL(d.teg),',','.') 
-     ELSE REPLACE(d.teg,',','.')
-     END 
-     ) as TxEffGlob,
-     '00' TypTxInt,  --type de taux: fixe
-     '' IndRef,
-     '' Sprd,
-     -- TO_CHAR(d.dpec,'ddmmyyyy') DatDeb, -- date de premiere echeance du crédit à revoir avec les diferes
-     (
-      CASE
-      WHEN (select count(dva) from bkechprt where eve=d.eve and ave=(select max(ave) from bkechprt where eve=d.eve))=2 THEN TO_CHAR(d.dmep,'ddmmyyyy')
-      ELSE (SELECT TO_CHAR(max(dva),'ddmmyyyy') from bkechprt where num=01 and eve=d.eve)
-      END
-      ) DatDeb,
-     TO_CHAR(d.ddec,'ddmmyyyy') DatFin, --derniere echeance
-     (
-     CASE
-       WHEN d.per_cap='1'
-       THEN '03'
-        WHEN d.per_cap='3'
-       THEN '04'
-       WHEN d.per_cap='6'
-       THEN '06'
-       WHEN d.per_cap='12'
-       THEN '07'
-       WHEN d.per_cap='4'
-       THEN '05'
-       ELSE '00'     
-     END ) Periodicite, 
-     '02' UnitDur,      
-     d.tech Duree,       
-     (
-     CASE
-       WHEN d.typ IN(200,201,107)
-       THEN '02' 
-       WHEN d.typ IN(100,099,106,103,104)
-       THEN '01' 
-       ELSE d.typ
-     END ) Maturite,
-     TO_CHAR(d.dpec,'ddmmyyyy') DatPreEchCap,
-     d.tech NbrEch,                         
-     '03' MoyRem,
-     '01' TypEch,
-     ( SELECT MAX(tot_ech) FROM dbprod.bkechprt WHERE EXTRACT(DAY FROM dva)=EXTRACT(DAY FROM d.dpec) AND eve=d.eve and amo_cal!=0
-     )MntEch,  
-     '03' TypAmo,
-     (SELECT SUM(inte)
-     FROM dbprod.bkechprt
-     WHERE eve=d.eve
-     ) TotInt,
-     ROUND((SELECT sum(mon_fra) from bkdosprt where eve=d.eve) ) fraDos,
-(
-CASE 
-     WHEN ROUND((SELECT (SUM(d.mon_co1)+SUM(d.mon_co2)) from bkdosprt where eve=d.eve))=0 THEN  ROUND(
-     (SELECT SUM(mnt) FROM bkcanprt WHERE eve=d.eve AND ges_teg='O'
-     ))
-     ELSE
-    ROUND((SELECT (SUM(d.mon_co1)+SUM(d.mon_co2)) from bkdosprt where eve=d.eve))
-END
-)fraAnnexe,
-     '0' MntPrm, 
-       '' MntTax,                 
-     TO_CHAR(d.dmep,'ddmmyyyy') DatEve,
- d.eve RefInt,
- d.cli IdInt 
- FROM dbprod.bkdosprt d,dbprod.bkechprt e ,
-     dbprod.bkcli c
-   WHERE 
-   e.eve=d.eve
-   and c.cli    =d.cli
- 
-   AND d.eta      in ('VA','DE')
- AND (EXTRACT(YEAR FROM d.ddec)>2022)
- 
-AND d.ave=(SELECT MAX(bb.ave) FROM dbprod.bkdosprt bb WHERE bb.eve=d.eve)
-and e.ctr not in(3)
---  and (cdr_date(e.dva) between cdr_date('01/07/2023') and cdr_date('31/07/2023'))
---AND (cdr_date(d.dmep) between cdr_date('01" . $DateMonthYear . "') and cdr_date('$DateArr'))
-AND (EXTRACT(MONTH FROM d.dmep)='$DateArrMonth' and EXTRACT(YEAR FROM CDR_DATE(d.dmep))='$DateArrYear' )
-AND cdr_date(e.dva)<('01-'||TO_CHAR(ADD_MONTHS(CDR_DATE('$DateArr'), 1), 'MM-YYYY'))
---AND e.ave=(SELECT max(ave) from bkechprt where eve=d.eve)
-AND d.tau_int!=0
-";
+     WHEN d.ctr=9 and d.ddec>=cdr_date('$DateArr') 
+     THEN ''
+     WHEN d.ctr=9 and d.ddec<cdr_date('$DateArr') 
+     THEN '01'
+     
+     WHEN d.ctr=5 and d.ddec>=cdr_date('$DateArr') 
+     THEN ''
+     WHEN d.ctr=5 and d.ddec<cdr_date('$DateArr') 
+     THEN '02'
+     
+     WHEN d.ctr not IN(9,5) 
+     THEN ''
+     
+    END ) Motif,
+         '01' TypEng, --type de credit avec échéancier
+         (
+         CASE
+           WHEN (d.typ IN('200','201')
+           AND c.tcli  <>1)
+           THEN '01'
+           WHEN d.typ IN ('200','201')
+           AND c.tcli  ='1'
+           THEN '09'
+           WHEN (d.typ IN('200','201')
+           AND c.tcli  <>1)
+           THEN '03'
+           WHEN d.typ IN('099','106','107')
+           THEN '02'
+           WHEN (d.typ IN('105','104','103','105')
+           AND c.tcli   =1)
+           THEN '05'
+                 WHEN (d.typ IN('105','104','103','105')
+           AND c.tcli   !=1)
+           THEN '02'
+           WHEN (c.tcli=1
+           AND d.typ   ='100')
+           THEN '05'
+           WHEN (c.tcli !=1
+           AND d.typ     ='100')
+           THEN '02'
+           ELSE '02'
+         END ) NatEng, -----------------------------
+         'XAF' CodDev,                            --devise
+         d.mon MntEng ,
+         '0' MntCrCedee,                      --l'import export ne nous concerne
+         '0' MntEpargne,                     --on ne fait pas
+         '2' ModRembEpargne,                 -- on ne fait pas
+         '0' TauxRenum,                      -- taux de remboursement de l'epargne
+         TO_CHAR(d.dmep,'dd/mm/yyyy') DatMep,-- mise en place
+         REPLACE(d.tau_int,',','.') TxInt,
+         '' TxComm,-- on ne fait pas
+         '2' TxBonifie,
+        ( 
+         CASE
+         WHEN d.tau_int<8 or  (d.tau_int >d.teg) THEN REPLACE(CEIL(d.teg),',','.') 
+         ELSE REPLACE(d.teg,',','.')
+         END 
+         ) as TxEffGlob,
+         '00' TypTxInt,  --type de taux: fixe
+         '' IndRef,
+         '' Sprd,
+         -- TO_CHAR(d.dpec,'ddmmyyyy') DatDeb, -- date de premiere echeance du crédit à revoir avec les diferes
+         (
+          CASE
+          WHEN (select count(dva) from bkechprt where eve=d.eve and ave=(select max(ave) from bkechprt where eve=d.eve)) in(2,1) THEN TO_CHAR(d.dmep,'ddmmyyyy')
+          ELSE (SELECT TO_CHAR(max(dva),'ddmmyyyy') from bkechprt where num=01 and eve=d.eve)
+          END
+          ) DatDeb,
+         TO_CHAR(d.ddec,'ddmmyyyy') DatFin, --derniere echeance
+         (
+         CASE
+           WHEN d.per_cap='1'
+           THEN '03'
+            WHEN d.per_cap='3'
+           THEN '04'
+           WHEN d.per_cap='6'
+           THEN '06'
+           WHEN d.per_cap='12'
+           THEN '07'
+           WHEN d.per_cap='4'
+           THEN '05'
+           ELSE '00'     
+         END ) Periodicite, 
+         '02' UnitDur,      
+         d.tech Duree,       
+         (
+         CASE
+           WHEN d.typ IN(200,201,107)
+           THEN '02' 
+           WHEN d.typ IN(100,099,106,103,104) THEN '01' 
+           WHEN d.typ=105 and MONTHS_BETWEEN(d.ddec,d.dpec)<=24 THEN '01'
+           WHEN d.typ=105 and MONTHS_BETWEEN(d.ddec,d.dpec)>24 THEN '02'
+           ELSE d.typ
+         END ) Maturite,
+         TO_CHAR(d.dpec,'ddmmyyyy') DatPreEchCap,
+         d.tech NbrEch,                         
+         '03' MoyRem,
+         '01' TypEch,
+         ( SELECT MAX(tot_ech) FROM dbprod.bkechprt WHERE EXTRACT(DAY FROM dva)=EXTRACT(DAY FROM d.dpec) AND eve=d.eve and amo_cal!=0
+         )MntEch,  
+         '03' TypAmo,
+         (SELECT SUM(inte)
+         FROM dbprod.bkechprt
+         WHERE eve=d.eve
+         ) TotInt,
+         ROUND((SELECT sum(mon_fra) from bkdosprt where eve=d.eve) ) fraDos,
+    (
+    CASE 
+         WHEN ROUND((SELECT (SUM(d.mon_co1)+SUM(d.mon_co2)) from bkdosprt where eve=d.eve))=0 THEN  ROUND(
+         (SELECT SUM(mnt) FROM bkcanprt WHERE eve=d.eve AND ges_teg='O'
+         ))
+         ELSE
+        ROUND((SELECT (SUM(d.mon_co1)+SUM(d.mon_co2)) from bkdosprt where eve=d.eve))
+    END
+    )fraAnnexe,
+         '0' MntPrm, 
+           '' MntTax,                 
+         TO_CHAR(d.dmep,'ddmmyyyy') DatEve,
+     d.eve RefInt,
+     d.cli IdInt 
+     FROM dbprod.bkdosprt d,dbprod.bkechprt e ,
+         dbprod.bkcli c
+       WHERE 
+       e.eve=d.eve
+       --and d.eve='002221'
+       and c.cli    =d.cli
+     
+       AND d.eta      in ('VA','DE')
+     AND (EXTRACT(YEAR FROM d.ddec)>2022)
+     
+    AND d.ave=(SELECT MAX(bb.ave) FROM dbprod.bkdosprt bb WHERE bb.eve=d.eve)
+    and e.ctr not in(3)
+    --  and (cdr_date(e.dva) between cdr_date('01/07/2023') and cdr_date('31/07/2023'))
+    --AND (cdr_date(d.dmep) between cdr_date('01" . $DateMonthYear . "') and cdr_date('$DateArr'))
+    AND (EXTRACT(MONTH FROM d.dmep)='$DateArrMonth' and EXTRACT(YEAR FROM CDR_DATE(d.dmep))='$DateArrYear' )
+    AND cdr_date(d.dmep)<('01-'||TO_CHAR(ADD_MONTHS(CDR_DATE('01$DateMonthYear'), 1), 'MM-YYYY'))
+    --AND e.ave=(SELECT max(ave) from bkechprt where eve=d.eve)
+    AND d.tau_int!=0";
 
     $stid = oci_parse($connection, $query);
     // oci_bind_by_name($stid, ":id", $id);

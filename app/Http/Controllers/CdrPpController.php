@@ -82,8 +82,9 @@ class CdrPpController extends Controller
         $results = DB::select("SELECT 
         TRIM(c.cli) AS IDINTCLI,
         (CASE
-            WHEN TRIM(c.nidf) is null THEN trim(c.nidn)
-            ELSE TRIM(c.nidf)
+            WHEN  trim(nidf) IS not  NULL  THEN replace(trim(nidf),'						','')
+            WHEN  trim(nidn) IS not  NULL  THEN  replace(trim(nidn),'						','')     
+            ELSE replace(trim(idext),'						','')
         END) AS NIF_NIU,
         c.sext AS SEXE,
         TRIM(c.nom) AS NOM,
@@ -113,9 +114,9 @@ class CdrPpController extends Controller
             ELSE '01'
         END AS SITMAT,
         CASE
-            WHEN c.catn = 2401 AND c.tcli = 1
+            WHEN c.catn in(2401) AND c.tcli = 1
             THEN 1100
-            WHEN c.catn = 2203 AND c.tcli = 1
+            WHEN c.catn in (2203,2401) AND c.tcli = 1
             THEN 1080
             ELSE TO_NUMBER(c.catn)
         END AS AGEECO,
@@ -135,12 +136,12 @@ class CdrPpController extends Controller
         REPLACE('00237' || COALESCE(t.phone, ''), ' ', '') AS MOBILE,
         TO_CHAR(SYSDATE, 'DDMMYYYY') AS DATEVE,
         CASE 
-            WHEN c.tid = '00001' AND LENGTH(TRIM(c.nid)) > 9 THEN '06'
-            WHEN c.tid = '00001' AND LENGTH(TRIM(c.nid)) < 10 THEN '01'
-            WHEN c.tid = '00003' THEN '02'
-            WHEN c.tid = '00004' THEN '03'
+            WHEN c.tid = '00001' AND LENGTH(TRIM(c.nid))=20 THEN '06'
+            WHEN c.tid = '00001' AND ( LENGTH(TRIM(c.nid))=9 or LENGTH(TRIM(c.nid))=17) THEN '01'
+            WHEN c.tid = '00003' AND ( LENGTH(TRIM(c.nid))=7 or LENGTH(TRIM(c.nid))=8 or LENGTH(TRIM(c.nid))=9 ) THEN '02'
+            WHEN c.tid = '00004' AND  LENGTH(TRIM(c.nid))=18 THEN '03'
             WHEN c.tid = '00002' THEN '05'
-            ELSE '06'
+            ELSE '07'
         END AS TYPPIECE,
         TRIM(c.nid) AS NUMPIECE,
         TO_CHAR(c.did, 'DDMMYYYY') AS DATEMPIECE,

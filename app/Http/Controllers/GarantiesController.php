@@ -12,28 +12,28 @@ class GarantiesController extends Controller
   protected $dbConnection;
   public function __construct(DatabaseConnection $dbConnection)
   {
-      $this->dbConnection = $dbConnection;
+    $this->dbConnection = $dbConnection;
   }
-    /**
-     * Display a listing of the resource.
-     */
-    public function getGaranties()
-    {
+  /**
+   * Display a listing of the resource.
+   */
+  public function getGaranties($MyDateArr)
+  {
 
-      
-      $connection = $this->dbConnection->getConnection();
-      $dateArret = Carbon::parse($MyDateArr);
-      $DateArr = $dateArret->format('d/m/y');
-      $DateArrYear = $dateArret->year;
-      $DateArrMonth = $dateArret->month;
-      $DateArrDay = $dateArret->day;
-      $notFound='[{"Erreur": {
+
+    $connection = $this->dbConnection->getConnection();
+    $dateArret = Carbon::parse($MyDateArr);
+    $DateArr = $dateArret->format('d/m/y');
+    $DateArrYear = $dateArret->year;
+    $DateArrMonth = $dateArret->month;
+    $DateArrDay = $dateArret->day;
+    $notFound = '[{"Erreur": {
       "type": "404",
-      "Description": "Aucune donn&eacute;e trouv&eacute;e pour la p&eacute;riode du '.$DateArr.'"
+      "Description": "Aucune donn&eacute;e trouv&eacute;e pour la p&eacute;riode du ' . $DateArr . '"
       }}]';
-      $myData= $notFound;
+    $myData = $notFound;
 
-       $MyQuery=DB::select("SELECT en.cli,
+    $MyQuery = DB::select("SELECT en.cli,
        SUBSTR(en.neng,1,6) eve,
        -- Garantie
        g.ref RefIntGar,
@@ -72,52 +72,52 @@ AND cdr_date(dco)<cdr_date('$DateArr'))
      FROM dbprod.bkeng en,
        dbprod.bkgar g
      WHERE g.eve=en.ngar");
-     $prepare=oci_parse($connection, $MyQuery);
-     oci_execute($prepare);
-     while($MyData=oci_fetch_assoc($prepare) ){
-    $MyData[]=$MyRow;
-    if(!$MyData){
-      echo  response()->json($MyData);
-      return false;
+    $prepare = oci_parse($connection, $MyQuery);
+    oci_execute($prepare);
+    while ($MyData = oci_fetch_assoc($prepare)) {
+      $MyRow[] = $MyData;
+      if (!$MyData) {
+        echo response()->json($MyData);
+        return false;
+      }
+      $data = response()->json($MyData);
     }
-    $data=response()->json($MyData);
+    //integration des garanties
+    if ($data) {
+      return $data;
+    }
   }
-//integration des garanties
-if($date){
-  return $data;
-}
-}
-  
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
-    {
-        //
-    }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(garanties $garanties)
-    {
-        //
-    }
+  /**
+   * Store a newly created resource in storage.
+   */
+  public function store(Request $request)
+  {
+    //
+  }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, garanties $garanties)
-    {
-        //
-    }
+  /**
+   * Display the specified resource.
+   */
+  public function show(garanties $garanties)
+  {
+    //
+  }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(garanties $garanties)
-    {
-        //
-    }
+  /**
+   * Update the specified resource in storage.
+   */
+  public function update(Request $request, garanties $garanties)
+  {
+    //
+  }
+
+  /**
+   * Remove the specified resource from storage.
+   */
+  public function destroy(garanties $garanties)
+  {
+    //
+  }
 }
