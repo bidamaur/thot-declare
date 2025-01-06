@@ -248,11 +248,8 @@ class CdrEncoursController extends Controller
 
     (
     CASE
-
-    WHEN (SELECT count(dva) from bkechprt where ctr=8 and eve=e.eve and cdr_date(dva)<cdr_date('$DateArr'))>0 THEN '04'
-
-    WHEN (select sum(mon) from bksld where
-    (cha like '341%' and cli=d.cli) and dco<cdr_date('$DateArr'))>0 THEN '04'
+    -- WHEN (select sum(mon) from bksld where
+    -- (cha like '341%' and cli=d.cli) and dco<cdr_date('$DateArr'))>0 THEN '04'
 
     WHEN (select sum(mon) from bksld where
     ((cha like '3441%'  or cha like '3451%') and cli=d.cli) and dco<cdr_date('$DateArr'))>0 THEN '07'
@@ -265,7 +262,9 @@ class CdrEncoursController extends Controller
     WHEN (select sum(mon) from bksld where
     ((cha like '344%'  or cha like '345%') and cli=d.cli) and dco<cdr_date('$DateArr'))>0 THEN '06'
     WHEN (select sum(mon) from bksld where
-    (cha like '301%' or cha like '311%' or cha like '321%' and cli=d.cli) and dco<cdr_date('$DateArr'))>0 THEN '02'
+     (cha like '301%' or cha like '311%' or cha like '321%' and cli=d.cli) and dco<cdr_date('$DateArr'))>0 THEN '02'
+    -- WHEN (SELECT count(dva) from bkechprt where ctr=8 and eve=e.eve and cdr_date(dva)<cdr_date('$DateArr'))>0 THEN '04'
+
     ELSE '01'
     END)
     ClaDeprec
@@ -284,7 +283,8 @@ class CdrEncoursController extends Controller
     AND e.ave=
     (SELECT MAX(ave) FROM bkechprt WHERE eve=e.eve
     )
-AND d.tau_int!=0";
+AND d.tau_int!=0
+and d.eve not in(002259)";
         // dd($MyRequest);
         $stid = oci_parse($connection, $MyRequest);
         // oci_bind_by_name($stid, ":id", $id);
@@ -466,6 +466,7 @@ AND d.tau_int!=0";
             AND d.eta IN ('VA', 'DE')
             AND d.ddec > '$DateArr'
             AND d.tau_int!=0
+            and d.eve not in(002259)
             -- AND d.per_cap=4
         ORDER BY d.eve DESC
         ";
