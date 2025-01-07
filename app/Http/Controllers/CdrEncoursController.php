@@ -355,16 +355,15 @@ and d.eve not in(002259)";
         Ech_Calculations AS (
             SELECT 
                 eve,
-                SUM(CASE WHEN ctr IN (9, 3) AND eta = 'VA' 
-                and ave=(SELECT MAX(ave) FROM bkechprt WHERE eve = bkechprt.eve) THEN 1 ELSE 0 END) AS ctr_93_va_count,
-                SUM(CASE WHEN ctr = 8 AND eta = 'VA' and ave=(SELECT MAX(u.ave) FROM bkechprt u WHERE u.eve = bkechprt.eve) THEN 1 ELSE 0 END) AS ctr_8_va_count,
+                (select count(ech.dva) from bkechprt ech where ech.ctr in (9,3) and ech.eve=bkechprt.eve and cdr_date(ech.dva)<=cdr_date('$DateArr') and ech.ave=(SELECT MAX(kk.ave) FROM bkechprt kk WHERE kk.eve = bkechprt.eve))AS soldepaye9_3,
+                SUM(0) AS impayesCTR8,
                 --  max(res) AS min_res
                  (select min(tt.res) from bkechprt tt where tt.eve=bkechprt.eve and tt.res!=0 
                  and tt.ave=(SELECT MAX(k.ave) FROM bkechprt k WHERE k.eve = bkechprt.eve) 
                  and cdr_date(tt.dva)<cdr_date('$DateArr')) as min_res
 
             FROM bkechprt
-            WHERE dva < '$DateArr'
+            WHERE cdr_date(dva) < cdr_date('$DateArr')
             
               
             GROUP BY eve
@@ -398,6 +397,7 @@ and d.eve not in(002259)";
        (SELECT MAX(ave) FROM dbprod.bkcptprt WHERE eve=p.eve
        )
      ) RefContCmpt,
+     d.typ,
             NVL(
                 CASE
                     WHEN ec.min_res = 0 THEN d.mon
@@ -412,21 +412,14 @@ and d.eve not in(002259)";
             0 AS MNTAGI,
             0 AS ESTSENSIBLE,
             (
-                ec.ctr_93_va_count - 
-                CASE
-                    WHEN ec.ctr_93_va_count >= 1 THEN 1
-                    ELSE 0
-                END
-            ) AS nbrEchPay,
-            ec.ctr_8_va_count AS NBRECHIMP,
-            (
-                d.tech + 
-                CASE
-                    WHEN ec.ctr_93_va_count > d.tech THEN 1
-                    ELSE 0
-                END
-                - ec.ctr_93_va_count
-            ) AS nbrEchRes,
+            NVL(ec.soldepaye9_3,0)-(CASE WHEN d.typ=105 THEN 0 ELSE 1 END)
+            )AS nbrEchPay,
+            NVL(ec.ec.impayesCTR8,0) AS NBRECHIMP,
+            (CASE 
+            WHEN d.typ!=105  THEN d.tech
+            ELSE
+            d.tech-(NVL(ec.soldepaye9_3,0)+NVL(ec.soldepaye9_3,0))
+            END)AS nbrEchRes,
             '0' AS MNTCRESOUF,
             '0' AS MNTCAPSOUF,
             '0' AS MNTINTSOUF,
@@ -438,7 +431,7 @@ and d.eve not in(002259)";
             d.mon AS MNTTOTUTIL,
             (
                 CASE
-                    WHEN ec.ctr_8_va_count > 0 THEN '04'
+                    WHEN ec.impayesCTR8 > 0 THEN '04'
                     WHEN sc.sld_341 > 0 THEN '04'
                     WHEN sc.sld_3441_3451 > 0 THEN '07'
                     WHEN sc.sld_3442_3452 > 0 THEN '08'
@@ -453,7 +446,36 @@ and d.eve not in(002259)";
         LEFT JOIN Ech_Calculations ec ON ec.eve = d.eve
         LEFT JOIN Sld_Calculations sc ON sc.cli = d.cli
         WHERE 
-            trunc(MONTHS_BETWEEN('$DateArr', d.dmep)) >= 1
+            -- trunc(MONTHS_BETWEEN('$DateArr', d.dmep)) >= 1
+            -- AND d.ave = ma.max_ave
+            -- AND NOT EXISTS (
+            --     SELECT 1 
+            --     FROM bkechprt
+            --     WHERE EXTRACT(MONTH FROM dva) = '$DateArrMonth'
+            --       AND EXTRACT(YEAR FROM cdr_date(dva)) = '$DateArrYear'
+            --       AND eve = d.eve
+            --       AND ave = ma.max_ave
+            -- )
+            -- AND d.eta IN ('VA', 'DE')
+            -- AND d.ddec > '$DateArr'
+            -- AND d.tau_int!=0
+            -- and d.eve not in(002259)
+            d.eta IN ('VA', 'DE')
+AND d.ddec > '$DateArr'
+AND d.tau_int!=0
+and d.eve not in(002259)
+AND
+    (
+        (d.dmep between CDR_DATE('01$DateMonthYear') and '$DateArr' and NOT EXISTS (
+                SELECT 1 
+                FROM bkechprt
+                WHERE EXTRACT(MONTH FROM dva) = '$DateArrMonth'
+                  AND EXTRACT(YEAR FROM cdr_date(dva)) = '$DateArrYear'
+                  AND eve = d.eve
+                  AND ave = ma.max_ave
+            )
+            ) or
+           trunc(MONTHS_BETWEEN('$DateArr', d.dmep)) >= 1 
             AND d.ave = ma.max_ave
             AND NOT EXISTS (
                 SELECT 1 
@@ -463,10 +485,8 @@ and d.eve not in(002259)";
                   AND eve = d.eve
                   AND ave = ma.max_ave
             )
-            AND d.eta IN ('VA', 'DE')
-            AND d.ddec > '$DateArr'
-            AND d.tau_int!=0
-            and d.eve not in(002259)
+    )
+    
             -- AND d.per_cap=4
         ORDER BY d.eve DESC
         ";
