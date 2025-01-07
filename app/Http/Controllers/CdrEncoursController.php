@@ -55,9 +55,18 @@ class CdrEncoursController extends Controller
         $DateArrDay = $dateArret->day;
         $DateMonthYear = '/' . $DateArrMonth . '/' . $DateArrYear;
         $notFound = '[{"Erreur": {
-    "type": "Date",
-    "Description": "Format date erroné, format attendu 01-05-1995"
-}}]';
+        "type": "Date",
+        "Description": "Format date erroné, format attendu 01-05-1995"
+        }}]';
+    $nbjImp="(
+    CASE
+    WHEN  e.amo_imp=0 THEN 0 
+    ELSE CDR_DATE('$DateArr')-CDR_DATE((SELECT MIN(DVA) from bkechprt where eta='VA' AND ctr=8 and eve=e.eve 
+    and ave=(select max(ave) from bkechprt where eve=e.eve)))
+    END
+    )";
+    $doutx="(select sum(mon) from bksld where
+    ((cha like '344%'  or cha like '345%') and cli=d.cli) and CDR_DATE(dco)<cdr_date('$DateArr'))";
         $myData = $notFound;
         $MyRequest = "SELECT DISTINCT d.eve,
     e.dva,
@@ -238,36 +247,18 @@ class CdrEncoursController extends Controller
     '0' MntAgiosSouf,
     e.inte MntCreRat,
     '' MntPro,  
-    (
-    CASE
-    WHEN  e.amo_imp=0 THEN 0 
-    ELSE CDR_DATE('$DateArr')-CDR_DATE((SELECT MIN(DVA) from bkechprt where eta='VA' AND ctr=8 and eve=e.eve 
-    and ave=(select max(ave) from bkechprt where eve=e.eve)))
-    END
-    )nbrJrsImp,
+     $nbjImp nbrJrsImp,
+(  
+CASE
+    WHEN $nbjImp>0 and $nbjImp<90   THEN '04'
+    WHEN $nbjImp>=90 and $nbjImp<110  and $doutx>0 THEN '06'
+    WHEN $nbjImp>110 and $nbjImp<365 and $doutx>0  THEN '07'
+    WHEN $nbjImp>365 and $nbjImp<730 and $doutx>0  THEN '08'
+    WHEN $nbjImp>730 and $nbjImp<1095 and $doutx>0  THEN '09'
+ELSE '01'
+END 
+) AS ClaDeprec
 
-    (
-    CASE
-    -- WHEN (select sum(mon) from bksld where
-    -- (cha like '341%' and cli=d.cli) and dco<cdr_date('$DateArr'))>0 THEN '04'
-
-    WHEN (select sum(mon) from bksld where
-    ((cha like '3441%'  or cha like '3451%') and cli=d.cli) and dco<cdr_date('$DateArr'))>0 THEN '07'
-
-    WHEN (select sum(mon) from bksld where
-    ((cha like '3442%'  or cha like '3452%') and cli=d.cli) and dco<cdr_date('$DateArr'))>0 THEN '08'
-
-    WHEN (select sum(mon) from bksld where
-    ((cha like '3443%'  or cha like '3453%') and cli=d.cli) and dco<cdr_date('$DateArr'))>0 THEN '09'
-    WHEN (select sum(mon) from bksld where
-    ((cha like '344%'  or cha like '345%') and cli=d.cli) and dco<cdr_date('$DateArr'))>0 THEN '06'
-    WHEN (select sum(mon) from bksld where
-     (cha like '301%' or cha like '311%' or cha like '321%' and cli=d.cli) and dco<cdr_date('$DateArr'))>0 THEN '02'
-    -- WHEN (SELECT count(dva) from bkechprt where ctr=8 and eve=e.eve and cdr_date(dva)<cdr_date('$DateArr'))>0 THEN '04'
-
-    ELSE '01'
-    END)
-    ClaDeprec
     FROM bkdosprt d,
     bkechprt e,
     bkcom co
