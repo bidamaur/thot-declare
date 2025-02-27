@@ -99,13 +99,13 @@ class CdrPpController extends Controller
         '01' AS RESIDENT,
         'CM' AS PAYSRES,
         np2.lib2 AS NATCLI,
-        'PND' AS NOMPERE,
-        'PND' AS PREPERE,
+        NVL((select trim(vala) from BKICLI   where cli=c.cli and iden='NOMPERE'),'PND') AS NOMPERE,
+       NVL((select trim(vala) from BKICLI   where cli=c.cli and iden='PREPERE'),'PND') AS PREPERE,
         CASE 
-            WHEN TRIM(c.nmer) IS NULL THEN 'PND'
+            WHEN TRIM(c.nmer) IS NULL THEN NVL((select trim(vala) from BKICLI   where cli=c.cli and iden='NOMMERE'),'PND') 
             ELSE c.nmer
         END AS NOMMERE,
-        'PND' AS PREMERE,
+        NVL((select trim(vala) from BKICLI   where cli=c.cli and iden='PREMERE'),'PND') AS PREMERE,
         CASE 
             WHEN c.sit = 'C' THEN '01'
             WHEN c.sit = 'M' THEN '02'

@@ -15,7 +15,7 @@ class CdrPmController extends Controller
         $results = DB::select("SELECT 
         TRIM(c.cli) AS IDINTCLI,
         TRIM(c.nidf) AS NIF_NIU,
-        TRIM(c.rso) AS RAISOC,
+       REPLACE(TRIM(c.rso),'&',' et ') AS RAISOC,
         TO_CHAR(c.datc, 'DDMMYYYY') AS DATCRE,
         TRIM(c.sig) AS SIGLE,
         '01' AS RESIDENT,
@@ -56,7 +56,11 @@ class CdrPmController extends Controller
         '' AS TOTBILAN,
         '' AS EFFECTIF,
         TRIM(em.email) AS EMAIL,
-        TRIM(REPLACE('00237' || 
+        TRIM(REPLACE((CASE WHEN SUBSTR(t.num, 1, 3)='237'  or
+          SUBSTR((SELECT MAX(TRIM(t2.tel)) FROM bkcntcli t2 WHERE t2.cli = c.cli), 1, 3)='237'   THEN '00'
+          WHEN  SUBSTR(t.num, 1, 3)='002' or
+          SUBSTR((SELECT MAX(TRIM(t2.tel)) FROM bkcntcli t2 WHERE t2.cli = c.cli), 1, 3)='002' THEN ''
+        ELSE '00237'  END ) || 
             CASE 
                 WHEN tcli = 1 THEN 
                     t.num

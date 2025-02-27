@@ -17,9 +17,9 @@ class DatabaseConnection
     // Fonction pour établir la connexion avec la base de données
     public function connectToDatabase()
     {
-        $connectionString = '192.168.2.242/propme'; // Exemple d'hôte, à adapter
-        $username = 'dbprod';     // Remplace par ton nom d'utilisateur
-        $password = 'dbprod';     // Remplace par ton mot de passe
+        $connectionString = '192.168.2.241/propme'; // Exemple d'hôte, à adapter
+        $username = 'DBCDR';     // Remplace par ton nom d'utilisateur
+        $password = 'cdrpro2024';     // Remplace par ton mot de passe
 
         // Connexion à Oracle (tu peux l'adapter à une autre base de données)
         $connection = oci_connect($username, $password, $connectionString);

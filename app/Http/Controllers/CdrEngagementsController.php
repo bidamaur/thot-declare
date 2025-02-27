@@ -40,7 +40,7 @@ class CdrEngagementsController extends Controller
     $dateArret = Carbon::parse($MyDateArr);
     $DateArr = $dateArret->format('d/m/y');
     $DateArrYear = $dateArret->year;
-    $DateArrMonth = $dateArret->month;
+    $DateArrMonth = ($dateArret->month<10?'0'.$dateArret->month:$dateArret->month);
     $DateArrDay = $dateArret->day;
     $DateMonthYear = '/' . $DateArrMonth . '/' . $DateArrYear;
 
@@ -58,7 +58,7 @@ class CdrEngagementsController extends Controller
          (SELECT cdr_parce_ncp(p.ncp)
          ||(
         CASE
-        WHEN cdr_date(d.dmep)>cdr_date('30/11/2023') THEN (SELECT clc from bkcom where ncp=p.ncp)
+        WHEN cdr_date(d.dmep)>cdr_date('30/11/2023') THEN (SELECT clc from DBPROD.bkcom where ncp=p.ncp)
         END)
          FROM dbprod.bkcptprt p
          WHERE p.eve=d.eve
@@ -78,10 +78,10 @@ class CdrEngagementsController extends Controller
          '10030' CodAge,
     (CASE
     WHEN e.ctr=3 THEN '02'
-    WHEN (SELECT DVA FROM bkechprt where res=0 and eve=d.eve and ave=(SELECT MAX(ave) FROM dbprod.bkechprt  WHERE eve=d.eve) and 
+    WHEN (SELECT DVA FROM DBPROD.bkechprt where res=0 and eve=d.eve and ave=(SELECT MAX(ave) FROM dbprod.bkechprt  WHERE eve=d.eve) and 
 ( cdr_date(dva) 
 between cdr_date('01$DateMonthYear') and add_months(cdr_date('01$DateMonthYear'),1)   ))=d.ddec THEN '02'
-    WHEN (SELECT max(ctr) from bkechprt where eve=d.eve AND ave=(SELECT MAX(ave) FROM dbprod.bkechprt  WHERE eve=d.eve) AND ( cdr_date(dva) 
+    WHEN (SELECT max(ctr) from DBPROD.bkechprt where eve=d.eve AND ave=(SELECT MAX(ave) FROM dbprod.bkechprt  WHERE eve=d.eve) AND ( cdr_date(dva) 
     between cdr_date('$DateArr') and add_months(cdr_date('$DateArr'),1)   ))=3 THEN '02'
     ELSE '00'
     END
@@ -154,8 +154,8 @@ between cdr_date('01$DateMonthYear') and add_months(cdr_date('01$DateMonthYear')
          -- TO_CHAR(d.dpec,'ddmmyyyy') DatDeb, -- date de premiere echeance du crédit à revoir avec les diferes
          (
           CASE
-          WHEN (select count(dva) from bkechprt where eve=d.eve and ave=(select max(ave) from bkechprt where eve=d.eve)) in(2,1) THEN TO_CHAR(d.dmep,'ddmmyyyy')
-          ELSE (SELECT TO_CHAR(max(dva),'ddmmyyyy') from bkechprt where num=01 and eve=d.eve)
+          WHEN (select count(dva) from DBPROD.bkechprt where eve=d.eve and ave=(select max(ave) from DBPROD.bkechprt where eve=d.eve)) in(2,1) THEN TO_CHAR(d.dmep,'ddmmyyyy')
+          ELSE (SELECT TO_CHAR(max(dva),'ddmmyyyy') from DBPROD.bkechprt where num=01 and eve=d.eve)
           END
           ) DatDeb,
          TO_CHAR(d.ddec,'ddmmyyyy') DatFin, --derniere echeance
@@ -195,14 +195,14 @@ between cdr_date('01$DateMonthYear') and add_months(cdr_date('01$DateMonthYear')
          FROM dbprod.bkechprt
          WHERE eve=d.eve
          ) TotInt,
-         ROUND((SELECT sum(mon_fra) from bkdosprt where eve=d.eve) ) fraDos,
+         ROUND((SELECT sum(mon_fra) from DBPROD.bkdosprt where eve=d.eve) ) fraDos,
     (
     CASE 
-         WHEN ROUND((SELECT (SUM(d.mon_co1)+SUM(d.mon_co2)) from bkdosprt where eve=d.eve))=0 THEN  ROUND(
-         (SELECT SUM(mnt) FROM bkcanprt WHERE eve=d.eve AND ges_teg='O'
+         WHEN ROUND((SELECT (SUM(d.mon_co1)+SUM(d.mon_co2)) from DBPROD.bkdosprt where eve=d.eve))=0 THEN  ROUND(
+         (SELECT SUM(mnt) FROM DBPROD.bkcanprt WHERE eve=d.eve AND ges_teg='O'
          ))
          ELSE
-        ROUND((SELECT (SUM(d.mon_co1)+SUM(d.mon_co2)) from bkdosprt where eve=d.eve))
+        ROUND((SELECT (SUM(d.mon_co1)+SUM(d.mon_co2)) from DBPROD.bkdosprt where eve=d.eve))
     END
     )fraAnnexe,
          '0' MntPrm, 
@@ -225,31 +225,31 @@ between cdr_date('01$DateMonthYear') and add_months(cdr_date('01$DateMonthYear')
     --  and (cdr_date(e.dva) between cdr_date('01/07/2023') and cdr_date('31/07/2023'))
     --AND (cdr_date(d.dmep) between cdr_date('01" . $DateMonthYear . "') and cdr_date('$DateArr'))
     AND (EXTRACT(MONTH FROM d.dmep)='$DateArrMonth' and EXTRACT(YEAR FROM CDR_DATE(d.dmep))='$DateArrYear' )
-    AND cdr_date(d.dmep)<('01-'||TO_CHAR(ADD_MONTHS(CDR_DATE('01$DateMonthYear'), 1), 'MM-YYYY'))
-    --AND e.ave=(SELECT max(ave) from bkechprt where eve=d.eve)
-    AND d.tau_int!=0";
-
+    AND cdr_date(d.dmep)<cdr_date('01-'||TO_CHAR(ADD_MONTHS(CDR_DATE('01$DateMonthYear'), 1), 'MM-YYYY'))
+    --AND e.ave=(SELECT max(ave) from DBPROD.bkechprt where eve=d.eve)
+    AND d.tau_int!=0 ";
+    
     $stid = oci_parse($connection, $query);
-    // oci_bind_by_name($stid, ":id", $id);
     oci_execute($stid);
-
+    
+    $results = [];
+    
     while ($row = oci_fetch_assoc($stid)) {
-      // var_dump($row);  // Traitez vos résultats ici
-      $results[] = $row;
-      if (!$row) {
-        return false;
-      }
-      $results = array_map(function ($row) {
-        return array_change_key_case((array) $row, CASE_UPPER);
-      }, $results);
-      $myData = response()->json($results);
-
+        $results[] = array_change_key_case($row, CASE_UPPER);
     }
+    
+    // Convertir en UTF-8 après la récupération
+    $results = mb_convert_encoding($results, 'UTF-8', 'ISO-8859-1');
+    
+    // Libérer les ressources
+    oci_free_statement($stid);
+    oci_close($connection);
+    
+    // Retourner les résultats
+    return response()->json($results);
 
-    if ($myData) {
+    
 
-      return $myData;
-    }
 
     oci_free_statement($stid);
     oci_close($connection);
