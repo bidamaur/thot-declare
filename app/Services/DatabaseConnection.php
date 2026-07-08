@@ -2,39 +2,54 @@
 
 namespace App\Services;
 
-use OCI8\Connection;  // Si tu utilises Oracle
-
 class DatabaseConnection
 {
     protected $connection;
 
-    // Constructeur pour initialiser la connexion
     public function __construct()
     {
-        $this->connection = $this->connectToDatabase();
+        $this->connection = null;
     }
 
-    // Fonction pour établir la connexion avec la base de données
+    public function getConnectionConfig(): array
+    {
+        $tns = env('ORACLE_TNS');
+
+        if (empty($tns)) {
+            $host = env('DB_HOST', 'localhost');
+            $port = env('DB_PORT', '1521');
+            $database = env('DB_DATABASE', 'XE');
+            $tns = $host . ':' . $port . '/' . $database;
+        }
+
+        return [
+            'connectionString' => $tns,
+            'username' => env('DB_USERNAME'),
+            'password' => env('DB_PASSWORD'),
+        ];
+    }
+
     public function connectToDatabase()
     {
-        $connectionString = '192.168.2.241/propme'; // Exemple d'hôte, à adapter
-        $username = 'DBCDR';     // Remplace par ton nom d'utilisateur
-        $password = 'cdrpro2024';     // Remplace par ton mot de passe
+        if ($this->connection) {
+            return $this->connection;
+        }
 
-        // Connexion à Oracle (tu peux l'adapter à une autre base de données)
-        $connection = oci_connect($username, $password, $connectionString);
+        $config = $this->getConnectionConfig();
+        $connection = @oci_connect($config['username'], $config['password'], $config['connectionString']);
 
         if (!$connection) {
             $e = oci_error();
-            throw new \Exception("Connection failed: " . $e['message']);
+            throw new \Exception('Connection failed: ' . ($e['message'] ?? 'Unknown Oracle error'));
         }
 
-        return $connection;
+        $this->connection = $connection;
+
+        return $this->connection;
     }
 
-    // Fonction pour obtenir la connexion
     public function getConnection()
     {
-        return $this->connection;
+        return $this->connectToDatabase();
     }
 }

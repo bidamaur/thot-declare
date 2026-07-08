@@ -7,76 +7,26 @@ use Illuminate\Http\Request;
 
 class CdrPpController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+public function index($DateArr = null)
     {
-        function parseUtf8($input_string)
-        {
-            // Liste des caractères accentués et leurs remplacements
-            $trans = [
-                'á' => 'a',
-                'à' => 'a',
-                'â' => 'a',
-                'ä' => 'a',
-                'ã' => 'a',
-                'å' => 'a',
-                'ç' => 'c',
-                'é' => 'e',
-                'è' => 'e',
-                'ê' => 'e',
-                'ë' => 'e',
-                'í' => 'i',
-                'ì' => 'i',
-                'î' => 'i',
-                'ï' => 'i',
-                'ñ' => 'n',
-                'ó' => 'o',
-                'ò' => 'o',
-                'ô' => 'o',
-                'ö' => 'o',
-                'õ' => 'o',
-                'ú' => 'u',
-                'ù' => 'u',
-                'û' => 'u',
-                'ü' => 'u',
-                'ý' => 'y',
-                'ÿ' => 'y',
-                '!' => '',
-                '@' => '',
-                '#' => '',
-                '$' => '',
-                '%' => '',
-                '^' => '',
-                '&' => '',
-                '*' => '',
-                '(' => '',
-                ')' => '',
-                '_' => '',
-                '+' => '',
-                '{' => '',
-                '}' => '',
-                '[' => '',
-                ']' => '',
-                '|' => '',
-                ';' => '',
-                ':' => '',
-                '"' => '',
-                '-' => '',
-                '<' => '',
-                '>' => '',
-                ',' => '',
-                '.' => '',
-                '?' => '',
-                '/' => ''
-            ];
+        $dateFilter = '';
+        $bindings = [];
 
-            // Remplace les caractères accentués et autres caractères spéciaux
-            $output_string = strtr($input_string, $trans);
-
-            // Supprime les espaces et met tout en majuscules
-            return strtoupper(trim(str_replace(' ', '', $output_string)));
+        if ($DateArr) {
+            $DateArr = trim($DateArr);
+            if (preg_match('/^\d{8}$/', $DateArr)) {
+                $dateFilter = "AND TO_CHAR(c.dou, 'DDMMYYYY') = ?";
+                $bindings[] = $DateArr;
+            } elseif (preg_match('/^(\d{2})[-\/](\d{4})$/', $DateArr, $matches)) {
+                $dateFilter = "AND TO_CHAR(c.dou, 'MMYYYY') = ?";
+                $bindings[] = $matches[1] . $matches[2];
+            } elseif (preg_match('/^(\d{4})[-\/](\d{2})$/', $DateArr, $matches)) {
+                $dateFilter = "AND TO_CHAR(c.dou, 'MMYYYY') = ?";
+                $bindings[] = $matches[2] . $matches[1];
+            } elseif (preg_match('/^\d{6}$/', $DateArr)) {
+                $dateFilter = "AND TO_CHAR(c.dou, 'MMYYYY') = ?";
+                $bindings[] = $DateArr;
+            }
         }
 
         $results = DB::select("SELECT 
@@ -181,21 +131,15 @@ class CdrPpController extends Controller
          WHERE t.typ = (SELECT MAX(t1.typ) FROM bktelcli t1 WHERE t1.cli = t.cli)) t 
         ON t.cli = c.cli
     LEFT JOIN 
-        (SELECT dbprod.cdr_parseUtf8(nom_ville) AS ville, code_region AS region, code_ville AS ville_code 
+        (SELECT C##DBPROD.CDR_PARSEUTF8(nom_ville) AS ville, code_region AS region, code_ville AS ville_code 
          FROM cdr_ville_region) vr 
-        ON vr.ville = dbprod.cdr_parseUtf8(ai.ville)
+        ON vr.ville = C##DBPROD.CDR_PARSEUTF8(ai.ville)
     WHERE 
         c.tcli IN (1)
+        " . $dateFilter . "
         -- AND c.cli <> 100534
         -- AND c.cli > 100914
-    ORDER BY 1");
-        if (!$results) {
-            echo "[{
-                'type':'Erreur',
-                'Description':'Personne physique non disponible'
-            }]";
-            return false;
-        }
+        ORDER BY 1", $bindings);
 
         $results = array_map(function ($row) {
             return array_change_key_case((array) $row, CASE_UPPER);

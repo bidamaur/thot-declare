@@ -7,10 +7,7 @@ use Illuminate\Http\Request;
 
 class CdrPmController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    public function index($DateArr = null)
     {
         $results = DB::select("SELECT 
         TRIM(c.cli) AS IDINTCLI,
@@ -122,6 +119,7 @@ class CdrPmController extends Controller
     WHERE 
         c.tcli IN (2, 3)
         AND c.cli NOT IN (000020, 100500)
+        " . ($DateArr ? "AND TO_CHAR(c.dou, 'DDMMYYYY') = '$DateArr'" : "") . "
         --and c.cli>100924
     ORDER BY 1
     ");

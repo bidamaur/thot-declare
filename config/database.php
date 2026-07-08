@@ -38,15 +38,12 @@ return [
     'connections' => [
         'oracle' => [
             'driver' => 'oracle',
-            'host' => env('DB_HOST'),
-            'port' => env('DB_PORT'),
-            'service_name' => env('DB_SERVICE_NAME'), // Utilisez service_name ici
+            'tns' => env('ORACLE_TNS', 'localhost:1521/XE'),
+            'database' => env('DB_DATABASE', 'XE'),
             'username' => env('DB_USERNAME'),
             'password' => env('DB_PASSWORD'),
-            'database' => env('DB_DATABASE'),  // Ajoutez cette ligne
             'charset' => 'AL32UTF8',
             'prefix' => '',
-            'schema' => 'dbprod',  // facultatif
         ],
 
         'sqlite' => [

@@ -1,0 +1,330 @@
+<template>
+    <div class="space-y-4">
+        <DataTable
+            title="Clients Particuliers"
+            subtitle="Liste des clients personnes physiques enregistrés"
+            :endpoint="fetchPp"
+            :columns="columns"
+            :enable-filters="true"
+            filter-column="DATENTRELPAR"
+            @data-loaded="onDataLoaded"
+        />
+
+        <div v-if="errorClients > 0" class="space-y-4">
+            <div class="flex items-center justify-between">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 flex-1">
+                    <div class="border border-slate-200 rounded-lg bg-white p-4 shadow-sm">
+                        <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Clients vérifiés</p>
+                        <p class="text-2xl font-semibold text-slate-900 mt-1">{{ totalClients }}</p>
+                    </div>
+                    <div class="border border-emerald-200 rounded-lg bg-emerald-50 p-4 shadow-sm">
+                        <p class="text-xs font-medium text-emerald-700 uppercase tracking-wider">Conformes</p>
+                        <p class="text-2xl font-semibold text-emerald-900 mt-1">{{ validClients }}</p>
+                    </div>
+                    <div class="border border-red-200 rounded-lg bg-red-50 p-4 shadow-sm">
+                        <p class="text-xs font-medium text-red-700 uppercase tracking-wider">Erreurs</p>
+                        <p class="text-2xl font-semibold text-red-900 mt-1">{{ errorClients }}</p>
+                    </div>
+                </div>
+                <button @click="exportAnomaliesToExcel" class="px-2 py-0.5 text-xs bg-emerald-100 rounded hover:bg-emerald-200 ml-3">
+                  Excel
+                </button>
+            </div>
+
+            <div class="border border-slate-200 rounded-lg bg-white shadow-sm overflow-hidden">
+                <div class="px-4 py-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+                    <h2 class="text-sm font-semibold text-slate-800">Anomalies détectées</h2>
+                    <span class="text-xs text-slate-500">{{ errorClients }} résultat(s)</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs">
+                        <thead class="bg-slate-50 border-b border-slate-200">
+                            <tr>
+                                <th class="px-3 py-2 text-left font-semibold text-slate-600 w-8">#</th>
+                                <th class="px-3 py-2 text-left cursor-pointer select-none" @click="errorSortBy('data.NOM')">
+                                    <div class="flex items-center gap-1">
+                                        <span>Nom Client</span>
+                                        <span v-if="errorSortKey === 'data.NOM'" class="material-icons text-xs">
+                                            {{ errorSortOrder === 'asc' ? 'arrow_upward' : 'arrow_downward' }}
+                                        </span>
+                                    </div>
+                                </th>
+                                <th class="px-3 py-2 text-left cursor-pointer select-none" @click="errorSortBy('data.IDINTCLI')">
+                                    <div class="flex items-center gap-1">
+                                        <span>N° Client</span>
+                                        <span v-if="errorSortKey === 'data.IDINTCLI'" class="material-icons text-xs">
+                                            {{ errorSortOrder === 'asc' ? 'arrow_upward' : 'arrow_downward' }}
+                                        </span>
+                                    </div>
+                                </th>
+                                <th class="px-3 py-2 text-left cursor-pointer select-none" @click="errorSortBy('errors[0].type')">
+                                    <div class="flex items-center gap-1">
+                                        <span>Type</span>
+                                        <span v-if="errorSortKey === 'errors[0].type'" class="material-icons text-xs">
+                                            {{ errorSortOrder === 'asc' ? 'arrow_upward' : 'arrow_downward' }}
+                                        </span>
+                                    </div>
+                                </th>
+                                <th class="px-3 py-2 text-left cursor-pointer select-none" @click="errorSortBy('errors[0].field')">
+                                    <div class="flex items-center gap-1">
+                                        <span>Champ</span>
+                                        <span v-if="errorSortKey === 'errors[0].field'" class="material-icons text-xs">
+                                            {{ errorSortOrder === 'asc' ? 'arrow_upward' : 'arrow_downward' }}
+                                        </span>
+                                    </div>
+                                </th>
+                                <th class="px-3 py-2 text-left cursor-pointer select-none" @click="errorSortBy('errors[0].currentValue')">
+                                    <div class="flex items-center gap-1">
+                                        <span>Valeur actuelle</span>
+                                        <span v-if="errorSortKey === 'errors[0].currentValue'" class="material-icons text-xs">
+                                            {{ errorSortOrder === 'asc' ? 'arrow_upward' : 'arrow_downward' }}
+                                        </span>
+                                    </div>
+                                </th>
+                                <th class="px-3 py-2 text-left cursor-pointer select-none" @click="errorSortBy('errors[0].message')">
+                                    <div class="flex items-center gap-1">
+                                        <span>Message d'erreur</span>
+                                        <span v-if="errorSortKey === 'errors[0].message'" class="material-icons text-xs">
+                                            {{ errorSortOrder === 'asc' ? 'arrow_upward' : 'arrow_downward' }}
+                                        </span>
+                                    </div>
+                                </th>
+                                <th class="px-3 py-2 text-left cursor-pointer select-none" @click="errorSortBy('errors[0].code')">
+                                    <div class="flex items-center gap-1">
+                                        <span>Code</span>
+                                        <span v-if="errorSortKey === 'errors[0].code'" class="material-icons text-xs">
+                                            {{ errorSortOrder === 'asc' ? 'arrow_upward' : 'arrow_downward' }}
+                                        </span>
+                                    </div>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            <tr v-for="(item, idx) in paginatedInvalidClients" :key="item.data.IDINTCLI + '-' + idx" class="table-row">
+                                <td class="px-3 py-2 text-slate-500">{{ (errorPage - 1) * errorPerPage + idx + 1 }}</td>
+                                <td class="px-3 py-2">{{ item.data.NOM }}</td>
+                                <td class="px-3 py-2">{{ item.data.IDINTCLI }}</td>
+                                <td class="px-3 py-2">
+                                    <span :class="item.errors[0].type === 'Erreur' ? 'text-red-700 font-medium' : 'text-amber-700 font-medium'">
+                                        {{ item.errors[0].type }}
+                                    </span>
+                                </td>
+                                <td class="px-3 py-2 font-medium text-red-700">{{ item.errors[0].field }}</td>
+                                <td class="px-3 py-2 font-mono text-red-700">{{ item.errors[0].currentValue }}</td>
+                                <td class="px-3 py-2">{{ item.errors[0].message }}</td>
+                                <td class="px-3 py-2 font-mono">{{ item.errors[0].code }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="flex items-center justify-between px-3 py-2 bg-white border-t border-slate-200 text-xs">
+                    <div class="flex items-center gap-2">
+                        <p class="text-slate-500">
+                            {{ errorClients }} résultats - Page {{ errorPage }}/{{ errorTotalPages }}
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <select v-model="errorPerPage" class="text-xs border border-slate-300 rounded px-1 py-0.5">
+                            <option :value="5">5</option>
+                            <option :value="10">10</option>
+                            <option :value="20">20</option>
+                            <option :value="50">50</option>
+                            <option :value="100">100</option>
+                            <option :value="-1">100%</option>
+                        </select>
+                        <button @click="errorPrevPage" :disabled="errorPage === 1 || errorPerPage === -1" class="px-2 py-0.5 rounded border text-xs" :class="errorPage === 1 || errorPerPage === -1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-100'">
+                            Préc.
+                        </button>
+                        <button @click="errorNextPage" :disabled="errorPage === errorTotalPages || errorPerPage === -1" class="px-2 py-0.5 rounded border text-xs" :class="errorPage === errorTotalPages || errorPerPage === -1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-100'">
+                            Suiv.
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+
+<script setup>
+import { ref, computed, watch } from "vue";
+import DataTable from "../components/DataTable.vue";
+import { validateAllPersonnesPhysiques } from "../validators/cdrPp.js";
+
+const columns = [
+    { key: "IDINTCLI", label: "ID Client" },
+    { key: "NIF_NIU", label: "NIF/NIU" },
+    { key: "SEXE", label: "Sexe" },
+    { key: "NOM", label: "Nom" },
+    { key: "NOMMAR", label: "Nom Mar" },
+    { key: "PRENOM", label: "Prénom" },
+    { key: "NOMCOMPLET", label: "Nom Complet" },
+    { key: "PRENAI", label: "Prénaî" },
+    { key: "DATNAI", label: "Date Naissance", format: "date" },
+    { key: "VILLENAI", label: "Ville Naissance" },
+    { key: "PAYSNAI", label: "Pays Naissance" },
+    { key: "STATUT", label: "Statut" },
+    { key: "RESIDENT", label: "Résident" },
+    { key: "PAYSRES", label: "Pays Rés" },
+    { key: "NATCLI", label: "Nature Client" },
+    { key: "NOMPERE", label: "Nom Père" },
+    { key: "PREPERE", label: "Pré Père" },
+    { key: "NOMMERE", label: "Nom Mère" },
+    { key: "PREMERE", label: "Pré Mère" },
+    { key: "SITMAT", label: "Situation Mat." },
+    { key: "AGEECO", label: "Âge Éco" },
+    { key: "RCCM", label: "RCCM" },
+    { key: "SECTACT", label: "Secteur Activité" },
+    { key: "CA", label: "CA" },
+    { key: "NOMBEMP", label: "N° Employés" },
+    { key: "SITJUD", label: "Sit Jud" },
+    { key: "DATDEBINT", label: "Début Int.", format: "date" },
+    { key: "DATEFININT", label: "Fin Int.", format: "date" },
+    { key: "DATENTRELPAR", label: "Entrée Par.", format: "date" },
+    { key: "EMAIL", label: "Email" },
+    { key: "MOBILE", label: "Téléphone" },
+    { key: "DATEVE", label: "Date Vér.", format: "date" },
+    { key: "TYPPIECE", label: "Type Pièce" },
+    { key: "NUMPIECE", label: "N° Pièce" },
+    { key: "DATEMPIECE", label: "Date Émission", format: "date" },
+    { key: "LIEU", label: "Lieu Pièce" },
+    { key: "PAYS_", label: "Pays Pièce" },
+    { key: "DATFINPIECE", label: "Date Fin", format: "date" },
+    { key: "TYPADR", label: "Type Adr." },
+    { key: "ADRESSE", label: "Adresse" },
+    { key: "PAYS", label: "Pays" },
+    { key: "REGION", label: "Région" },
+    { key: "VILLE", label: "Ville" },
+    { key: "CODPOST", label: "Code Postal" },
+    { key: "IDINTREL", label: "ID Int. Rel." },
+    { key: "NOMREL", label: "Nom Rel." },
+    { key: "PRENOMREL", label: "Prénom Rel." },
+    { key: "TYPREL", label: "Type Rel." },
+    { key: "NBRPERCH", label: "Nbr Pers. Ch." },
+    { key: "TYPLOG", label: "Type Log." },
+    { key: "REVMENNET", label: "Rev. Men. Net" },
+    { key: "CODDEV", label: "Code Dev." },
+];
+
+const fetchPp = (date = "") => {
+    if (!date) {
+        return "/api/cdr_pp";
+    }
+    return `/api/cdr_pp/${date}`;
+};
+
+const validationResults = ref([]);
+
+const totalClients = computed(() => validationResults.value.length);
+const validClients = computed(() => validationResults.value.filter((r) => r.isValid).length);
+const errorClients = computed(() => validationResults.value.filter((r) => !r.isValid).length);
+const invalidClients = computed(() => validationResults.value.filter((r) => !r.isValid));
+
+const errorPerPage = ref(20);
+const errorPage = ref(1);
+const errorSortKey = ref("");
+const errorSortOrder = ref("asc");
+
+const sortedInvalidClients = computed(() => {
+    if (!errorSortKey.value) return invalidClients.value;
+    return [...invalidClients.value].sort((a, b) => {
+        const valA = errorSortKey.value.split('.').reduce((obj, key) => obj?.[key], a) ?? "";
+        const valB = errorSortKey.value.split('.').reduce((obj, key) => obj?.[key], b) ?? "";
+        if (valA < valB) return errorSortOrder.value === 'asc' ? -1 : 1;
+        if (valA > valB) return errorSortOrder.value === 'asc' ? 1 : -1;
+        return 0;
+    });
+});
+
+const errorTotalPages = computed(() => {
+    if (errorPerPage.value === -1) return 1;
+    return Math.max(1, Math.ceil(sortedInvalidClients.value.length / errorPerPage.value));
+});
+
+const paginatedInvalidClients = computed(() => {
+    if (errorPerPage.value === -1) return sortedInvalidClients.value;
+    const start = (errorPage.value - 1) * errorPerPage.value;
+    return sortedInvalidClients.value.slice(start, start + errorPerPage.value);
+});
+
+const errorPrevPage = () => {
+    if (errorPage.value > 1 && errorPerPage.value !== -1) {
+        errorPage.value--;
+    }
+};
+
+const errorNextPage = () => {
+    if (errorPage.value < errorTotalPages.value && errorPerPage.value !== -1) {
+        errorPage.value++;
+    }
+};
+
+const errorSortBy = (key) => {
+    if (errorSortKey.value === key) {
+        errorSortOrder.value = errorSortOrder.value === 'asc' ? 'desc' : 'asc';
+    } else {
+        errorSortKey.value = key;
+        errorSortOrder.value = 'asc';
+    }
+    errorPage.value = 1;
+};
+
+watch(errorPerPage, () => {
+    errorPage.value = 1;
+});
+
+watch(invalidClients, () => {
+    errorPage.value = 1;
+    errorSortKey.value = "";
+    errorSortOrder.value = "asc";
+});
+
+const onDataLoaded = (dataArray) => {
+    try {
+        const results = validateAllPersonnesPhysiques(dataArray).map((result) => ({
+            ...result,
+            errors: result.errors.map((err) => ({
+                ...err,
+                currentValue: result.data[err.field] ?? '',
+            })),
+        }));
+        validationResults.value = results;
+    } catch (err) {
+        console.error('Validation error:', err);
+        validationResults.value = [];
+    }
+};
+
+const exportAnomaliesToExcel = () => {
+    if (!invalidClients.value.length) return;
+    const XLSX = window.XLSX;
+    const exportData = invalidClients.value.map((item) => ({
+        "Nom Client": item.data.NOM,
+        "N° Client": item.data.IDINTCLI,
+        "Type": item.errors[0].type,
+        "Champ": item.errors[0].field,
+        "Valeur actuelle": item.errors[0].currentValue,
+        "Message d'erreur": item.errors[0].message,
+        "Code": item.errors[0].code,
+    }));
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Anomalies");
+    const wbout = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+    const blob = new Blob([wbout], { type: "application/octet-stream" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `Anomalies_PP_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+};
+</script>
+
+<style scoped>
+.table-row:hover {
+    background-color: #f8fafc;
+}
+</style>

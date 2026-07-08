@@ -56,26 +56,26 @@ class CdrEngagementsController extends Controller
      d.eve,
      d.ave,
      (SELECT cdr_parce_ncp(p.ncp)
-     FROM dbprod.bkcptprt p
+     FROM C##DBPROD.bkcptprt p
      WHERE p.eve=d.eve
      AND p.nat  ='004'
      AND p.ave  =
-       (SELECT MAX(ave) FROM dbprod.bkcptprt WHERE eve=p.eve
+       (SELECT MAX(ave) FROM C##DBPROD.bkcptprt WHERE eve=p.eve
        )
      ) RefContCmpt,
          (SELECT p.ncp
-     FROM dbprod.bkcptprt p
+     FROM C##DBPROD.bkcptprt p
      WHERE p.eve=d.eve
      AND p.nat  ='004'
      AND p.ave  =
-       (SELECT MAX(ave) FROM dbprod.bkcptprt WHERE eve=p.eve
+       (SELECT MAX(ave) FROM C##DBPROD.bkcptprt WHERE eve=p.eve
        )
      ) ncp_ori,
      '10030' CodAge,
 (CASE
 WHEN e.ctr=3 THEN '02'
-WHEN (SELECT MAX(num) FROM bkechprt where eve=e.eve AND ave=(SELECT MAX(ave) FROM dbprod.bkechprt  WHERE eve=e.eve) )=e.num THEN '02'
-WHEN (SELECT max(ctr) from bkechprt where eve=e.eve AND ave=(SELECT MAX(ave) FROM dbprod.bkechprt  WHERE eve=e.eve) AND ( cdr_date(dva) 
+WHEN (SELECT MAX(num) FROM bkechprt where eve=e.eve AND ave=(SELECT MAX(ave) FROM C##DBPROD.bkechprt  WHERE eve=e.eve) )=e.num THEN '02'
+WHEN (SELECT max(ctr) from bkechprt where eve=e.eve AND ave=(SELECT MAX(ave) FROM C##DBPROD.bkechprt  WHERE eve=e.eve) AND ( cdr_date(dva) 
 between cdr_date('$DateArr') and add_months(cdr_date('$DateArr'),1)   ))=3 THEN '02'
 ELSE '00'
 END
@@ -181,11 +181,11 @@ END ) Motif,
      d.tech NbrEch,                         
      '03' MoyRem,
      '01' TypEch,
-     ( SELECT MAX(tot_ech) FROM dbprod.bkechprt WHERE EXTRACT(DAY FROM dva)=EXTRACT(DAY FROM d.dpec) AND eve=d.eve and amo_cal!=0
+     ( SELECT MAX(tot_ech) FROM C##DBPROD.bkechprt WHERE EXTRACT(DAY FROM dva)=EXTRACT(DAY FROM d.dpec) AND eve=d.eve and amo_cal!=0
      )MntEch,  
      '03' TypAmo,
      (SELECT SUM(inte)
-     FROM dbprod.bkechprt
+     FROM C##DBPROD.bkechprt
      WHERE eve=d.eve
      ) TotInt,
      ROUND((SELECT sum(mon_fra) from bkdosprt where eve=d.eve) ) fraDos,
@@ -203,8 +203,8 @@ END
      TO_CHAR(d.dmep,'ddmmyyyy') DatEve,
  d.eve RefInt,
  d.cli IdInt 
- FROM dbprod.bkdosprt d,dbprod.bkechprt e ,
-     dbprod.bkcli c
+ FROM C##DBPROD.bkdosprt d,C##DBPROD.bkechprt e ,
+     C##DBPROD.bkcli c
    WHERE 
    e.eve=d.eve
    and c.cli    =d.cli
@@ -212,7 +212,7 @@ END
    AND d.eta      in ('VA','DE')
  AND (EXTRACT(YEAR FROM d.ddec)>2022)
  
-AND d.ave=(SELECT MAX(bb.ave) FROM dbprod.bkdosprt bb WHERE bb.eve=d.eve)
+AND d.ave=(SELECT MAX(bb.ave) FROM C##DBPROD.bkdosprt bb WHERE bb.eve=d.eve)
 and e.ctr not in(3)
 --  and (cdr_date(e.dva) between cdr_date('01/07/2023') and cdr_date('31/07/2023'))
 --AND (cdr_date(d.dmep) between cdr_date('01" . $DateMonthYear . "') and cdr_date('$DateArr'))

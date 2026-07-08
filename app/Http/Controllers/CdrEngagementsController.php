@@ -58,30 +58,30 @@ class CdrEngagementsController extends Controller
          (SELECT cdr_parce_ncp(p.ncp)
          ||(
         CASE
-        WHEN cdr_date(d.dmep)>cdr_date('30/11/2023') THEN (SELECT clc from DBPROD.bkcom where ncp=p.ncp)
+        WHEN cdr_date(d.dmep)>cdr_date('30/11/2023') THEN (SELECT clc from C##DBPROD.bkcom where ncp=p.ncp)
         END)
-         FROM dbprod.bkcptprt p
+         FROM C##DBPROD.bkcptprt p
          WHERE p.eve=d.eve
          AND p.nat  ='004'
          AND p.ave  =
-           (SELECT MAX(ave) FROM dbprod.bkcptprt WHERE eve=p.eve
+           (SELECT MAX(ave) FROM C##DBPROD.bkcptprt WHERE eve=p.eve
            )
          ) RefContCmpt,
              (SELECT p.ncp
-         FROM dbprod.bkcptprt p
+         FROM C##DBPROD.bkcptprt p
          WHERE p.eve=d.eve
          AND p.nat  ='004'
          AND p.ave  =
-           (SELECT MAX(ave) FROM dbprod.bkcptprt WHERE eve=p.eve
+           (SELECT MAX(ave) FROM C##DBPROD.bkcptprt WHERE eve=p.eve
            )
          ) ncp_ori,
          '10030' CodAge,
     (CASE
     WHEN e.ctr=3 THEN '02'
-    WHEN (SELECT DVA FROM DBPROD.bkechprt where res=0 and eve=d.eve and ave=(SELECT MAX(ave) FROM dbprod.bkechprt  WHERE eve=d.eve) and 
+    WHEN (SELECT DVA FROM C##DBPROD.bkechprt where res=0 and eve=d.eve and ave=(SELECT MAX(ave) FROM C##DBPROD.bkechprt  WHERE eve=d.eve) and 
 ( cdr_date(dva) 
 between cdr_date('01$DateMonthYear') and add_months(cdr_date('01$DateMonthYear'),1)   ))=d.ddec THEN '02'
-    WHEN (SELECT max(ctr) from DBPROD.bkechprt where eve=d.eve AND ave=(SELECT MAX(ave) FROM dbprod.bkechprt  WHERE eve=d.eve) AND ( cdr_date(dva) 
+    WHEN (SELECT max(ctr) from C##DBPROD.bkechprt where eve=d.eve AND ave=(SELECT MAX(ave) FROM C##DBPROD.bkechprt  WHERE eve=d.eve) AND ( cdr_date(dva) 
     between cdr_date('$DateArr') and add_months(cdr_date('$DateArr'),1)   ))=3 THEN '02'
     ELSE '00'
     END
@@ -154,8 +154,8 @@ between cdr_date('01$DateMonthYear') and add_months(cdr_date('01$DateMonthYear')
          -- TO_CHAR(d.dpec,'ddmmyyyy') DatDeb, -- date de premiere echeance du crédit à revoir avec les diferes
          (
           CASE
-          WHEN (select count(dva) from DBPROD.bkechprt where eve=d.eve and ave=(select max(ave) from DBPROD.bkechprt where eve=d.eve)) in(2,1) THEN TO_CHAR(d.dmep,'ddmmyyyy')
-          ELSE (SELECT TO_CHAR(max(dva),'ddmmyyyy') from DBPROD.bkechprt where num=01 and eve=d.eve)
+          WHEN (select count(dva) from C##DBPROD.bkechprt where eve=d.eve and ave=(select max(ave) from C##DBPROD.bkechprt where eve=d.eve)) in(2,1) THEN TO_CHAR(d.dmep,'ddmmyyyy')
+          ELSE (SELECT TO_CHAR(max(dva),'ddmmyyyy') from C##DBPROD.bkechprt where num=01 and eve=d.eve)
           END
           ) DatDeb,
          TO_CHAR(d.ddec,'ddmmyyyy') DatFin, --derniere echeance
@@ -188,21 +188,21 @@ between cdr_date('01$DateMonthYear') and add_months(cdr_date('01$DateMonthYear')
          d.tech NbrEch,                         
          '03' MoyRem,
          '01' TypEch,
-         ( SELECT MAX(tot_ech) FROM dbprod.bkechprt WHERE EXTRACT(DAY FROM dva)=EXTRACT(DAY FROM d.dpec) AND eve=d.eve and amo_cal!=0
+         ( SELECT MAX(tot_ech) FROM C##DBPROD.bkechprt WHERE EXTRACT(DAY FROM dva)=EXTRACT(DAY FROM d.dpec) AND eve=d.eve and amo_cal!=0
          )MntEch,  
          '03' TypAmo,
          (SELECT SUM(inte)
-         FROM dbprod.bkechprt
+         FROM C##DBPROD.bkechprt
          WHERE eve=d.eve
          ) TotInt,
-         ROUND((SELECT sum(mon_fra) from DBPROD.bkdosprt where eve=d.eve) ) fraDos,
+         ROUND((SELECT sum(mon_fra) from C##DBPROD.bkdosprt where eve=d.eve) ) fraDos,
     (
     CASE 
-         WHEN ROUND((SELECT (SUM(d.mon_co1)+SUM(d.mon_co2)) from DBPROD.bkdosprt where eve=d.eve))=0 THEN  ROUND(
-         (SELECT SUM(mnt) FROM DBPROD.bkcanprt WHERE eve=d.eve AND ges_teg='O'
+         WHEN ROUND((SELECT (SUM(d.mon_co1)+SUM(d.mon_co2)) from C##DBPROD.bkdosprt where eve=d.eve))=0 THEN  ROUND(
+         (SELECT SUM(mnt) FROM C##DBPROD.bkcanprt WHERE eve=d.eve AND ges_teg='O'
          ))
          ELSE
-        ROUND((SELECT (SUM(d.mon_co1)+SUM(d.mon_co2)) from DBPROD.bkdosprt where eve=d.eve))
+        ROUND((SELECT (SUM(d.mon_co1)+SUM(d.mon_co2)) from C##DBPROD.bkdosprt where eve=d.eve))
     END
     )fraAnnexe,
          '0' MntPrm, 
@@ -210,8 +210,8 @@ between cdr_date('01$DateMonthYear') and add_months(cdr_date('01$DateMonthYear')
          TO_CHAR(d.dmep,'ddmmyyyy') DatEve,
      d.eve RefInt,
      d.cli IdInt 
-     FROM dbprod.bkdosprt d,dbprod.bkechprt e ,
-         dbprod.bkcli c
+     FROM C##DBPROD.bkdosprt d,C##DBPROD.bkechprt e ,
+         C##DBPROD.bkcli c
        WHERE 
        e.eve=d.eve
        --and d.eve='002221'
@@ -220,13 +220,13 @@ between cdr_date('01$DateMonthYear') and add_months(cdr_date('01$DateMonthYear')
        AND d.eta      in ('VA','DE')
      AND (EXTRACT(YEAR FROM d.ddec)>2022)
      
-    AND d.ave=(SELECT MAX(bb.ave) FROM dbprod.bkdosprt bb WHERE bb.eve=d.eve)
+    AND d.ave=(SELECT MAX(bb.ave) FROM C##DBPROD.bkdosprt bb WHERE bb.eve=d.eve)
     and e.ctr not in(3)
     --  and (cdr_date(e.dva) between cdr_date('01/07/2023') and cdr_date('31/07/2023'))
     --AND (cdr_date(d.dmep) between cdr_date('01" . $DateMonthYear . "') and cdr_date('$DateArr'))
     AND (EXTRACT(MONTH FROM d.dmep)='$DateArrMonth' and EXTRACT(YEAR FROM CDR_DATE(d.dmep))='$DateArrYear' )
     AND cdr_date(d.dmep)<cdr_date('01-'||TO_CHAR(ADD_MONTHS(CDR_DATE('01$DateMonthYear'), 1), 'MM-YYYY'))
-    --AND e.ave=(SELECT max(ave) from DBPROD.bkechprt where eve=d.eve)
+    --AND e.ave=(SELECT max(ave) from C##DBPROD.bkechprt where eve=d.eve)
     AND d.tau_int!=0 ";
     
     $stid = oci_parse($connection, $query);
@@ -247,12 +247,6 @@ between cdr_date('01$DateMonthYear') and add_months(cdr_date('01$DateMonthYear')
     
     // Retourner les résultats
     return response()->json($results);
-
-    
-
-
-    oci_free_statement($stid);
-    oci_close($connection);
   }
 
   /**

@@ -8,4 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 class cdr_cptdebiteur extends Model
 {
     use HasFactory;
+
+    protected $table = 'cdr_cptdebiteur';
+    public $timestamps = false;
+    protected $guarded = [];
 }

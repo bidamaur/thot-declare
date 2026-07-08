@@ -11,10 +11,13 @@ use Illuminate\Support\Facades\Route;
 | routes are loaded by the RouteServiceProvider and all of them will
 | be assigned to the "web" middleware group. Make something great!
 |
-
+*/
 
 Route::get('/', function () {
     return view('welcome');
 });
 
-*/
+// SPA fallback for Vue router history mode
+Route::get('/{any}', function () {
+    return view('welcome');
+})->where('any', '.*');

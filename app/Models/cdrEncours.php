@@ -8,4 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 class cdrEncours extends Model
 {
     use HasFactory;
+
+    protected $table = 'cdr_encours';
+    public $timestamps = false;
+    protected $guarded = [];
 }

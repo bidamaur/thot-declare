@@ -1,0 +1,95 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    :root {
+        color-scheme: light;
+    }
+
+    body {
+        font-family:
+            "Inter",
+            system-ui,
+            -apple-system,
+            sans-serif;
+        background:
+            radial-gradient(
+                circle at top left,
+                rgba(37, 99, 235, 0.16),
+                transparent 32%
+            ),
+            radial-gradient(
+                circle at 85% 10%,
+                rgba(79, 70, 229, 0.16),
+                transparent 24%
+            ),
+            linear-gradient(135deg, #f8fbff 0%, #eef3f9 100%);
+        min-height: 100vh;
+        color: #0f172a;
+    }
+
+    * {
+        @apply box-border;
+    }
+}
+
+@layer components {
+    .premium-header {
+        @apply sticky top-0 z-40 border-b border-white/10 bg-slate-950/90 text-white shadow-[0_16px_60px_rgba(2,6,23,0.25)] backdrop-blur-xl;
+    }
+
+    .nav-link {
+        @apply flex items-center rounded-full px-4 py-2 text-sm font-medium text-slate-300 transition-all duration-200 hover:bg-white/10 hover:text-white;
+    }
+
+    .nav-link-active {
+        @apply bg-white text-slate-900 shadow-lg shadow-cyan-500/10;
+    }
+
+    .btn-icon {
+        @apply rounded-full p-2.5 text-slate-300 transition-all duration-200 hover:bg-white/10 hover:text-white;
+    }
+
+    .premium-card {
+        @apply rounded-[28px] border border-slate-200/70 bg-white/80 shadow-[0_20px_70px_rgba(15,23,42,0.08)] backdrop-blur-xl;
+    }
+
+    .premium-card-card {
+        @apply rounded-[24px] border border-slate-200/70 bg-white/80 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_25px_70px_rgba(37,99,235,0.15)];
+    }
+
+    .premium-card-dark {
+        @apply rounded-[28px] border border-white/10 bg-slate-950 p-6 text-white shadow-[0_24px_70px_rgba(2,6,23,0.25)];
+    }
+
+    .glass-chip {
+        @apply rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-sm font-medium text-slate-100 backdrop-blur-md;
+    }
+}
+
+@layer utilities {
+    .text-gradient {
+        @apply bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent;
+    }
+
+    .scrollbar-thin {
+        scrollbar-width: thin;
+        scrollbar-color: #cbd5e1 transparent;
+    }
+
+    .scrollbar-thin::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .scrollbar-thin::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .scrollbar-thin::-webkit-scrollbar-thumb {
+        background-color: #cbd5e1;
+        border-radius: 20px;
+    }
+}

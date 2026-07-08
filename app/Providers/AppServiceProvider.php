@@ -3,7 +3,6 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
-use App\Services\DatabaseConnection;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -12,9 +11,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->singleton(DatabaseConnection::class, function ($app) {
-            return new DatabaseConnection();
-        });
+        // Oracle connection is initialized lazily and should not crash the app boot.
     }
 
     /**
@@ -22,6 +19,5 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        
     }
 }

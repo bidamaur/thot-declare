@@ -33,7 +33,7 @@ class GarantiesController extends Controller
       }}]';
     $myData = $notFound;
 
-    $MyQuery = DB::select("SELECT en.cli,
+    $MyQuery = "SELECT en.cli,
        SUBSTR(en.neng,1,6) eve,
        -- Garantie
        g.ref RefIntGar,
@@ -50,42 +50,48 @@ class GarantiesController extends Controller
        'XAF' CodDevGar,
        g.mont MntGar,
        (
-            SELECT mon FROM dbprod.bksld WHERE (ncp like '455%' or ncp like '458%' ) and eve =SUBSTR(en.neng,1,6)
+            SELECT mon FROM C##DBPROD.bksld WHERE (ncp like '455%' or ncp like '458%' ) and eve =SUBSTR(en.neng,1,6)
             and dco=(SELECT 
- MAX(dco) from dbprod.bksld where (ncp like '455%' or ncp like '458%' ) and eve =SUBSTR(en.neng,1,6)
-AND cdr_date(dco)<cdr_date('$DateArr'))
+ MAX(dco) from C##DBPROD.bksld where (ncp like '455%' or ncp like '458%' ) and eve =SUBSTR(en.neng,1,6)
+ AND cdr_date(dco)<cdr_date('$DateArr'))
             ) as MntAffGar,
-       en.mnta MntAffGar, -- a retirer
-       en.poura ,--pourcentage de couverture du pret
+       en.mnta MntAffGar,
+       en.poura,
        g.ref RefExtGar,
        (
        CASE
          WHEN g.cnat IN('001','002','003','004')
          THEN 01
          ELSE 08
-       END )TypRefGar, -- ----  numero titre foncier,Référence Facture,numero bail,ref nentissement
-       (SELECT DISTINCT cli FROM dbprod.bkdosprt WHERE eve=SUBSTR(en.neng,1,6)
+       END )TypRefGar,
+       (SELECT DISTINCT cli FROM C##DBPROD.bkdosprt WHERE eve=SUBSTR(en.neng,1,6)
        ) IdIntGarant,
-       ( SELECT trim(nom||''||pre) FROM dbprod.bkcli WHERE cli=en.cli
+       ( SELECT trim(nom||''||pre) FROM C##DBPROD.bkcli WHERE cli=en.cli
        )NomNaiGarant,
        '01' StatutGar
-     FROM dbprod.bkeng en,
-       dbprod.bkgar g
-     WHERE g.eve=en.ngar");
-    $prepare = oci_parse($connection, $MyQuery);
-    oci_execute($prepare);
-    while ($MyData = oci_fetch_assoc($prepare)) {
-      $MyRow[] = $MyData;
-      if (!$MyData) {
-        echo response()->json($MyData);
-        return false;
-      }
-      $data = response()->json($MyData);
+     FROM C##DBPROD.bkeng en,
+       C##DBPROD.bkgar g
+     WHERE g.eve=en.ngar";
+
+    $stid = oci_parse($connection, $MyQuery);
+    oci_execute($stid);
+
+    $results = [];
+
+    while ($row = oci_fetch_assoc($stid)) {
+      $results[] = array_change_key_case($row, CASE_UPPER);
     }
-    //integration des garanties
-    if ($data) {
-      return $data;
+
+    $results = mb_convert_encoding($results, 'UTF-8', 'ISO-8859-1');
+
+    oci_free_statement($stid);
+    oci_close($connection);
+
+    if (empty($results)) {
+      return response()->json(json_decode($notFound, true));
     }
+
+    return response()->json($results);
   }
 
 
@@ -114,7 +120,7 @@ AND cdr_date(dco)<cdr_date('$DateArr'))
   }
 
   /**
-   * Remove the specified resource from storage.
+   * Remove the specified resource FROM storage.
    */
   public function destroy(garanties $garanties)
   {
