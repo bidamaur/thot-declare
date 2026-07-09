@@ -1,6 +1,7 @@
 <template>
     <div class="space-y-4">
         <DataTable
+            ref="dataTable"
             title="Clients Particuliers"
             subtitle="Liste des clients personnes physiques enregistrés"
             :endpoint="fetchPp"
@@ -9,6 +10,40 @@
             filter-column="DATENTRELPAR"
             @data-loaded="onDataLoaded"
         />
+
+        <div v-if="totalClients > 0" class="border border-slate-200 rounded-lg bg-white shadow-sm overflow-hidden">
+            <div class="px-4 py-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+                <h2 class="text-sm font-semibold text-slate-800">Export déclaration FRCB / CDR BEAC</h2>
+                <span class="text-xs text-slate-500">{{ totalClients }} tiers à déclarer</span>
+            </div>
+            <div class="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1">Numéro déclaration</label>
+                    <input v-model="xmlConfig.NumDec" type="text" maxlength="10" class="w-full text-xs border border-slate-300 rounded px-2 py-1" placeholder="0001" />
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1">Code établissement</label>
+                    <input v-model="xmlConfig.CodDec" type="text" maxlength="10" class="w-full text-xs border border-slate-300 rounded px-2 py-1" placeholder="10030" />
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1">Nature déclaration</label>
+                    <select v-model="xmlConfig.NatDec" class="w-full text-xs border border-slate-300 rounded px-2 py-1">
+                        <option value="01">01 - Déclaration normale</option>
+                        <option value="02">02 - Modification</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1">Commentaire</label>
+                    <input v-model="xmlConfig.comment" type="text" class="w-full text-xs border border-slate-300 rounded px-2 py-1" placeholder="" />
+                </div>
+            </div>
+            <div class="px-4 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
+                <p class="text-xs text-slate-500">Nom fichier : <span class="font-mono font-medium">{{ expectedFilename }}</span></p>
+                <button @click="exportXml" class="px-3 py-1.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700">
+                    Générer XML
+                </button>
+            </div>
+        </div>
 
         <div v-if="errorClients > 0" class="space-y-4">
             <div class="flex items-center justify-between">
@@ -143,6 +178,19 @@
                 </div>
             </div>
         </div>
+
+        <div v-if="showSelectionModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div class="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full">
+                <div class="flex items-center gap-2 mb-3">
+                    <span class="material-icons text-red-600 text-sm">error</span>
+                    <h3 class="text-sm font-semibold text-slate-800">Aucune sélection</h3>
+                </div>
+                <p class="text-xs text-slate-600 mb-4">Veuillez sélectionner au moins un client dans le tableau avant de générer le fichier XML.</p>
+                <div class="flex justify-end">
+                    <button @click="showSelectionModal = false" class="px-3 py-1.5 text-xs bg-slate-200 rounded hover:bg-slate-300">Fermer</button>
+                </div>
+            </div>
+        </div>
     </div>
 </template>
 
@@ -150,6 +198,9 @@
 import { ref, computed, watch } from "vue";
 import DataTable from "../components/DataTable.vue";
 import { validateAllPersonnesPhysiques } from "../validators/cdrPp.js";
+import { generateFRCBXml, downloadFRCBXml } from "../services/frcbExportService.js";
+
+const dataTable = ref(null);
 
 const columns = [
     { key: "IDINTCLI", label: "ID Client" },
@@ -219,6 +270,38 @@ const totalClients = computed(() => validationResults.value.length);
 const validClients = computed(() => validationResults.value.filter((r) => r.isValid).length);
 const errorClients = computed(() => validationResults.value.filter((r) => !r.isValid).length);
 const invalidClients = computed(() => validationResults.value.filter((r) => !r.isValid));
+
+const xmlConfig = ref({
+    NumDec: "0001",
+    CodDec: "10030",
+    NatDec: "01",
+    comment: "",
+});
+
+const today = new Date();
+const dd = String(today.getDate()).padStart(2, "0");
+const mm = String(today.getMonth() + 1).padStart(2, "0");
+const yyyy = today.getFullYear();
+const datDec = `${dd}${mm}${yyyy}`;
+
+const expectedFilename = computed(() => {
+    const numDec = String(xmlConfig.value.NumDec || "0001").trim() || "0001";
+    const codDec = String(xmlConfig.value.CodDec || "00000").trim() || "00000";
+    const natDec = String(xmlConfig.value.NatDec || "01").trim() || "01";
+    return `CM-${codDec}-${numDec}-${datDec}-${natDec}-DEC.xml`;
+});
+
+const showSelectionModal = ref(false);
+
+const exportXml = () => {
+    const selected = dataTable.value?.selectedRows ?? [];
+    if (!selected.length) {
+        showSelectionModal.value = true;
+        return;
+    }
+    const result = generateFRCBXml(selected, xmlConfig.value);
+    downloadFRCBXml(result.xml, result.filename);
+};
 
 const errorPerPage = ref(20);
 const errorPage = ref(1);

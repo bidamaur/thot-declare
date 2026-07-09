@@ -9,6 +9,26 @@ class CdrPmController extends Controller
 {
     public function index($DateArr = null)
     {
+        $dateFilter = '';
+        $bindings = [];
+
+        if ($DateArr) {
+            $DateArr = trim($DateArr);
+            if (preg_match('/^\d{8}$/', $DateArr)) {
+                $dateFilter = "AND TO_CHAR(c.dou, 'DDMMYYYY') = ?";
+                $bindings[] = $DateArr;
+            } elseif (preg_match('/^(\d{2})[-\/](\d{4})$/', $DateArr, $matches)) {
+                $dateFilter = "AND TO_CHAR(c.dou, 'MMYYYY') = ?";
+                $bindings[] = $matches[1] . $matches[2];
+            } elseif (preg_match('/^(\d{4})[-\/](\d{2})$/', $DateArr, $matches)) {
+                $dateFilter = "AND TO_CHAR(c.dou, 'MMYYYY') = ?";
+                $bindings[] = $matches[2] . $matches[1];
+            } elseif (preg_match('/^\d{6}$/', $DateArr)) {
+                $dateFilter = "AND TO_CHAR(c.dou, 'MMYYYY') = ?";
+                $bindings[] = $DateArr;
+            }
+        }
+
         $results = DB::select("SELECT 
         TRIM(c.cli) AS IDINTCLI,
         TRIM(c.nidf) AS NIF_NIU,
@@ -116,13 +136,13 @@ class CdrPmController extends Controller
     LEFT JOIN 
         (SELECT cli, MAX(num) AS num FROM bktelcli GROUP BY cli) t 
         ON t.cli = c.cli
-    WHERE 
-        c.tcli IN (2, 3)
-        AND c.cli NOT IN (000020, 100500)
-        " . ($DateArr ? "AND TO_CHAR(c.dou, 'DDMMYYYY') = '$DateArr'" : "") . "
-        --and c.cli>100924
-    ORDER BY 1
-    ");
+        WHERE 
+            c.tcli IN (2, 3)
+            AND c.cli NOT IN (000020, 100500)
+            " . $dateFilter . "
+            --and c.cli>100924
+        ORDER BY 1
+        ", $bindings);
         $results = array_map(function ($row) {
             return array_change_key_case((array) $row, CASE_UPPER);
         }, $results);

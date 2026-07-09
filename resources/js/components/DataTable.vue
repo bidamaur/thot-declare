@@ -303,6 +303,10 @@ watch(internalItemsPerPage, (newVal) => {
 onMounted(() => {
     fetchData();
 });
+
+defineExpose({
+    selectedRows,
+});
 </script>
 
 <style scoped>
