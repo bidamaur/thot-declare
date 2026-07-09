@@ -572,6 +572,23 @@ const VALID_NAEMA_SECTORS = new Set([
     "99.00",
 ]);
 
+/**
+ * Normalise un code NAEMA en supprimant les zéros finaux après le séparateur décimal
+ * (ex: "18.10" -> "18.1", "55.00" -> "55") pour fiabiliser la comparaison quel que
+ * soit le format renvoyé par la source de données.
+ */
+const normalizeNaema = (code) => {
+    const s = String(code).trim();
+    if (!s.includes(".")) return s;
+    const [intPart, decPart] = s.split(".");
+    const trimmed = decPart.replace(/0+$/, "");
+    return trimmed === "" ? intPart : `${intPart}.${trimmed}`;
+};
+
+const VALID_NAEMA_SECTORS_NORM = new Set(
+    [...VALID_NAEMA_SECTORS].map(normalizeNaema),
+);
+
 function checkBEACDate(dateStr) {
     if (!dateStr || dateStr === "PND")
         return { syntaxValid: false, logicalValid: false };
@@ -678,7 +695,7 @@ export function validatePersonneMorale(data, currentCountry = "CM") {
     // REVISE ET COMPLET - TEST D'EXISTENCE STRICT SUR LA TABLE NAEMA (SECACT)
     if (data.SECACT) {
         const secActStr = data.SECACT.toString().trim();
-        if (!VALID_NAEMA_SECTORS.has(secActStr)) {
+        if (!VALID_NAEMA_SECTORS_NORM.has(normalizeNaema(secActStr))) {
             pushErr(
                 "OBL004",
                 "Erreur",
@@ -714,14 +731,14 @@ export function validatePersonneMorale(data, currentCountry = "CM") {
     }
 
     if (data.RCCM && data.RCCM !== "PND") {
-        const rccmLen = getCleanAlphanumericLength(data.RCCM);
-        const allowedRccmLens = countryConfig.RCCM;
-        if (allowedRccmLens && !allowedRccmLens.includes(rccmLen)) {
+        const rccmPattern =
+            /^(RC\/[A-Z]{3}\/\d{4}\/[A-Z]\/\d+|CM-[A-Z]{3}-\d{2}-\d{4}-[A-Z]\d*-\d+)$/;
+        if (!rccmPattern.test(data.RCCM.toString().trim())) {
             pushErr(
                 "SYN011",
                 "Erreur",
                 "RCCM",
-                `Format invalide (Longueur RCCM de la PM au ${paysDeclarant} attendue: ${allowedRccmLens.join("/")} caractères utiles)`,
+                "Format invalide (Le RCCM doit respecter l'un des formats: RC/XXX/AAAA/X/NNN ou CM-XXX-AA-AAAA-Xn-NNN)",
             );
         }
     }

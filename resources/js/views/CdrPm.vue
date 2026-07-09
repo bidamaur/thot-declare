@@ -69,7 +69,7 @@
             <div class="border border-slate-200 rounded-lg bg-white shadow-sm overflow-hidden">
                 <div class="px-4 py-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
                     <h2 class="text-sm font-semibold text-slate-800">Anomalies détectées</h2>
-                    <span class="text-xs text-slate-500">{{ errorClients }} résultat(s)</span>
+                    <span class="text-xs text-slate-500">{{ totalAnomalies }} anomalie(s) sur {{ errorClients }} client(s)</span>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-xs">
@@ -92,42 +92,42 @@
                                         </span>
                                     </div>
                                 </th>
-                                <th class="px-3 py-2 text-left cursor-pointer select-none" @click="errorSortBy('errors[0].type')">
+                                <th class="px-3 py-2 text-left cursor-pointer select-none" @click="errorSortBy('err.type')">
                                     <div class="flex items-center gap-1">
                                         <span>Type</span>
-                                        <span v-if="errorSortKey === 'errors[0].type'" class="material-icons text-xs">
+                                        <span v-if="errorSortKey === 'err.type'" class="material-icons text-xs">
                                             {{ errorSortOrder === 'asc' ? 'arrow_upward' : 'arrow_downward' }}
                                         </span>
                                     </div>
                                 </th>
-                                <th class="px-3 py-2 text-left cursor-pointer select-none" @click="errorSortBy('errors[0].field')">
+                                <th class="px-3 py-2 text-left cursor-pointer select-none" @click="errorSortBy('err.field')">
                                     <div class="flex items-center gap-1">
                                         <span>Champ</span>
-                                        <span v-if="errorSortKey === 'errors[0].field'" class="material-icons text-xs">
+                                        <span v-if="errorSortKey === 'err.field'" class="material-icons text-xs">
                                             {{ errorSortOrder === 'asc' ? 'arrow_upward' : 'arrow_downward' }}
                                         </span>
                                     </div>
                                 </th>
-                                <th class="px-3 py-2 text-left cursor-pointer select-none" @click="errorSortBy('errors[0].currentValue')">
+                                <th class="px-3 py-2 text-left cursor-pointer select-none" @click="errorSortBy('err.currentValue')">
                                     <div class="flex items-center gap-1">
                                         <span>Valeur actuelle</span>
-                                        <span v-if="errorSortKey === 'errors[0].currentValue'" class="material-icons text-xs">
+                                        <span v-if="errorSortKey === 'err.currentValue'" class="material-icons text-xs">
                                             {{ errorSortOrder === 'asc' ? 'arrow_upward' : 'arrow_downward' }}
                                         </span>
                                     </div>
                                 </th>
-                                <th class="px-3 py-2 text-left cursor-pointer select-none" @click="errorSortBy('errors[0].message')">
+                                <th class="px-3 py-2 text-left cursor-pointer select-none" @click="errorSortBy('err.message')">
                                     <div class="flex items-center gap-1">
                                         <span>Message d'erreur</span>
-                                        <span v-if="errorSortKey === 'errors[0].message'" class="material-icons text-xs">
+                                        <span v-if="errorSortKey === 'err.message'" class="material-icons text-xs">
                                             {{ errorSortOrder === 'asc' ? 'arrow_upward' : 'arrow_downward' }}
                                         </span>
                                     </div>
                                 </th>
-                                <th class="px-3 py-2 text-left cursor-pointer select-none" @click="errorSortBy('errors[0].code')">
+                                <th class="px-3 py-2 text-left cursor-pointer select-none" @click="errorSortBy('err.code')">
                                     <div class="flex items-center gap-1">
                                         <span>Code</span>
-                                        <span v-if="errorSortKey === 'errors[0].code'" class="material-icons text-xs">
+                                        <span v-if="errorSortKey === 'err.code'" class="material-icons text-xs">
                                             {{ errorSortOrder === 'asc' ? 'arrow_upward' : 'arrow_downward' }}
                                         </span>
                                     </div>
@@ -140,14 +140,14 @@
                                 <td class="px-3 py-2">{{ item.data.RAISOC }}</td>
                                 <td class="px-3 py-2">{{ item.data.IDINTCLI }}</td>
                                 <td class="px-3 py-2">
-                                    <span :class="item.errors[0].type === 'Erreur' ? 'text-red-700 font-medium' : 'text-amber-700 font-medium'">
-                                        {{ item.errors[0].type }}
+                                    <span :class="item.err.type === 'Erreur' ? 'text-red-700 font-medium' : 'text-amber-700 font-medium'">
+                                        {{ item.err.type }}
                                     </span>
                                 </td>
-                                <td class="px-3 py-2 font-medium text-red-700">{{ item.errors[0].field }}</td>
-                                <td class="px-3 py-2 font-mono text-red-700">{{ item.errors[0].currentValue }}</td>
-                                <td class="px-3 py-2">{{ item.errors[0].message }}</td>
-                                <td class="px-3 py-2 font-mono">{{ item.errors[0].code }}</td>
+                                <td class="px-3 py-2 font-medium text-red-700">{{ item.err.field }}</td>
+                                <td class="px-3 py-2 font-mono text-red-700">{{ item.err.currentValue }}</td>
+                                <td class="px-3 py-2">{{ item.err.message }}</td>
+                                <td class="px-3 py-2 font-mono">{{ item.err.code }}</td>
                             </tr>
                         </tbody>
                     </table>
@@ -156,7 +156,7 @@
                 <div class="flex items-center justify-between px-3 py-2 bg-white border-t border-slate-200 text-xs">
                     <div class="flex items-center gap-2">
                         <p class="text-slate-500">
-                            {{ errorClients }} résultats - Page {{ errorPage }}/{{ errorTotalPages }}
+                             {{ totalAnomalies }} anomalie(s) - Page {{ errorPage }}/{{ errorTotalPages }}
                         </p>
                     </div>
                     <div class="flex items-center gap-1">
@@ -276,11 +276,35 @@ const errorPage = ref(1);
 const errorSortKey = ref("");
 const errorSortOrder = ref("asc");
 
+// Liste à plat : une ligne par anomalie (et non plus une seule ligne par client
+// ne montrant que la première erreur). Permet de faire apparaître TOUTES les
+// anomalies, y compris celles liées au secteur d'activité (SECACT).
+const anomalyRows = computed(() => {
+    const rows = [];
+    invalidClients.value.forEach((item) => {
+        item.errors.forEach((err) => {
+            rows.push({ data: item.data, err });
+        });
+    });
+    return rows;
+});
+
+const errorSortKeyMap = {
+    "data.RAISOC": (r) => r.data.RAISOC ?? "",
+    "data.IDINTCLI": (r) => r.data.IDINTCLI ?? "",
+    "err.type": (r) => r.err.type ?? "",
+    "err.field": (r) => r.err.field ?? "",
+    "err.currentValue": (r) => r.err.currentValue ?? "",
+    "err.message": (r) => r.err.message ?? "",
+    "err.code": (r) => r.err.code ?? "",
+};
+
 const sortedInvalidClients = computed(() => {
-    if (!errorSortKey.value) return invalidClients.value;
-    return [...invalidClients.value].sort((a, b) => {
-        const valA = errorSortKey.value.split('.').reduce((obj, key) => obj?.[key], a) ?? "";
-        const valB = errorSortKey.value.split('.').reduce((obj, key) => obj?.[key], b) ?? "";
+    if (!errorSortKey.value || !errorSortKeyMap[errorSortKey.value]) return anomalyRows.value;
+    const getVal = errorSortKeyMap[errorSortKey.value];
+    return [...anomalyRows.value].sort((a, b) => {
+        const valA = getVal(a);
+        const valB = getVal(b);
         if (valA < valB) return errorSortOrder.value === 'asc' ? -1 : 1;
         if (valA > valB) return errorSortOrder.value === 'asc' ? 1 : -1;
         return 0;
@@ -320,6 +344,11 @@ const errorSortBy = (key) => {
     errorPage.value = 1;
 };
 
+// Compteur du nombre total d'anomalies (toutes lignes confondues)
+const totalAnomalies = computed(() =>
+    anomalyRows.value.length,
+);
+
 watch(errorPerPage, () => {
     errorPage.value = 1;
 });
@@ -347,16 +376,16 @@ const onDataLoaded = (dataArray) => {
 };
 
 const exportAnomaliesToExcel = () => {
-    if (!invalidClients.value.length) return;
+    if (!anomalyRows.value.length) return;
     const XLSX = window.XLSX;
-    const exportData = invalidClients.value.map((item) => ({
+    const exportData = anomalyRows.value.map((item) => ({
         "Raison Sociale": item.data.RAISOC,
         "N° Client": item.data.IDINTCLI,
-        "Type": item.errors[0].type,
-        "Champ": item.errors[0].field,
-        "Valeur actuelle": item.errors[0].currentValue,
-        "Message d'erreur": item.errors[0].message,
-        "Code": item.errors[0].code,
+        "Type": item.err.type,
+        "Champ": item.err.field,
+        "Valeur actuelle": item.err.currentValue,
+        "Message d'erreur": item.err.message,
+        "Code": item.err.code,
     }));
     const worksheet = XLSX.utils.json_to_sheet(exportData);
     const workbook = XLSX.utils.book_new();
