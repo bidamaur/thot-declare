@@ -27,5 +27,6 @@ const columns = [
   { key: 'MNTECH', label: 'Montant Échéance', format: 'number' },
 ];
 
-const fetchEngagements = (date) => `/api/cdr_engagements/${date}`;
+const fetchEngagements = (date) =>
+    `/api/cdr_engagements/${date ? date.split("-").reverse().join("-") : ""}`;
 </script>

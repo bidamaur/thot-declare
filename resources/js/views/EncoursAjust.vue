@@ -25,5 +25,6 @@ const columns = [
   { key: 'MNTTOTUTIL', label: 'Montant Tot Utilisé', format: 'number' },
 ];
 
-const fetchEncoursAjust = (date) => `/api/cdr_encours_ajust/${date}`;
+const fetchEncoursAjust = (date) =>
+    `/api/cdr_encours_ajust/${date ? date.split("-").reverse().join("-") : ""}`;
 </script>

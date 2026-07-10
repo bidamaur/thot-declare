@@ -68,6 +68,7 @@ const pageTitle = computed(() => {
         "/encours": "Encours",
         "/encours-ajust": "Encours ajusté",
         "/engagements": "Engagements",
+        "/credit-consolidation": "Consolidation Crédit",
         "/garanties": "Garanties",
     };
     return titles[route.path] || "Tableau de bord";

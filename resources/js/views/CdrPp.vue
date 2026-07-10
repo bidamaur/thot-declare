@@ -26,10 +26,22 @@
                     <input v-model="xmlConfig.CodDec" type="text" maxlength="10" class="w-full text-xs border border-slate-300 rounded px-2 py-1" placeholder="10030" />
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-slate-600 mb-1">Nature déclaration</label>
+                    <label class="block text-xs font-medium text-slate-600 mb-1">Type de déclaration (TYPDEC)</label>
+                    <select v-model="xmlConfig.TypDec" class="w-full text-xs border border-slate-300 rounded px-2 py-1">
+                        <option value="01">01 - Déclaration mensuelle</option>
+                        <option value="02">02 - Déclaration trimestrielle</option>
+                        <option value="03">03 - Déclaration semestrielle</option>
+                        <option value="04">04 - Déclaration annuelle</option>
+                        <option value="05">05 - Déclaration ponctuelle / événementielle</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1">Nature déclaration (NATDEC)</label>
                     <select v-model="xmlConfig.NatDec" class="w-full text-xs border border-slate-300 rounded px-2 py-1">
-                        <option value="01">01 - Déclaration normale</option>
-                        <option value="02">02 - Modification</option>
+                        <option value="00">00 - Déclaration non spécifiée / Reprise d'historique</option>
+                        <option value="01">01 - Déclaration initiale (Création)</option>
+                        <option value="02">02 - Déclaration modification (Mise à jour)</option>
+                        <option value="03">03 - Déclaration clôture (Fin d'activité)</option>
                     </select>
                 </div>
                 <div>
@@ -274,7 +286,9 @@ const invalidClients = computed(() => validationResults.value.filter((r) => !r.i
 const xmlConfig = ref({
     NumDec: "0001",
     CodDec: "10030",
+    TypDec: "01",
     NatDec: "01",
+    TypPers: "01",
     comment: "",
 });
 
@@ -287,8 +301,8 @@ const datDec = `${dd}${mm}${yyyy}`;
 const expectedFilename = computed(() => {
     const numDec = String(xmlConfig.value.NumDec || "0001").trim() || "0001";
     const codDec = String(xmlConfig.value.CodDec || "00000").trim() || "00000";
-    const natDec = String(xmlConfig.value.NatDec || "01").trim() || "01";
-    return `CM-${codDec}-${numDec}-${datDec}-${natDec}-DEC.xml`;
+    const typPers = String(xmlConfig.value.TypPers || "01").trim() || "01";
+    return `CM-${codDec}-${numDec}-${datDec}-${typPers}-DEC.xml`;
 });
 
 const showSelectionModal = ref(false);

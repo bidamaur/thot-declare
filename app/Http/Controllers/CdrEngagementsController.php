@@ -19,25 +19,24 @@ class CdrEngagementsController extends Controller
    */
   public function GetEngagements($MyDateArr)
   {
-    // Vérification du format de date
+    // Vérification du format de date (mm-yyyy)
     $GetPosition = explode('-', $MyDateArr);
     if (
-      count($GetPosition) !== 3 ||
+      count($GetPosition) !== 2 ||
       strlen($GetPosition[0]) !== 2 ||
-      $GetPosition[0] > 31 ||
-      $GetPosition[1] > 12 ||
-      strlen($GetPosition[1]) !== 2 ||
-      strlen($GetPosition[2]) !== 4
+      (int) $GetPosition[0] < 1 ||
+      (int) $GetPosition[0] > 12 ||
+      strlen($GetPosition[1]) !== 4
     ) {
       echo '[{"Erreur": {
         "type": "Date",
-        "Description": "Format date erroné, format attendu 01-05-1995"
+        "Description": "Format date erroné, format attendu MM-AAAA"
     }}]';
       return false;
     }
 
     $connection = $this->dbConnection->getConnection();
-    $dateArret = Carbon::parse($MyDateArr);
+    $dateArret = Carbon::create((int) $GetPosition[1], (int) $GetPosition[0], 1)->endOfMonth();
     $DateArr = $dateArret->format('d/m/y');
     $DateArrYear = $dateArret->year;
     $DateArrMonth = ($dateArret->month<10?'0'.$dateArret->month:$dateArret->month);

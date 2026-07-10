@@ -43,30 +43,29 @@ public function GetEncours($MyDateArr)
 
             $GetPosition = explode('-', $MyDateArr);
 
-            //teste de conformite de la date
+            //teste de conformite de la date (format mm-yyyy)
             if (
-                count($GetPosition) !== 3 ||
+                count($GetPosition) !== 2 ||
                 strlen($GetPosition[0]) !== 2 ||
-                $GetPosition[0] > 31 ||
-                $GetPosition[1] > 12 ||
-                strlen($GetPosition[1]) !== 2 ||
-                strlen($GetPosition[2]) !== 4
+                (int) $GetPosition[0] < 1 ||
+                (int) $GetPosition[0] > 12 ||
+                strlen($GetPosition[1]) !== 4
             ) {
                 return response()->json([
                     [
                         'Erreur' => [
                             'type' => 'Date',
-                            'Description' => 'Format date erroné, format attendu 01-05-1995',
+                            'Description' => 'Format date erroné, format attendu MM-AAAA',
                         ],
                     ],
                 ], 400);
             }
 
             //variables
-            $dateArret = Carbon::parse($MyDateArr);
+            $dateArret = Carbon::create((int) $GetPosition[1], (int) $GetPosition[0], 1)->endOfMonth();
             $DateArr = $dateArret->format('d/m/y');
             $DateArrYear = $dateArret->year;
-            $DateArrMonth = $dateArret->month;
+            $DateArrMonth = $dateArret->format('m');
             $DateArrDay = $dateArret->day;
             $DateMonthYear = '/' . $DateArrMonth . '/' . $DateArrYear;
             $notFound = '[{"Erreur": {
@@ -384,24 +383,23 @@ public function GetEncoursAjust($MyDateArr)
         $connection = $this->dbConnection->getConnection();
         $GetPosition = explode('-', $MyDateArr);
 
-        //teste de conformite de la date
+        //teste de conformite de la date (format mm-yyyy)
         if (
-            count($GetPosition) !== 3 ||
+            count($GetPosition) !== 2 ||
             strlen($GetPosition[0]) !== 2 ||
-            $GetPosition[0] > 31 ||
-            $GetPosition[1] > 12 ||
-            strlen($GetPosition[1]) !== 2 ||
-            strlen($GetPosition[2]) !== 4
+            (int) $GetPosition[0] < 1 ||
+            (int) $GetPosition[0] > 12 ||
+            strlen($GetPosition[1]) !== 4
         ) {
             echo '[{"Erreur": {
         "type": "Date",
-        "Description": "Format date erroné, format attendu 01-05-1995"
+        "Description": "Format date erroné, format attendu MM-AAAA"
     }}]';
             return false;
         }
 
         //variables
-        $dateArret = Carbon::parse($MyDateArr);
+        $dateArret = Carbon::create((int) $GetPosition[1], (int) $GetPosition[0], 1)->endOfMonth();
         $DateArr = $dateArret->format('d/m/y');
         $DateArrYear = $dateArret->year;
         $DateArrMonth = $dateArret->format('m');

@@ -7,6 +7,7 @@ import Encours from "../views/Encours.vue";
 import EncoursAjust from "../views/EncoursAjust.vue";
 import Engagements from "../views/Engagements.vue";
 import Garanties from "../views/Garanties.vue";
+import CreditConsolidation from "../views/CreditConsolidation.vue";
 
 const routes = [
     {
@@ -19,6 +20,7 @@ const routes = [
             { path: "encours", component: Encours, name: "Encours" },
             { path: "encours-ajust", component: EncoursAjust, name: "EncoursAjust" },
             { path: "engagements", component: Engagements, name: "Engagements" },
+            { path: "credit-consolidation", component: CreditConsolidation, name: "CreditConsolidation" },
             { path: "garanties", component: Garanties, name: "Garanties" },
         ],
     },

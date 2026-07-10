@@ -51,6 +51,7 @@ const navItems = [
     { path: "/encours", label: "Encours", icon: "account_balance_wallet" },
     { path: "/encours-ajust", label: "Ajustements", icon: "tune" },
     { path: "/engagements", label: "Engagements", icon: "verified_user" },
+    { path: "/credit-consolidation", label: "Consolidation", icon: "hub" },
     { path: "/garanties", label: "Garanties", icon: "shield" },
 ];
 </script>

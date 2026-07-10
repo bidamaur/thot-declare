@@ -54,6 +54,14 @@
           <p class="px-2 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Credit Portfolio</p>
           <div class="space-y-1">
             <router-link 
+              to="/credit-consolidation" 
+              class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
+              :class="$route.path === '/credit-consolidation' ? 'bg-gradient-to-r from-primary-50 to-primary-100/50 text-primary-700 shadow-sm' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'"
+            >
+              <span class="material-icons text-lg" :class="$route.path === '/credit-consolidation' ? 'text-primary-600' : 'text-gray-400'">hub</span>
+              Consolidation Crédit
+            </router-link>
+            <router-link 
               to="/encours" 
               class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
               :class="$route.path === '/encours' ? 'bg-gradient-to-r from-primary-50 to-primary-100/50 text-primary-700 shadow-sm' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'"

@@ -25,5 +25,6 @@ const columns = [
   { key: 'CLADEPREC', label: 'Classe Dépréciation' },
 ];
 
-const fetchEncours = (date) => `/api/cdr_encours/${date}`;
+const fetchEncours = (date) =>
+    `/api/cdr_encours/${date ? date.split("-").reverse().join("-") : ""}`;
 </script>
