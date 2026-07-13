@@ -1,38 +1,98 @@
 <template>
     <div class="space-y-4">
         <!-- Sélecteur de date d'arrêté commun -->
-        <div class="border border-slate-200 rounded-lg bg-white shadow-sm overflow-hidden">
-            <div class="px-4 py-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
-                <h2 class="text-sm font-semibold text-slate-800">Reporting consolidé Crédit</h2>
-                <span class="text-xs text-slate-500">Date d'arrêté : {{ selectedDate || 'non définie' }}</span>
+        <div
+            class="border border-slate-200 rounded-lg bg-white shadow-sm overflow-hidden"
+        >
+            <div
+                class="px-4 py-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between"
+            >
+                <h2 class="text-sm font-semibold text-slate-800">
+                    Reporting consolidé Crédit
+                </h2>
+                <span class="text-xs text-slate-500"
+                    >Date d'arrêté : {{ selectedDate || "non définie" }}</span
+                >
             </div>
             <div class="p-4 flex flex-wrap items-end gap-3">
                 <div>
-                    <label class="block text-xs font-medium text-slate-600 mb-1">Date d'arrêté (mois / année)</label>
-                    <input type="month" v-model="selectedDate" class="text-xs border border-slate-300 rounded px-2 py-1" />
+                    <label class="block text-xs font-medium text-slate-600 mb-1"
+                        >Date d'arrêté (mois / année)</label
+                    >
+                    <input
+                        type="month"
+                        v-model="selectedDate"
+                        class="text-xs border border-slate-300 rounded px-2 py-1"
+                    />
                 </div>
-                <button @click="fetchAll" class="px-3 py-1.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700">
+                <button
+                    @click="fetchAll"
+                    class="px-3 py-1.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                >
                     Lancer le reporting
                 </button>
                 <div class="flex-1"></div>
                 <div class="grid grid-cols-3 gap-3 text-center">
                     <div class="border border-slate-200 rounded-lg px-3 py-2">
-                        <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Engagements</p>
-                        <p class="text-lg font-semibold text-slate-900">{{ zones.engagements.data.length }}</p>
+                        <p
+                            class="text-xs font-medium text-slate-500 uppercase tracking-wider"
+                        >
+                            Engagements
+                        </p>
+                        <p class="text-lg font-semibold text-slate-900">
+                            {{ zones.engagements.data.length }}
+                        </p>
                     </div>
                     <div class="border border-slate-200 rounded-lg px-3 py-2">
-                        <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Encours</p>
-                        <p class="text-lg font-semibold text-slate-900">{{ zones.encours.data.length }}</p>
+                        <p
+                            class="text-xs font-medium text-slate-500 uppercase tracking-wider"
+                        >
+                            Encours
+                        </p>
+                        <p class="text-lg font-semibold text-slate-900">
+                            {{ zones.encours.data.length }}
+                        </p>
                     </div>
                     <div class="border border-slate-200 rounded-lg px-3 py-2">
-                        <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Encours ajustés</p>
-                        <p class="text-lg font-semibold text-slate-900">{{ zones.encoursAjust.data.length }}</p>
+                        <p
+                            class="text-xs font-medium text-slate-500 uppercase tracking-wider"
+                        >
+                            Encours ajustés
+                        </p>
+                        <p class="text-lg font-semibold text-slate-900">
+                            {{ zones.encoursAjust.data.length }}
+                        </p>
                     </div>
                 </div>
             </div>
         </div>
 
         <p v-if="globalError" class="text-xs text-red-600">{{ globalError }}</p>
+
+        <div
+            v-if="isLoadingRoutes"
+            class="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 shadow-sm"
+        >
+            <div class="flex items-center justify-between mb-2">
+                <div>
+                    <p class="text-xs font-semibold text-blue-700">
+                        Chargement des données
+                    </p>
+                    <p class="text-[11px] text-blue-600">
+                        {{ completedRoutes }}/{{ totalRoutes }} routes terminées
+                    </p>
+                </div>
+                <span class="text-xs font-semibold text-blue-700"
+                    >{{ progressPercent }}%</span
+                >
+            </div>
+            <div class="w-full h-2 rounded-full bg-blue-100 overflow-hidden">
+                <div
+                    class="h-2 rounded-full bg-blue-600 transition-all duration-300"
+                    :style="{ width: `${progressPercent}%` }"
+                ></div>
+            </div>
+        </div>
 
         <!-- Zone Engagements -->
         <TableZone
@@ -43,6 +103,8 @@
             :loading="zones.engagements.loading"
             :error="zones.engagements.error"
             :items-per-page="10"
+            exportable
+            export-name="engagements"
         />
 
         <!-- Zone Encours -->
@@ -54,6 +116,8 @@
             :loading="zones.encours.loading"
             :error="zones.encours.error"
             :items-per-page="10"
+            exportable
+            export-name="encours"
         />
 
         <!-- Zone Encours ajustés -->
@@ -65,38 +129,20 @@
             :loading="zones.encoursAjust.loading"
             :error="zones.encoursAjust.error"
             :items-per-page="10"
+            exportable
+            export-name="encours_ajustes"
         />
 
-        <!-- Statistiques de contrôle -->
-        <div class="border border-slate-200 rounded-lg bg-white shadow-sm overflow-hidden">
-            <div class="px-4 py-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
-                <h2 class="text-sm font-semibold text-slate-800">Statistiques de contrôle (CDR Encours / Engagements)</h2>
-                <span class="text-xs text-slate-500">
-                    {{ totalControlErrors }} anomalie(s) sur {{ totalControlRows }} ligne(s) contrôlée(s)
-                </span>
-            </div>
-            <div v-if="controlStats.length === 0" class="p-6 text-center text-xs text-slate-500">
-                Aucune anomalie détectée par le référentiel de contrôle.
-            </div>
-            <div v-else class="overflow-x-auto">
-                <table class="w-full text-xs">
-                    <thead class="bg-slate-50 border-b border-slate-200">
-                        <tr>
-                            <th class="px-3 py-2 text-left font-semibold text-slate-600">Code</th>
-                            <th class="px-3 py-2 text-left font-semibold text-slate-600">Libellé</th>
-                            <th class="px-3 py-2 text-right font-semibold text-slate-600 w-24">Occurrences</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100">
-                        <tr v-for="(s, idx) in controlStats" :key="s.code + '-' + idx" class="table-row">
-                            <td class="px-3 py-2 font-mono text-red-700">{{ s.code }}</td>
-                            <td class="px-3 py-2">{{ s.message }}</td>
-                            <td class="px-3 py-2 text-right font-semibold text-slate-900">{{ s.count }}</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
+        <!-- Anomalies de contrôle (une ligne par anomalie) -->
+        <TableZone
+            title="Anomalies de contrôle (CDR Encours / Engagements)"
+            :subtitle="`${totalControlErrors} anomalie(s) sur ${totalControlRows} ligne(s) contrôlée(s)`"
+            :columns="anomaliesColumns"
+            :data="anomalies"
+            :items-per-page="10"
+            exportable
+            export-name="anomalies_controle"
+        />
     </div>
 </template>
 
@@ -104,11 +150,27 @@
 import { ref, reactive, computed, onMounted } from "vue";
 import axios from "axios";
 import TableZone from "../components/TableZone.vue";
-import { validerLigneCdr } from "../validators/cdr_encours_engagement.js";
+import {
+    validerLigneCdr,
+    normaliserDateVersCdr,
+} from "../validators/cdr_encours_engagement.js";
 
 const now = new Date();
-const selectedDate = ref(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`);
+const selectedDate = ref(
+    `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`,
+);
 const globalError = ref(null);
+const loadingProgress = ref(0);
+const completedRoutes = ref(0);
+const totalRoutes = ref(3);
+
+const isLoadingRoutes = computed(
+    () =>
+        completedRoutes.value > 0 && completedRoutes.value < totalRoutes.value,
+);
+const progressPercent = computed(() =>
+    Math.round((completedRoutes.value / totalRoutes.value) * 100),
+);
 
 const zones = reactive({
     engagements: { data: [], loading: false, error: null },
@@ -134,27 +196,34 @@ const fetchAll = async () => {
         return;
     }
     globalError.value = null;
+    completedRoutes.value = 0;
+    loadingProgress.value = 0;
     const bd = toBackendDate(selectedDate.value);
     const calls = [
         { key: "engagements", url: `/api/cdr_engagements/${bd}` },
         { key: "encours", url: `/api/cdr_encours/${bd}` },
         { key: "encoursAjust", url: `/api/cdr_encours_ajust/${bd}` },
     ];
-    await Promise.all(
-        calls.map(async (c) => {
-            zones[c.key].loading = true;
-            try {
-                const res = await axios.get(c.url);
-                zones[c.key].data = normalize(res.data);
-                zones[c.key].error = null;
-            } catch (e) {
-                zones[c.key].data = [];
-                zones[c.key].error = "Erreur lors du chargement des données.";
-            } finally {
-                zones[c.key].loading = false;
-            }
-        })
-    );
+
+    const runCall = async (c) => {
+        zones[c.key].loading = true;
+        try {
+            const res = await axios.get(c.url);
+            zones[c.key].data = normalize(res.data);
+            zones[c.key].error = null;
+        } catch (e) {
+            zones[c.key].data = [];
+            zones[c.key].error = "Erreur lors du chargement des données.";
+        } finally {
+            zones[c.key].loading = false;
+            completedRoutes.value += 1;
+            loadingProgress.value = Math.round(
+                (completedRoutes.value / totalRoutes.value) * 100,
+            );
+        }
+    };
+
+    await Promise.all(calls.map(runCall));
 };
 
 onMounted(fetchAll);
@@ -209,10 +278,17 @@ const encoursAjustColumns = [
     { key: "CLADEPREC", label: "Classe Dépréciation" },
 ];
 
+// --- Normalisation des dates JSON vers le format JJMMAAAA attendu par le kit CDR ---
+const normalizeDate = (val) => {
+    if (!val) return "";
+    return normaliserDateVersCdr(val);
+};
+
 // --- Mapping des lignes plates vers la structure attendue par le validateur CDR ---
 const rowToControlLine = (row, type) => {
     const get = (k) =>
         row[k] === undefined || row[k] === null ? "" : String(row[k]).trim();
+    const getD = (k) => normalizeDate(get(k));
     if (type === "engagement") {
         return {
             Engagement: {
@@ -230,34 +306,34 @@ const rowToControlLine = (row, type) => {
                 MntEpargne: get("MNTEPARGNE"),
                 ModRembEpargne: get("MODREMBEPARGNE"),
                 TauxRenum: get("TAUXRENUM"),
-                DatMep: get("DATMEP"),
+                DatMep: getD("DATMEP"),
                 TxInt: get("TXINT"),
                 TxComm: get("TXCOMM"),
                 TxEffGlob: get("TXEFFGLOB"),
                 TypTxInt: get("TYPTXINT"),
                 IndRef: get("INDREF"),
                 Sprd: get("SPRD"),
-                DatDeb: get("DATDEB"),
-                DatFin: get("DATFIN"),
+                DatDeb: getD("DATDEB"),
+                DatFin: getD("DATFIN"),
                 Periodicite: get("PERIODICITE"),
                 UnitDur: get("UNITDUR"),
                 Duree: get("DUREE"),
                 Maturite: get("MATURITE"),
-                DatPreEchCap: get("DATPREECHCAP"),
+                DatPreEchCap: getD("DATPREECHCAP"),
                 NbrEch: get("NBRECH"),
                 MntEch: get("MNTECH"),
                 TypEch: get("TYECH"),
                 TypAmo: get("TYAMO"),
                 TotInt: get("TOTINT"),
-                DatEve: get("DATEVE"),
+                DatEve: getD("DATEVE"),
             },
         };
     }
     return {
         Encours: {
             RefContCmpt: get("REFCONTCMPT"),
-            DatEch: get("DVA"),
-            DatPai: get("DATPAI"),
+            DatEch: getD("DVA"),
+            DatPai: getD("DATPAI"),
             MntTotUtil: get("MNTTOTUTIL"),
             MntCrd: get("MNTCRD"),
             nbrEchPay: get("NBRECHPAY"),
@@ -275,35 +351,48 @@ const totalControlRows = computed(
     () =>
         zones.engagements.data.length +
         zones.encours.data.length +
-        zones.encoursAjust.data.length
+        zones.encoursAjust.data.length,
 );
 
-const controlStats = computed(() => {
-    const tally = {};
+const anomaliesColumns = [
+    { key: "client", label: "N° Client" },
+    { key: "contrat", label: "Réf. Contrat" },
+    { key: "field", label: "Champ" },
+    { key: "code", label: "Code" },
+    { key: "message", label: "Message" },
+    { key: "value", label: "Valeur actuelle" },
+];
+
+const anomalies = computed(() => {
+    const rows = [];
     const addRow = (row, type) => {
+        const client = row.CLI ?? "";
+        const contrat = row.REFINT ?? row.REFCONTCMPT ?? "";
         const line = rowToControlLine(row, type);
         let res;
         try {
-            res = validerLigneCdr(line);
+            res = validerLigneCdr(line, { client, contrat });
         } catch (e) {
             return;
         }
         (res.erreurs || []).forEach((err) => {
-            if (!tally[err.code]) {
-                tally[err.code] = { code: err.code, message: err.message, count: 0 };
-            }
-            tally[err.code].count++;
+            rows.push({
+                client: err.client || client,
+                contrat: err.contrat || contrat,
+                field: err.field || "",
+                code: err.code,
+                message: err.message,
+                value: err.value ?? "",
+            });
         });
     };
     zones.engagements.data.forEach((r) => addRow(r, "engagement"));
     zones.encours.data.forEach((r) => addRow(r, "encours"));
     zones.encoursAjust.data.forEach((r) => addRow(r, "encours"));
-    return Object.values(tally).sort((a, b) => b.count - a.count);
+    return rows;
 });
 
-const totalControlErrors = computed(() =>
-    controlStats.value.reduce((s, x) => s + x.count, 0)
-);
+const totalControlErrors = computed(() => anomalies.value.length);
 </script>
 
 <style scoped>
