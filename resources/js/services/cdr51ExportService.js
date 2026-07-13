@@ -40,97 +40,110 @@ const buildAttrsInOrder = (pairs, row) =>
         })
         .join("");
 
+// --- ORDRE STRICT DES ATTRIBUTS (balise <Declaration>) ---
+// NumDec, CodPay, CodDec, TypDec, NatDec, NbrDec, DatDec, DatArr, comment
+const buildDeclarationAttrs = (cfg) =>
+    attr("NumDec", cfg.NumDec) +
+    attr("CodPay", cfg.CodPay) +
+    attr("CodDec", cfg.CodDec) +
+    attr("TypDec", "51") +
+    attr("NatDec", cfg.NatDec) +
+    attr("NbrDec", cfg.NbrDec) +
+    attr("DatDec", cfg.DatDec) +
+    attr("DatArr", cfg.DatArr) +
+    attr("comment", cfg.comment);
+
 // --- ORDRE STRICT DES ATTRIBUTS (balise <Engagement>) ---
 const ENGAGEMENT_FIELDS = [
+    ["RefContCmpt", "REFCONTCMPT"],
     ["CodAge", "CODAGE"],
+    ["Statut", "STATUT"],
+    ["NatConso", "NATCONSO"],
+    ["TypConso", "TYPCONSO"],
+    ["Motif", "MOTIF"],
+    ["TypEng", "TYPENG"],
+    ["NatEng", "NATENG"],
     ["CodDev", "CODDEV"],
-    ["DatDeb", "DATDEB", true],
-    ["DatEve", "DATEVE", true],
-    ["DatFin", "DATFIN", true],
-    ["DatMep", "DATMEP", true],
-    ["DatPreEchCap", "DATPREECHCAP", true],
-    ["Duree", "DUREE"],
-    ["IndRef", "INDREF"],
-    ["Maturite", "MATURITE"],
-    ["MntCrCedee", "MNTCRCEDEE"],
-    ["MntEch", "MNTECH"],
     ["MntEng", "MNTENG"],
+    ["MntCrCedee", "MNTCRCEDEE"],
     ["MntEpargne", "MNTEPARGNE"],
+    ["ModRembEpargne", "MODREMBEPARGNE"],
+    ["TauxRenum", "TAUXRENUM"],
+    ["DatMep", "DATMEP", true],
+    ["TxInt", "TXINT"],
+    ["TxComm", "TXCOMM"],
+    ["TxBonifie", "TXBONIFIE"],
+    ["TxEffGlob", "TXEFFGLOB"],
+    ["TypTxInt", "TYPTXINT"],
+    ["IndRef", "INDREF"],
+    ["Sprd", "SPRD"],
+    ["DatDeb", "DATDEB", true],
+    ["DatFin", "DATFIN", true],
+    ["Periodicite", "PERIODICITE"],
+    ["UnitDur", "UNITDUR"],
+    ["Duree", "DUREE"],
+    ["Maturite", "MATURITE"],
+    ["DatPreEchCap", "DATPREECHCAP", true],
+    ["NbrEch", "NBRECH"],
+    ["MoyRem", "MOYREM"],
+    ["TypEch", "TYECH"],
+    ["MntEch", "MNTECH"],
+    ["TypAmo", "TYAMO"],
+    ["TotInt", "TOTINT"],
+    ["fraDos", "FRADOS"],
+    ["fraAnnexe", "FRANNEXE"],
     ["MntPrm", "MNTPRM"],
     ["MntTax", "MNTTAX"],
-    ["ModRembEpargne", "MODREMBEPARGNE"],
-    ["Motif", "MOTIF"],
-    ["MoyRem", "MOYREM"],
-    ["NatConso", "NATCONSO"],
-    ["NatEng", "NATENG"],
-    ["NbrEch", "NBRECH"],
-    ["Periodicite", "PERIODICITE"],
-    ["RefContCmpt", "REFCONTCMPT"],
-    ["Sprd", "SPRD"],
-    ["Statut", "STATUT"],
-    ["TauxRenum", "TAUXRENUM"],
-    ["TotInt", "TOTINT"],
-    ["TxBonifie", "TXBONIFIE"],
-    ["TxComm", "TXCOMM"],
-    ["TxEffGlob", "TXEFFGLOB"],
-    ["TxInt", "TXINT"],
-    ["TypAmo", "TYAMO"],
-    ["TypConso", "TYPCONSO"],
-    ["TypEch", "TYECH"],
-    ["TypEng", "TYPENG"],
-    ["TypTxInt", "TYPTXINT"],
-    ["UnitDur", "UNITDUR"],
-    ["fraAnnexe", "FRANNEXE"],
-    ["fraDos", "FRADOS"],
+    ["DatEve", "DATEVE", true],
 ];
 
 // --- ORDRE STRICT DES ATTRIBUTS (balise <Encours>) ---
 const ENCOURS_FIELDS = [
-    ["ClaDeprec", "CLADEPREC"],
-    ["DatEch", "DATECH", true],
-    ["DatPai", "DATPAI", true],
-    ["MntAgi", "MNTAGI"],
-    ["MntAgiosSouf", "MNTAGIOSSOUF"],
-    ["MntCapSouf", "MNTCAPSOUF"],
-    ["MntCrd", "MNTCRD"],
-    ["MntCreRat", "MNTERAT"],
-    ["MntCreSouf", "MNTCRESOUF"],
-    ["MntIntSouf", "MNTINTSOUF"],
-    ["MntPay", "MNTPAY"],
-    ["MntPro", "MNTPRO"],
-    ["MntTaxSouf", "MNTTAXSOUF"],
-    ["MntTotUtil", "MNTTOTUTIL"],
     ["RefContCmpt", "REFCONTCMPT"],
+    ["DatPai", "DATPAI", true],
+    ["DatEch", "DATECH", true],
+    ["MntPay", "MNTPAY"],
+    ["MntAgi", "MNTAGI"],
+    ["MntCrd", "MNTCRD"],
     ["estSensible", "ESTSENSIBLE"],
-    ["nbrEchImp", "NBRECHIMP"],
+    ["MntTotUtil", "MNTTOTUTIL"],
     ["nbrEchPay", "NBRECHPAY"],
+    ["nbrEchImp", "NBRECHIMP"],
     ["nbrEchRes", "NBRECHRES"],
+    ["MntCreSouf", "MNTCRESOUF"],
+    ["MntCapSouf", "MNTCAPSOUF"],
+    ["MntIntSouf", "MNTINTSOUF"],
+    ["MntTaxSouf", "MNTTAXSOUF"],
+    ["MntAgiosSouf", "MNTAGIOSSOUF"],
+    ["MntCreRat", "MNTERAT"],
+    ["MntPro", "MNTPRO"],
     ["nbrJrsImp", "NBRJRSIMP"],
+    ["ClaDeprec", "CLADEPREC"],
 ];
 
 // --- ORDRE STRICT DES ATTRIBUTS (balise <CompteDebiteur>) ---
 const CPTDEB_FIELDS = [
-    ["ClassDeprec", "ClassDeprec"],
+    ["RefContCmpt", "RefContCmpt"],
     ["CodAge", "CodAge"],
+    ["SolDeb", "SolDeb"],
+    ["NbrJrsDebNonAut", "NbrJrsDebNonAut"],
     ["MntAgi", "MntAgi"],
     ["MntProv", "MntProv"],
-    ["NbrJrsDebNonAut", "NbrJrsDebNonAut"],
-    ["RefContCmpt", "RefContCmpt"],
-    ["SolDeb", "SolDeb"],
+    ["ClassDeprec", "ClassDeprec"],
 ];
 
 // --- ORDRE STRICT DES ATTRIBUTS (balise <GarantieAffectee>) ---
 const GARANTIE_FIELDS = [
-    ["CodDevGar", "CodDevGar"],
-    ["IdIntGarant", "IdIntGarant"],
-    ["MntAffGar", "MntAffGar"],
-    ["MntGar", "MntGar"],
-    ["NatGar", "NatGar"],
-    ["NomNaiGarant", "NomNaiGarant"],
-    ["RefExtGar", "RefExtGar"],
     ["RefIntGar", "RefIntGar"],
-    ["StatutGar", "StatutGar"],
+    ["NatGar", "NatGar"],
+    ["CodDevGar", "CodDevGar"],
+    ["MntGar", "MntGar"],
+    ["MntAffGar", "MntAffGar"],
+    ["RefExtGar", "RefExtGar"],
     ["TypRefGar", "TypRefGar"],
+    ["IdIntGarant", "IdIntGarant"],
+    ["NomNaiGarant", "NomNaiGarant"],
+    ["StatutGar", "StatutGar"],
 ];
 
 // Date d'arrêté = DERNIER JOUR du mois/année sélectionné (format JJMMAAAA)
@@ -159,12 +172,12 @@ const buildComptesDebiteurs = (encoursRows, engagementsByRef) => {
         if (!map.has(ref)) {
             map.set(ref, {
                 RefContCmpt: ref,
-                ClassDeprec: getVal(row, "CLADEPREC"),
                 CodAge: "",
+                SolDeb: "",
+                NbrJrsDebNonAut: "",
                 MntAgi: "",
                 MntProv: "",
-                NbrJrsDebNonAut: "",
-                SolDeb: "",
+                ClassDeprec: getVal(row, "CLADEPREC"),
                 IdInt: getVal(row, "CLI"),
                 Role: "01",
             });
@@ -187,6 +200,10 @@ const buildComptesDebiteurs = (encoursRows, engagementsByRef) => {
     return Array.from(map.values());
 };
 
+// NbrDec = nombre de balises ouvrantes <Encours + nombre de balises ouvrantes <Engagement
+const computeNbrDec = (engagementCount, encoursCount) =>
+    String(engagementCount + encoursCount).padStart(2, "0");
+
 export function generateCdr51Xml({
     engagements = [],
     encours = [],
@@ -197,7 +214,6 @@ export function generateCdr51Xml({
     const numDec = String(xmlConfig.NumDec || "").trim() || "0001";
     const codPay = String(xmlConfig.CodPay || "CF").trim() || "CF";
     const codDec = String(xmlConfig.CodDec || "").trim() || "00000";
-    const typDec = "51";
     const natDec = String(xmlConfig.NatDec || "00").trim() || "00";
     const comment = String(xmlConfig.comment || "").trim();
 
@@ -207,7 +223,7 @@ export function generateCdr51Xml({
     // Fusion : les encours_ajust sont concaténés à la fin de la collection des encours
     const mergedEncours = [...encours, ...encoursAjust];
 
-    const nbrDec = String(mergedEncours.length).padStart(2, "0");
+    const nbrDec = computeNbrDec(engagements.length, mergedEncours.length);
 
     // Index des engagements par RefContCmpt (pour le CompteDebiteur)
     const engagementsByRef = new Map();
@@ -216,61 +232,64 @@ export function generateCdr51Xml({
         if (ref && !engagementsByRef.has(ref)) engagementsByRef.set(ref, e);
     });
 
-    const engagementBlocks = engagements
-        .map((e) => {
-            const attrs = buildAttrsInOrder(ENGAGEMENT_FIELDS, e);
-            const consolidation = selfClosing(
-                "Consolidation",
-                attr("RefInt", getVal(e, "REFINT")),
-            );
-            const titulaire = selfClosing(
-                "TitulaireEngagement",
-                attr("IdInt", getVal(e, "IDINT")),
-            );
-            const garantie = selfClosing(
-                "GarantieAffectee",
-                buildAttrsInOrder(GARANTIE_FIELDS, {}),
-            );
-            return `<Engagement${attrs}> ${consolidation} ${titulaire}${garantie}</Engagement>\t`;
-        })
-        .join("");
+    // --- Bloc <Engagement> : tabulation après chaque balise fermante </Engagement> ---
+    const engagementLines = engagements.map((e) => {
+        const attrs = buildAttrsInOrder(ENGAGEMENT_FIELDS, e);
+        const consolidation = selfClosing(
+            "Consolidation",
+            attr("RefInt", getVal(e, "REFINT")),
+        );
+        const titulaire = selfClosing(
+            "TitulaireEngagement",
+            attr("IdInt", getVal(e, "IDINT")),
+        );
+        const garantie = selfClosing(
+            "GarantieAffectee",
+            buildAttrsInOrder(GARANTIE_FIELDS, {}),
+        );
+        return `<Engagement${attrs}> ${consolidation} ${titulaire}${garantie}</Engagement>\t`;
+    });
 
-    const encoursBlocks = mergedEncours
-        .map((en) => {
-            const attrs = buildAttrsInOrder(ENCOURS_FIELDS, en);
-            return `<Encours${attrs}/>\t`;
-        })
-        .join("");
+    // --- Bloc <Encours> : tabulation à la fin de chaque encours (après la fermeture) ---
+    const encoursLines = mergedEncours.map((en) => {
+        const attrs = buildAttrsInOrder(ENCOURS_FIELDS, en);
+        return `<Encours${attrs}/>\t`;
+    });
 
+    // --- Bloc <CompteDebiteur> ---
     const comptes = buildComptesDebiteurs(mergedEncours, engagementsByRef);
-    const compteBlocks = comptes
-        .map((c) => {
-            const attrs = buildAttrsInOrder(CPTDEB_FIELDS, c);
-            const titulaire = selfClosing(
-                "TitulaireCompte",
-                attr("IdInt", c.IdInt) + attr("Role", c.Role),
-            );
-            return `<CompteDebiteur${attrs}>${titulaire}</CompteDebiteur>\t`;
-        })
-        .join("");
+    const compteLines = comptes.map((c) => {
+        const attrs = buildAttrsInOrder(CPTDEB_FIELDS, c);
+        const titulaire = selfClosing(
+            "TitulaireCompte",
+            attr("IdInt", c.IdInt) + attr("Role", c.Role),
+        );
+        return `<CompteDebiteur${attrs}>${titulaire}</CompteDebiteur>\t`;
+    });
 
-    const declAttrs =
-        attr("CodDec", codDec) +
-        attr("CodPay", codPay) +
-        attr("DatArr", datArr) +
-        attr("DatDec", datDec) +
-        attr("NatDec", natDec) +
-        attr("NbrDec", nbrDec) +
-        attr("NumDec", numDec) +
-        attr("TypDec", typDec) +
-        attr("comment", comment);
+    const bodyParts = [engagementLines, encoursLines, compteLines]
+        .filter((arr) => arr.length)
+        .map((arr) => arr.join("\n"));
+    const body = bodyParts.join("\n");
+
+    const declAttrs = buildDeclarationAttrs({
+        NumDec: numDec,
+        CodPay: codPay,
+        CodDec: codDec,
+        NatDec: natDec,
+        NbrDec: nbrDec,
+        DatDec: datDec,
+        DatArr: datArr,
+        comment,
+    });
 
     const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <Declaration${declAttrs}>
-${engagementBlocks}${encoursBlocks}${compteBlocks}</Declaration>`;
+${body}
+</Declaration>`;
 
     // Nomenclature : CodePays-CodeDéclarant-NumDéclaration-DateArrêté-TypeDéclaration-TypeFichier.xml
-    const filename = `${codPay}-${codDec}-${numDec}-${datArr}-${typDec}-DEC.xml`;
+    const filename = `${codPay}-${codDec}-${numDec}-${datArr}-51-DEC.xml`;
 
     return {
         xml,
@@ -279,7 +298,7 @@ ${engagementBlocks}${encoursBlocks}${compteBlocks}</Declaration>`;
             NumDec: numDec,
             CodPay: codPay,
             CodDec: codDec,
-            TypDec: typDec,
+            TypDec: "51",
             NatDec: natDec,
             DatArr: datArr,
             DatDec: datDec,
