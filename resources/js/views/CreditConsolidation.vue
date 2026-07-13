@@ -67,6 +67,118 @@
             </div>
         </div>
 
+        <!-- Zone de configuration de l'entête + Export XML CDR (Type 51) -->
+        <div
+            class="border border-slate-200 rounded-lg bg-white shadow-sm overflow-hidden"
+        >
+            <div
+                class="px-4 py-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between"
+            >
+                <h2 class="text-sm font-semibold text-slate-800">
+                    Export déclaration CDR - Crédits (Type 51)
+                </h2>
+                <span class="text-xs text-slate-500"
+                    >Date d'arrêté calculée : {{ datArr }}</span
+                >
+            </div>
+            <div class="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1"
+                        >Numéro déclaration (NumDec)</label
+                    >
+                    <input
+                        v-model="xmlConfig.NumDec"
+                        type="text"
+                        maxlength="10"
+                        class="w-full text-xs border border-slate-300 rounded px-2 py-1"
+                        placeholder="1111"
+                    />
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1"
+                        >Code pays (CodPay)</label
+                    >
+                    <select
+                        v-model="xmlConfig.CodPay"
+                        class="w-full text-xs border border-slate-300 rounded px-2 py-1"
+                    >
+                        <option value="CM">CM - Cameroun</option>
+                        <option value="CF">CF - Rép. Centrafricaine</option>
+                        <option value="TD">TD - Tchad</option>
+                        <option value="CG">CG - Congo</option>
+                        <option value="GA">GA - Gabon</option>
+                        <option value="GQ">GQ - Guinée Équatoriale</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1"
+                        >Code déclarant (CodDec)</label
+                    >
+                    <input
+                        v-model="xmlConfig.CodDec"
+                        type="text"
+                        maxlength="10"
+                        class="w-full text-xs border border-slate-300 rounded px-2 py-1"
+                        placeholder="20009"
+                    />
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1"
+                        >Type déclaration (TypDec)</label
+                    >
+                    <select
+                        v-model="xmlConfig.TypDec"
+                        disabled
+                        class="w-full text-xs border border-slate-300 rounded px-2 py-1 bg-slate-100 text-slate-500 cursor-not-allowed"
+                    >
+                        <option value="51">51 - Crédits (Type 51)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1"
+                        >Nature déclaration (NatDec)</label
+                    >
+                    <select
+                        v-model="xmlConfig.NatDec"
+                        class="w-full text-xs border border-slate-300 rounded px-2 py-1"
+                    >
+                        <option value="00">00 - Reprise d'historique</option>
+                        <option value="01">01 - Création</option>
+                        <option value="02">02 - Modification</option>
+                        <option value="03">03 - Clôture</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1"
+                        >Commentaire (optionnel)</label
+                    >
+                    <input
+                        v-model="xmlConfig.comment"
+                        type="text"
+                        class="w-full text-xs border border-slate-300 rounded px-2 py-1"
+                        placeholder=""
+                    />
+                </div>
+            </div>
+            <div
+                class="px-4 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between"
+            >
+                <p class="text-xs text-slate-500">
+                    Nom fichier :
+                    <span class="font-mono font-medium">{{ expectedFilename }}</span>
+                    <span class="ml-2 text-slate-400"
+                        >({{ totalLignes }} ligne(s) déclarée(s))</span
+                    >
+                </p>
+                <button
+                    @click="exportXml"
+                    class="px-3 py-1.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                >
+                    Générer XML
+                </button>
+            </div>
+        </div>
+
         <p v-if="globalError" class="text-xs text-red-600">{{ globalError }}</p>
 
         <div
@@ -154,6 +266,7 @@ import {
     validerLigneCdr,
     normaliserDateVersCdr,
 } from "../validators/cdr_encours_engagement.js";
+import { generateCdr51Xml, downloadCdr51Xml } from "../services/cdr51ExportService.js";
 
 const now = new Date();
 const selectedDate = ref(
@@ -171,6 +284,49 @@ const isLoadingRoutes = computed(
 const progressPercent = computed(() =>
     Math.round((completedRoutes.value / totalRoutes.value) * 100),
 );
+
+// --- Configuration de l'entête CDR (Type 51) & export XML ---
+const xmlConfig = ref({
+    NumDec: "1111",
+    CodPay: "CF",
+    CodDec: "20009",
+    TypDec: "51",
+    NatDec: "00",
+    comment: "",
+});
+
+// Date d'arrêté : dernier jour du mois/année sélectionné (JJMMAAAA)
+const datArr = computed(() => {
+    const yyyymm = selectedDate.value;
+    if (!yyyymm) return "";
+    const [y, m] = yyyymm.split("-").map(Number);
+    const lastDay = new Date(y, m, 0).getDate();
+    return `${String(lastDay).padStart(2, "0")}${String(m).padStart(2, "0")}${y}`;
+});
+
+// Nomenclature : CodePays-CodeDéclarant-NumDéclaration-DateArrêté-TypeDéclaration-TypeFichier.xml
+const expectedFilename = computed(() => {
+    const codPay = String(xmlConfig.value.CodPay || "CF").trim() || "CF";
+    const codDec = String(xmlConfig.value.CodDec || "00000").trim() || "00000";
+    const numDec = String(xmlConfig.value.NumDec || "0001").trim() || "0001";
+    const typDec = "51";
+    return `${codPay}-${codDec}-${numDec}-${datArr.value}-${typDec}-DEC.xml`;
+});
+
+const totalLignes = computed(
+    () => zones.encours.data.length + zones.encoursAjust.data.length,
+);
+
+const exportXml = () => {
+    const result = generateCdr51Xml({
+        engagements: zones.engagements.data,
+        encours: zones.encours.data,
+        encoursAjust: zones.encoursAjust.data,
+        xmlConfig: xmlConfig.value,
+        selectedDate: selectedDate.value,
+    });
+    downloadCdr51Xml(result.xml, result.filename);
+};
 
 const zones = reactive({
     engagements: { data: [], loading: false, error: null },
