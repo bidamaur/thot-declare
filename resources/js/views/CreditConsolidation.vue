@@ -31,6 +31,19 @@
                 >
                     Lancer le reporting
                 </button>
+                <button
+                    @click="runControleComplexe"
+                    :disabled="complexLoading"
+                    class="px-3 py-1.5 text-xs bg-emerald-600 text-white rounded hover:bg-emerald-700 disabled:opacity-50"
+                >
+                    {{ complexLoading ? "Contrôle en cours..." : "Contrôle Complexe" }}
+                </button>
+                <button
+                    @click="clearCorrections"
+                    class="px-3 py-1.5 text-xs bg-amber-600 text-white rounded hover:bg-amber-700"
+                >
+                    Vider les corrections ({{ totalCorrections }})
+                </button>
                 <div class="flex-1"></div>
                 <div class="grid grid-cols-3 gap-3 text-center">
                     <div class="border border-slate-200 rounded-lg px-3 py-2">
@@ -160,6 +173,31 @@
                     />
                 </div>
             </div>
+            <div class="px-4 py-3 border-t border-slate-200 bg-white flex flex-wrap gap-x-6 gap-y-2">
+                <span class="text-xs font-semibold text-slate-600 self-center"
+                    >Sections incluses :</span
+                >
+                <label class="inline-flex items-center gap-1 text-xs text-slate-600">
+                    <input type="checkbox" v-model="includeOptions.engagements" />
+                    Engagements
+                </label>
+                <label class="inline-flex items-center gap-1 text-xs text-slate-600">
+                    <input type="checkbox" v-model="includeOptions.encours" />
+                    Encours
+                </label>
+                <label class="inline-flex items-center gap-1 text-xs text-slate-600">
+                    <input type="checkbox" v-model="includeOptions.encoursAjust" />
+                    Encours ajustés
+                </label>
+                <label class="inline-flex items-center gap-1 text-xs text-slate-600">
+                    <input type="checkbox" v-model="includeOptions.garanties" />
+                    Garanties (GarantieAffectee)
+                </label>
+                <label class="inline-flex items-center gap-1 text-xs text-slate-600">
+                    <input type="checkbox" v-model="includeOptions.compteDebiteur" />
+                    Compte Débiteur
+                </label>
+            </div>
             <div
                 class="px-4 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between"
             >
@@ -211,10 +249,12 @@
             title="Engagements"
             subtitle="Liste des engagements de crédit déclarés"
             :columns="engagementsColumns"
-            :data="zones.engagements.data"
+            :data="effectiveData('engagements')"
             :loading="zones.engagements.loading"
             :error="zones.engagements.error"
             :items-per-page="10"
+            :editable="true"
+            @cell-edit="(p) => onCellEdit('engagements', p)"
             exportable
             export-name="engagements"
         />
@@ -224,10 +264,12 @@
             title="Encours"
             subtitle="Suivi des encours de crédit par date d'arrêté"
             :columns="encoursColumns"
-            :data="zones.encours.data"
+            :data="effectiveData('encours')"
             :loading="zones.encours.loading"
             :error="zones.encours.error"
             :items-per-page="10"
+            :editable="true"
+            @cell-edit="(p) => onCellEdit('encours', p)"
             exportable
             export-name="encours"
         />
@@ -237,12 +279,26 @@
             title="Encours ajustés"
             subtitle="Encours créés pour ajustement (échéanciers flexibles)"
             :columns="encoursAjustColumns"
-            :data="zones.encoursAjust.data"
+            :data="effectiveData('encoursAjust')"
             :loading="zones.encoursAjust.loading"
             :error="zones.encoursAjust.error"
             :items-per-page="10"
+            :editable="true"
+            @cell-edit="(p) => onCellEdit('encoursAjust', p)"
             exportable
             export-name="encours_ajustes"
+        />
+
+        <!-- Anomalies de contrôle complexe (Encours vs Engagements initiaux) -->
+        <TableZone
+            v-if="complexAnomalies.length || complexExecuted"
+            title="Contrôle Complexe (Encours vs Engagements initiaux)"
+            :subtitle="complexExecuted ? `${complexAnomalies.length} anomalie(s) détectée(s)` : 'Non exécuté'"
+            :columns="complexAnomaliesColumns"
+            :data="complexAnomalies"
+            :items-per-page="10"
+            exportable
+            export-name="controle_complexe"
         />
 
         <!-- Anomalies de contrôle (une ligne par anomalie) -->
@@ -266,6 +322,7 @@ import {
     validerLigneCdr,
     normaliserDateVersCdr,
 } from "../validators/cdr_encours_engagement.js";
+import { runComplexValidationFromApi } from "../validators/cdr_encours_engagement_ctrComplexe.js";
 import { generateCdr51Xml, downloadCdr51Xml } from "../services/cdr51ExportService.js";
 
 const now = new Date();
@@ -287,12 +344,21 @@ const progressPercent = computed(() =>
 
 // --- Configuration de l'entête CDR (Type 51) & export XML ---
 const xmlConfig = ref({
-    NumDec: "1111",
-    CodPay: "CF",
-    CodDec: "20009",
+    NumDec: "0001",
+    CodPay: "CM",
+    CodDec: "10030",
     TypDec: "51",
-    NatDec: "00",
+    NatDec: "01",
     comment: "",
+});
+
+// Sections incluses dans le XML généré (par défaut : engagements + encours + ajustements)
+const includeOptions = ref({
+    engagements: true,
+    encours: true,
+    encoursAjust: true,
+    garanties: false,
+    compteDebiteur: false,
 });
 
 // Date d'arrêté : dernier jour du mois/année sélectionné (JJMMAAAA)
@@ -314,25 +380,97 @@ const expectedFilename = computed(() => {
 });
 
 const totalLignes = computed(
-    () => zones.encours.data.length + zones.encoursAjust.data.length,
+    () =>
+        zones.engagements.data.length +
+        zones.encours.data.length +
+        zones.encoursAjust.data.length,
 );
 
 const exportXml = () => {
+    const opts = includeOptions.value;
     const result = generateCdr51Xml({
-        engagements: zones.engagements.data,
-        encours: zones.encours.data,
-        encoursAjust: zones.encoursAjust.data,
+        engagements: opts.engagements ? zones.engagements.data : [],
+        encours: opts.encours ? zones.encours.data : [],
+        encoursAjust: opts.encoursAjust ? zones.encoursAjust.data : [],
         xmlConfig: xmlConfig.value,
         selectedDate: selectedDate.value,
+        includeGaranties: opts.garanties,
+        includeCompteDebiteur: opts.compteDebiteur,
     });
     downloadCdr51Xml(result.xml, result.filename);
 };
 
 const zones = reactive({
-    engagements: { data: [], loading: false, error: null },
-    encours: { data: [], loading: false, error: null },
-    encoursAjust: { data: [], loading: false, error: null },
+    engagements: { data: [], raw: [], loading: false, error: null },
+    encours: { data: [], raw: [], loading: false, error: null },
+    encoursAjust: { data: [], raw: [], loading: false, error: null },
 });
+
+// --- Corrections manuelles (édition en place) persistées en localStorage ---
+const CORRECTIONS_KEY = "cdr51_corrections_v1";
+const corrections = reactive({ engagements: {}, encours: {}, encoursAjust: {} });
+
+const loadCorrections = () => {
+    try {
+        const stored = localStorage.getItem(CORRECTIONS_KEY);
+        if (stored) {
+            const parsed = JSON.parse(stored);
+            (["engagements", "encours", "encoursAjust"]).forEach((z) => {
+                corrections[z] = parsed[z] || {};
+            });
+        }
+    } catch (e) {
+        /* ignore */
+    }
+};
+const saveCorrections = () => {
+    try {
+        localStorage.setItem(CORRECTIONS_KEY, JSON.stringify(corrections));
+    } catch (e) {
+        /* ignore */
+    }
+};
+const applyCorrections = (raw, zone) => {
+    const map = corrections[zone] || {};
+    return raw.map((row, i) => {
+        const c = map[i];
+        const merged = c ? { ...row, ...c } : { ...row };
+        merged.__idx = i;
+        return merged;
+    });
+};
+// Données effectives (brutes + corrections appliquées + index stable) pour l'affichage
+const effectiveData = (zone) => applyCorrections(zones[zone].raw, zone);
+
+const onCellEdit = (zone, { idx, colKey, value }) => {
+    if (idx === undefined || idx === null) return;
+    // Mise à jour immédiate des données utilisées pour l'export et les contrôles
+    if (zones[zone].data[idx]) zones[zone].data[idx][colKey] = value;
+    if (zones[zone].raw[idx]) zones[zone].raw[idx][colKey] = value;
+    corrections[zone][idx] = corrections[zone][idx] || {};
+    corrections[zone][idx][colKey] = value;
+    saveCorrections();
+};
+const clearCorrections = () => {
+    (["engagements", "encours", "encoursAjust"]).forEach((z) => {
+        corrections[z] = {};
+        zones[z].raw = zones[z].raw.map((r) => ({ ...r }));
+        zones[z].data = applyCorrections(zones[z].raw, z);
+    });
+    try {
+        localStorage.removeItem(CORRECTIONS_KEY);
+    } catch (e) {
+        /* ignore */
+    }
+};
+const totalCorrections = computed(() => {
+    let n = 0;
+    (["engagements", "encours", "encoursAjust"]).forEach((z) => {
+        n += Object.keys(corrections[z] || {}).length;
+    });
+    return n;
+});
+loadCorrections();
 
 const toBackendDate = (yyyymm) => {
     if (!yyyymm) return "";
@@ -365,10 +503,13 @@ const fetchAll = async () => {
         zones[c.key].loading = true;
         try {
             const res = await axios.get(c.url);
-            zones[c.key].data = normalize(res.data);
+            const raw = normalize(res.data);
+            zones[c.key].raw = raw.map((r) => ({ ...r }));
+            zones[c.key].data = applyCorrections(raw, c.key);
             zones[c.key].error = null;
         } catch (e) {
             zones[c.key].data = [];
+            zones[c.key].raw = [];
             zones[c.key].error = "Erreur lors du chargement des données.";
         } finally {
             zones[c.key].loading = false;
@@ -481,6 +622,8 @@ const rowToControlLine = (row, type) => {
                 TypEch: get("TYECH"),
                 TypAmo: get("TYAMO"),
                 TotInt: get("TOTINT"),
+                fraDos: get("FRADOS"),
+                fraAnnexe: get("FRAANNEXE"),
                 DatEve: getD("DATEVE"),
             },
         };
@@ -490,6 +633,8 @@ const rowToControlLine = (row, type) => {
             RefContCmpt: get("REFCONTCMPT"),
             DatEch: getD("DVA"),
             DatPai: getD("DATPAI"),
+            MntPay: get("MNTPAY"),
+            MntAgi: get("MNTAGI"),
             MntTotUtil: get("MNTTOTUTIL"),
             MntCrd: get("MNTCRD"),
             nbrEchPay: get("NBRECHPAY"),
@@ -518,6 +663,43 @@ const anomaliesColumns = [
     { key: "message", label: "Message" },
     { key: "value", label: "Valeur actuelle" },
 ];
+
+// --- Contrôle complexe (Encours vs Engagements initiaux) ---
+const complexLoading = ref(false);
+const complexExecuted = ref(false);
+const complexAnomalies = ref([]);
+
+const complexAnomaliesColumns = [
+    { key: "ligne", label: "Ligne" },
+    { key: "client", label: "N° Client" },
+    { key: "contrat", label: "Réf. Contrat" },
+    { key: "type", label: "Type" },
+    { key: "field", label: "Champ" },
+    { key: "code", label: "Code" },
+    { key: "message", label: "Message" },
+    { key: "value", label: "Valeur actuelle" },
+];
+
+const runControleComplexe = async () => {
+    if (!zones.encours.data.length) {
+        globalError.value =
+            "Veuillez d'abord charger les encours (Lancer le reporting).";
+        return;
+    }
+    complexLoading.value = true;
+    complexExecuted.value = true;
+    globalError.value = null;
+    try {
+        complexAnomalies.value = await runComplexValidationFromApi(
+            zones.encours.data,
+        );
+    } catch (e) {
+        complexAnomalies.value = [];
+        globalError.value = `Contrôle complexe impossible : ${e.message}`;
+    } finally {
+        complexLoading.value = false;
+    }
+};
 
 const anomalies = computed(() => {
     const rows = [];

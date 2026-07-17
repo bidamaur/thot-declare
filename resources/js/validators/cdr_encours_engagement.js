@@ -143,6 +143,39 @@ function validerTauxFormat(val) {
     return /^\d+(\.\d{1,2})?$/.test(val.toString());
 }
 
+// Extrait la valeur brute d'un montant depuis un champ (gère les objets XML
+// type { "#text": "0" } produits par certains parseurs, ainsi que les chaînes
+// contenant des espaces). Renvoie la chaîne/valeur nettoyée ou "" si absente.
+function extraireValeurMontant(val) {
+    if (val === null || val === undefined) return "";
+    if (typeof val === "object") {
+        if (Array.isArray(val)) return extraireValeurMontant(val[0]);
+        if ("#text" in val) return val["#text"];
+        if ("$" in val) return val["$"];
+        return "";
+    }
+    return String(val).trim();
+}
+
+// Contrôle : un montant doit être numérique et >= 0 (supérieur ou égal à zéro)
+// LORSQU'IL est renseigné. Une valeur absente (vide/non fournie) est ignorée :
+// son caractère obligatoire est contrôlé par ailleurs.
+// Renvoie true si valide ou absent, false si fourni ET (< 0 ou non numérique).
+function montantValide(val) {
+    const raw = extraireValeurMontant(val);
+    if (raw === "") return true; // non renseigné : on ne lève pas d'erreur ici
+    const num = Number(raw);
+    if (isNaN(num)) return false;
+    return num >= 0;
+}
+
+// Ajoute une erreur de montant négatif/invalide si la valeur fournie n'est pas >= 0.
+function controlerMontant(val, code, msg, field, addErr) {
+    if (!montantValide(val)) {
+        addErr(code, msg, field, val);
+    }
+}
+
 /**
  * Fonction Principale : Validation d'une ligne complète de déclaration <Ligne>
  * @param {Object} ligne - L'objet JSON représentant la ligne parsée du XML/Excel
@@ -268,6 +301,49 @@ export function validerLigneCdr(ligne, contexte = {}) {
                 "MntEng",
                 eng.MntEng,
             ); // [cite: 66, 68]
+        // Contrôle : tous les montants >= 0
+        controlerMontant(
+            eng.MntEng,
+            "ENG_MNT_010",
+            "MntEng doit être supérieur ou égal à zéro.",
+            "MntEng",
+            addErr,
+        );
+        controlerMontant(
+            eng.MntCrCedee,
+            "ENG_MNT_011",
+            "MntCrCedee doit être supérieur ou égal à zéro.",
+            "MntCrCedee",
+            addErr,
+        );
+        controlerMontant(
+            eng.MntEpargne,
+            "ENG_MNT_012",
+            "MntEpargne doit être supérieur ou égal à zéro.",
+            "MntEpargne",
+            addErr,
+        );
+        controlerMontant(
+            eng.MntEch,
+            "ENG_MNT_013",
+            "MntEch doit être supérieur ou égal à zéro.",
+            "MntEch",
+            addErr,
+        );
+        controlerMontant(
+            eng.TotInt,
+            "ENG_MNT_014",
+            "TotInt doit être supérieur ou égal à zéro.",
+            "TotInt",
+            addErr,
+        );
+        controlerMontant(
+            eng.Sprd,
+            "ENG_MNT_015",
+            "Spread (Sprd) doit être supérieur ou égal à zéro.",
+            "Sprd",
+            addErr,
+        );
         if (
             eng.NatEng === "Affacturage" &&
             (!eng.MntCrCedee || Number(eng.MntCrCedee) <= 0)
@@ -459,6 +535,29 @@ export function validerLigneCdr(ligne, contexte = {}) {
                 "Duree",
                 eng.Duree,
             ); // [cite: 93]
+        // Contrôle : Duree >= 0
+        controlerMontant(
+            eng.Duree,
+            "ENG_MNT_032",
+            "Duree doit être supérieur ou égal à zéro.",
+            "Duree",
+            addErr,
+        );
+        // Contrôle : frais >= 0
+        controlerMontant(
+            eng.fraDos,
+            "ENG_MNT_033",
+            "fraDos doit être supérieur ou égal à zéro.",
+            "fraDos",
+            addErr,
+        );
+        controlerMontant(
+            eng.fraAnnexe,
+            "ENG_MNT_034",
+            "fraAnnexe doit être supérieur ou égal à zéro.",
+            "fraAnnexe",
+            addErr,
+        );
         if (!REFERENTIELS.MaturitesCobac.includes(eng.Maturite))
             addErr(
                 "ENG_SYN_033",
@@ -534,6 +633,20 @@ export function validerLigneCdr(ligne, contexte = {}) {
                         `GarantieAffectee[${idx}].MntGar`,
                         g.MntGar,
                     ); // [cite: 126, 127]
+                if (isNaN(Number(g.MntGar)) || Number(g.MntGar) < 0)
+                    addErr(
+                        "GAR_MNT_003",
+                        `MntGar doit être supérieur ou égal à zéro.`,
+                        `GarantieAffectee[${idx}].MntGar`,
+                        g.MntGar,
+                    ); // [cite: 126]
+                if (isNaN(Number(g.MntAffGar)) || Number(g.MntAffGar) < 0)
+                    addErr(
+                        "GAR_MNT_004",
+                        `MntAffGar doit être supérieur ou égal à zéro.`,
+                        `GarantieAffectee[${idx}].MntAffGar`,
+                        g.MntAffGar,
+                    ); // [cite: 127]
                 if (!REFERENTIELS.StatutsGarantie.includes(g.StatutGar))
                     addErr(
                         "GAR_SYN_004",
@@ -586,6 +699,85 @@ export function validerLigneCdr(ligne, contexte = {}) {
                 "MntTotUtil",
                 enc.MntTotUtil,
             ); // [cite: 145]
+        // Contrôle : tous les montants de l'Encours >= 0
+        controlerMontant(
+            enc.MntTotUtil,
+            "ENC_MNT_003",
+            "MntTotUtil doit être supérieur ou égal à zéro.",
+            "MntTotUtil",
+            addErr,
+        );
+        controlerMontant(
+            enc.MntCrd,
+            "ENC_MNT_005",
+            "MntCrd doit être supérieur ou égal à zéro.",
+            "MntCrd",
+            addErr,
+        );
+        controlerMontant(
+            enc.MntCreRat,
+            "ENC_MNT_009",
+            "MntCreRat doit être supérieur ou égal à zéro.",
+            "MntCreRat",
+            addErr,
+        );
+        controlerMontant(
+            enc.MntAgi,
+            "ENC_MNT_010",
+            "MntAgi doit être supérieur ou égal à zéro.",
+            "MntAgi",
+            addErr,
+        );
+        controlerMontant(
+            enc.MntCreSouf,
+            "ENC_MNT_011",
+            "MntCreSouf doit être supérieur ou égal à zéro.",
+            "MntCreSouf",
+            addErr,
+        );
+        // Contrôle : MntCrd, MntTotUtil et compteurs >= 0
+        controlerMontant(
+            enc.MntCrd,
+            "ENC_MNT_005",
+            "MntCrd doit être supérieur ou égal à zéro.",
+            "MntCrd",
+            addErr,
+        );
+        controlerMontant(
+            enc.MntTotUtil,
+            "ENC_MNT_003",
+            "MntTotUtil doit être supérieur ou égal à zéro.",
+            "MntTotUtil",
+            addErr,
+        );
+        controlerMontant(
+            enc.nbrEchPay,
+            "ENC_MNT_006",
+            "nbrEchPay doit être supérieur ou égal à zéro.",
+            "nbrEchPay",
+            addErr,
+        );
+        controlerMontant(
+            enc.nbrEchImp,
+            "ENC_MNT_007",
+            "nbrEchImp doit être supérieur ou égal à zéro.",
+            "nbrEchImp",
+            addErr,
+        );
+        controlerMontant(
+            enc.nbrEchRes,
+            "ENC_MNT_008",
+            "nbrEchRes doit être supérieur ou égal à zéro.",
+            "nbrEchRes",
+            addErr,
+        );
+        controlerMontant(
+            enc.nbrJrsImp,
+            "ENC_MNT_011b",
+            "nbrJrsImp doit être supérieur ou égal à zéro.",
+            "nbrJrsImp",
+            addErr,
+        );
 
         // -- Règles Métier spécifiques basées sur le Type d'engagement (TypEng == '01') --
         if (typEng === "01") {
@@ -694,6 +886,14 @@ export function validerLigneCdr(ligne, contexte = {}) {
                 "SolDeb",
                 cpt.SolDeb,
             ); // [cite: 166]
+        // Contrôle : SolDeb >= 0
+        controlerMontant(
+            cpt.SolDeb,
+            "CPT_MNT_003",
+            "SolDeb doit être supérieur ou égal à zéro.",
+            "SolDeb",
+            addErr,
+        );
         if (
             cpt.NbrJrsDebNonAut === undefined ||
             isNaN(Number(cpt.NbrJrsDebNonAut))

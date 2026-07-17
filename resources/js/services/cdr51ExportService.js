@@ -29,12 +29,18 @@ const getVal = (row, field) => {
     return s;
 };
 
+// Récupère une valeur numérique : renvoie "0" si la valeur est vide, null ou non renseignée.
+const getMontant = (row, field) => {
+    const s = getVal(row, field);
+    return s === "" ? "0" : s;
+};
+
 // Construit les attributs dans l'ordre strict imposé par le kit CDR.
-// pairs = [ [xmlAttr, jsonField, isDate?], ... ]
+// pairs = [ [xmlAttr, jsonField, isDate?, isMontant?], ... ]
 const buildAttrsInOrder = (pairs, row) =>
     pairs
-        .map(([xml, field, isDate]) => {
-            let v = getVal(row, field);
+        .map(([xml, field, isDate, isMontant]) => {
+            let v = isMontant ? getMontant(row, field) : getVal(row, field);
             if (isDate) v = normalizeDate(v);
             return attr(xml, v);
         })
@@ -64,19 +70,19 @@ const ENGAGEMENT_FIELDS = [
     ["TypEng", "TYPENG"],
     ["NatEng", "NATENG"],
     ["CodDev", "CODDEV"],
-    ["MntEng", "MNTENG"],
-    ["MntCrCedee", "MNTCRCEDEE"],
-    ["MntEpargne", "MNTEPARGNE"],
+    ["MntEng", "MNTENG", false, true],
+    ["MntCrCedee", "MNTCRCEDEE", false, true],
+    ["MntEpargne", "MNTEPARGNE", false, true],
     ["ModRembEpargne", "MODREMBEPARGNE"],
-    ["TauxRenum", "TAUXRENUM"],
+    ["TauxRenum", "TAUXRENUM", false, true],
     ["DatMep", "DATMEP", true],
-    ["TxInt", "TXINT"],
-    ["TxComm", "TXCOMM"],
-    ["TxBonifie", "TXBONIFIE"],
-    ["TxEffGlob", "TXEFFGLOB"],
+    ["TxInt", "TXINT", false, true],
+    ["TxComm", "TXCOMM", false, true],
+    ["TxBonifie", "TXBONIFIE", false, true],
+    ["TxEffGlob", "TXEFFGLOB", false, true],
     ["TypTxInt", "TYPTXINT"],
     ["IndRef", "INDREF"],
-    ["Sprd", "SPRD"],
+    ["Sprd", "SPRD", false, true],
     ["DatDeb", "DATDEB", true],
     ["DatFin", "DATFIN", true],
     ["Periodicite", "PERIODICITE"],
@@ -87,13 +93,13 @@ const ENGAGEMENT_FIELDS = [
     ["NbrEch", "NBRECH"],
     ["MoyRem", "MOYREM"],
     ["TypEch", "TYECH"],
-    ["MntEch", "MNTECH"],
+    ["MntEch", "MNTECH", false, true],
     ["TypAmo", "TYAMO"],
-    ["TotInt", "TOTINT"],
-    ["fraDos", "FRADOS"],
-    ["fraAnnexe", "FRANNEXE"],
-    ["MntPrm", "MNTPRM"],
-    ["MntTax", "MNTTAX"],
+    ["TotInt", "TOTINT", false, true],
+    ["fraDos", "FRADOS", false, true],
+    ["fraAnnexe", "FRANNEXE", false, true],
+    ["MntPrm", "MNTPRM", false, true],
+    ["MntTax", "MNTTAX", false, true],
     ["DatEve", "DATEVE", true],
 ];
 
@@ -102,34 +108,23 @@ const ENCOURS_FIELDS = [
     ["RefContCmpt", "REFCONTCMPT"],
     ["DatPai", "DATPAI", true],
     ["DatEch", "DATECH", true],
-    ["MntPay", "MNTPAY"],
-    ["MntAgi", "MNTAGI"],
-    ["MntCrd", "MNTCRD"],
+    ["MntPay", "MNTPAY", false, true],
+    ["MntAgi", "MNTAGI", false, true],
+    ["MntCrd", "MNTCRD", false, true],
     ["estSensible", "ESTSENSIBLE"],
-    ["MntTotUtil", "MNTTOTUTIL"],
+    ["MntTotUtil", "MNTTOTUTIL", false, true],
     ["nbrEchPay", "NBRECHPAY"],
     ["nbrEchImp", "NBRECHIMP"],
     ["nbrEchRes", "NBRECHRES"],
-    ["MntCreSouf", "MNTCRESOUF"],
-    ["MntCapSouf", "MNTCAPSOUF"],
-    ["MntIntSouf", "MNTINTSOUF"],
-    ["MntTaxSouf", "MNTTAXSOUF"],
-    ["MntAgiosSouf", "MNTAGIOSSOUF"],
-    ["MntCreRat", "MNTERAT"],
-    ["MntPro", "MNTPRO"],
+    ["MntCreSouf", "MNTCRESOUF", false, true],
+    ["MntCapSouf", "MNTCAPSOUF", false, true],
+    ["MntIntSouf", "MNTINTSOUF", false, true],
+    ["MntTaxSouf", "MNTTAXSOUF", false, true],
+    ["MntAgiosSouf", "MNTAGIOSSOUF", false, true],
+    ["MntCreRat", "MNTERAT", false, true],
+    ["MntPro", "MNTPRO", false, true],
     ["nbrJrsImp", "NBRJRSIMP"],
     ["ClaDeprec", "CLADEPREC"],
-];
-
-// --- ORDRE STRICT DES ATTRIBUTS (balise <CompteDebiteur>) ---
-const CPTDEB_FIELDS = [
-    ["RefContCmpt", "RefContCmpt"],
-    ["CodAge", "CodAge"],
-    ["SolDeb", "SolDeb"],
-    ["NbrJrsDebNonAut", "NbrJrsDebNonAut"],
-    ["MntAgi", "MntAgi"],
-    ["MntProv", "MntProv"],
-    ["ClassDeprec", "ClassDeprec"],
 ];
 
 // --- ORDRE STRICT DES ATTRIBUTS (balise <GarantieAffectee>) ---
@@ -163,43 +158,6 @@ const computeDatDec = () => {
     return `${String(t.getDate()).padStart(2, "0")}${String(t.getMonth() + 1).padStart(2, "0")}${t.getFullYear()}`;
 };
 
-// Regroupe les encours par compte (RefContCmpt) pour générer un <CompteDebiteur> par contrat
-const buildComptesDebiteurs = (encoursRows, engagementsByRef) => {
-    const map = new Map();
-    encoursRows.forEach((row) => {
-        const ref = getVal(row, "REFCONTCMPT");
-        if (!ref) return;
-        if (!map.has(ref)) {
-            map.set(ref, {
-                RefContCmpt: ref,
-                CodAge: "",
-                SolDeb: "",
-                NbrJrsDebNonAut: "",
-                MntAgi: "",
-                MntProv: "",
-                ClassDeprec: getVal(row, "CLADEPREC"),
-                IdInt: getVal(row, "CLI"),
-                Role: "01",
-            });
-        }
-        const entry = map.get(ref);
-        if (!entry.ClassDeprec && getVal(row, "CLADEPREC")) {
-            entry.ClassDeprec = getVal(row, "CLADEPREC");
-        }
-    });
-
-    // Récupère le code agence et l'identifiant depuis l'engagement correspondant
-    map.forEach((entry) => {
-        const eng = engagementsByRef.get(entry.RefContCmpt);
-        if (eng) {
-            if (!entry.CodAge) entry.CodAge = getVal(eng, "CODAGE");
-            if (!entry.IdInt) entry.IdInt = getVal(eng, "IDINT");
-        }
-    });
-
-    return Array.from(map.values());
-};
-
 // NbrDec = nombre de balises ouvrantes <Encours + nombre de balises ouvrantes <Engagement
 const computeNbrDec = (engagementCount, encoursCount) =>
     String(engagementCount + encoursCount).padStart(2, "0");
@@ -210,6 +168,8 @@ export function generateCdr51Xml({
     encoursAjust = [],
     xmlConfig = {},
     selectedDate = "",
+    includeGaranties = false,
+    includeCompteDebiteur = false,
 }) {
     const numDec = String(xmlConfig.NumDec || "").trim() || "0001";
     const codPay = String(xmlConfig.CodPay || "CF").trim() || "CF";
@@ -225,28 +185,17 @@ export function generateCdr51Xml({
 
     const nbrDec = computeNbrDec(engagements.length, mergedEncours.length);
 
-    // Index des engagements par RefContCmpt (pour le CompteDebiteur)
-    const engagementsByRef = new Map();
-    engagements.forEach((e) => {
-        const ref = getVal(e, "REFCONTCMPT");
-        if (ref && !engagementsByRef.has(ref)) engagementsByRef.set(ref, e);
-    });
-
     // --- Bloc <Engagement> : tabulation après chaque balise fermante </Engagement> ---
     const engagementLines = engagements.map((e) => {
         const attrs = buildAttrsInOrder(ENGAGEMENT_FIELDS, e);
-        const consolidation = selfClosing(
-            "Consolidation",
-            attr("RefInt", getVal(e, "REFINT")),
-        );
+        const consolidation = selfClosing("Consolidation", attr("RefInt", ""));
         const titulaire = selfClosing(
             "TitulaireEngagement",
             attr("IdInt", getVal(e, "IDINT")),
         );
-        const garantie = selfClosing(
-            "GarantieAffectee",
-            buildAttrsInOrder(GARANTIE_FIELDS, {}),
-        );
+        const garantie = includeGaranties
+            ? selfClosing("GarantieAffectee", buildAttrsInOrder(GARANTIE_FIELDS, {}))
+            : "";
         return `<Engagement${attrs}> ${consolidation} ${titulaire}${garantie}</Engagement>\t`;
     });
 
@@ -256,20 +205,15 @@ export function generateCdr51Xml({
         return `<Encours${attrs}/>\t`;
     });
 
-    // --- Bloc <CompteDebiteur> ---
-    const comptes = buildComptesDebiteurs(mergedEncours, engagementsByRef);
-    const compteLines = comptes.map((c) => {
-        const attrs = buildAttrsInOrder(CPTDEB_FIELDS, c);
-        const titulaire = selfClosing(
-            "TitulaireCompte",
-            attr("IdInt", c.IdInt) + attr("Role", c.Role),
-        );
-        return `<CompteDebiteur${attrs}>${titulaire}</CompteDebiteur>\t`;
-    });
+    // --- Bloc <CompteDebiteur> : optionnel (case à cocher) ---
+    const compteDebiteurLine = includeCompteDebiteur
+        ? `<CompteDebiteur RefContCmpt="" CodAge="" SolDeb="" NbrJrsDebNonAut="" MntAgi="" MntProv="" ClassDeprec="" >` +
+          `<TitulaireCompte IdInt="" Role="" /></CompteDebiteur>\t`
+        : "";
 
-    const bodyParts = [engagementLines, encoursLines, compteLines]
-        .filter((arr) => arr.length)
-        .map((arr) => arr.join("\n"));
+    const bodyParts = [engagementLines, encoursLines, [compteDebiteurLine]]
+        .filter((arr) => (Array.isArray(arr) ? arr.join("").trim() : arr))
+        .map((arr) => (Array.isArray(arr) ? arr.join("\n") : arr));
     const body = bodyParts.join("\n");
 
     const declAttrs = buildDeclarationAttrs({

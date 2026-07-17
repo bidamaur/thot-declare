@@ -107,7 +107,26 @@
                             :key="col.key"
                             class="table-cell px-2 py-1"
                         >
-                            <span v-if="col.format === 'date'">{{
+                            <input
+                                v-if="editable && !col.readonly"
+                                class="w-full text-xs border border-amber-300 rounded px-1 py-0.5 bg-amber-50 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                                :value="row[col.key]"
+                                @input="
+                                    emitEdit(
+                                        row.__idx,
+                                        col.key,
+                                        $event.target.value,
+                                    )
+                                "
+                                @blur="
+                                    emitEdit(
+                                        row.__idx,
+                                        col.key,
+                                        $event.target.value,
+                                    )
+                                "
+                            />
+                            <span v-else-if="col.format === 'date'">{{
                                 formatDate(row[col.key])
                             }}</span>
                             <span
@@ -189,7 +208,15 @@ const props = defineProps({
     itemsPerPage: { type: Number, default: 5 },
     exportable: { type: Boolean, default: false },
     exportName: { type: String, default: "" },
+    editable: { type: Boolean, default: false },
 });
+
+const emit = defineEmits(["cell-edit"]);
+
+const emitEdit = (idx, colKey, value) => {
+    if (idx === undefined || idx === null) return;
+    emit("cell-edit", { idx, colKey, value });
+};
 
 const exportToExcel = () => {
     if (!props.data.length) return;

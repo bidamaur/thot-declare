@@ -135,12 +135,12 @@ between cdr_date('01$DateMonthYear') and add_months(cdr_date('01$DateMonthYear')
          d.mon MntEng ,
          '0' MntCrCedee,                      --l'import export ne nous concerne
          '0' MntEpargne,                     --on ne fait pas
-         '2' ModRembEpargne,                 -- on ne fait pas
-         '0' TauxRenum,                      -- taux de remboursement de l'epargne
-         TO_CHAR(d.dmep,'dd/mm/yyyy') DatMep,-- mise en place
-         REPLACE(d.tau_int,',','.') TxInt,
-         '' TxComm,-- on ne fait pas
-         '2' TxBonifie,
+        '2' \"MODREMBEPARGNE\",                 -- on ne fait pas
+        '0' \"TAUXRENUM\",                      -- taux de remboursement de l'epargne
+        TO_CHAR(d.dmep,'dd/mm/yyyy') DatMep,-- mise en place
+        REPLACE(d.tau_int,',','.') TxInt,
+        '' TxComm,-- on ne fait pas
+        '2' \"TXBONIFIE\",
         ( 
          CASE
          WHEN d.tau_int<8 or  (d.tau_int >d.teg) THEN REPLACE(CEIL(d.teg),',','.') 
@@ -185,16 +185,16 @@ between cdr_date('01$DateMonthYear') and add_months(cdr_date('01$DateMonthYear')
          END ) Maturite,
          TO_CHAR(d.dpec,'ddmmyyyy') DatPreEchCap,
          d.tech NbrEch,                         
-         '03' MoyRem,
-         '01' TypEch,
-         ( SELECT MAX(tot_ech) FROM C##DBPROD.bkechprt WHERE EXTRACT(DAY FROM dva)=EXTRACT(DAY FROM d.dpec) AND eve=d.eve and amo_cal!=0
-         )MntEch,  
-         '03' TypAmo,
+          '03' MoyRem,
+          '01' \"TYECH\",
+          ( SELECT MAX(tot_ech) FROM C##DBPROD.bkechprt WHERE EXTRACT(DAY FROM dva)=EXTRACT(DAY FROM d.dpec) AND eve=d.eve and amo_cal!=0
+          )MntEch,  
+          '03' \"TYAMO\",
          (SELECT SUM(inte)
          FROM C##DBPROD.bkechprt
          WHERE eve=d.eve
          ) TotInt,
-         ROUND((SELECT sum(mon_fra) from C##DBPROD.bkdosprt where eve=d.eve) ) fraDos,
+          ROUND((SELECT sum(mon_fra) from C##DBPROD.bkdosprt where eve=d.eve) ) \"FRADOS\",
     (
     CASE 
          WHEN ROUND((SELECT (SUM(d.mon_co1)+SUM(d.mon_co2)) from C##DBPROD.bkdosprt where eve=d.eve))=0 THEN  ROUND(
@@ -203,7 +203,7 @@ between cdr_date('01$DateMonthYear') and add_months(cdr_date('01$DateMonthYear')
          ELSE
         ROUND((SELECT (SUM(d.mon_co1)+SUM(d.mon_co2)) from C##DBPROD.bkdosprt where eve=d.eve))
     END
-    )fraAnnexe,
+     )\"FRANNEXE\",
          '0' MntPrm, 
            '' MntTax,                 
          TO_CHAR(d.dmep,'ddmmyyyy') DatEve,
@@ -245,6 +245,42 @@ between cdr_date('01$DateMonthYear') and add_months(cdr_date('01$DateMonthYear')
     oci_close($connection);
     
     // Retourner les résultats
+    return response()->json($results);
+  }
+
+  /**
+   * Contrôle des engagements : liste des dossiers de prêt (bkdosprt) liés aux clients (bkcli).
+   */
+  public function ctrEngagements()
+  {
+    $connection = $this->dbConnection->getConnection();
+
+    $query = "SELECT trim(c.cli) as cli,
+        d.eve,
+        d.ave,
+        d.mon as MNTENG,
+        d.dmep  ,
+        d.dpec as DATDEB,
+        d.ddec as DATFIN,
+        d.tech as duree,
+        d.ctr
+      FROM C##DBPROD.bkcli c, C##DBPROD.bkdosprt d
+      WHERE c.cli = d.cli";
+
+    $stid = oci_parse($connection, $query);
+    oci_execute($stid);
+
+    $results = [];
+
+    while ($row = oci_fetch_assoc($stid)) {
+      $results[] = array_change_key_case($row, CASE_UPPER);
+    }
+
+    $results = mb_convert_encoding($results, 'UTF-8', 'ISO-8859-1');
+
+    oci_free_statement($stid);
+    oci_close($connection);
+
     return response()->json($results);
   }
 

@@ -96,6 +96,7 @@ public function GetEncours($MyDateArr)
             
             $myData = $notFound;
     $MyRequest = "SELECT DISTINCT d.eve,
+    d.ave,
         e.dva,
         d.cli, 
         (SELECT cdr_parce_ncp(p.ncp)
@@ -130,8 +131,8 @@ public function GetEncours($MyDateArr)
         AND eve                        = d.eve
         AND TO_DATE(dco, 'DD/MM/YYYY') < TO_DATE('$DateArr', 'DD/MM/YYYY')
         )
-        ) AS MntPay,  --montant dernier paiement,
-        '0' MntAgi,   -- pour les découverts
+        ) AS MNTPAY,  --montant dernier paiement,
+        '0' AS MNTAGI,   -- pour les découverts
         (
         CASE
         --verification si c'est une tombee
@@ -172,10 +173,10 @@ public function GetEncours($MyDateArr)
         END
         )
         END
-        ) MntCrd, --Encours
-        '0' estSensible,
+        ) AS MNTCRD, --Encours
+        '0' AS ESTSENSIBLE,
         --d.mdb MntTotUtil,
-        d.mon MntTotUtil,
+        d.mon AS MNTTOTUTIL,
         (
         CASE
         when (select ctr from C##DBPROD.bkechprt where num=e.num+1 and eve=e.eve and
@@ -271,18 +272,18 @@ public function GetEncours($MyDateArr)
             ELSE 1 
             END
         )
-        MntCreSouf ,
+        AS MNTCRESOUF ,
         
         (CASE
         WHEN ($nbjImp*30)!=0 and e.amo_imp=0 THEN e.tot_ech
         ELSE ROUND(e.amo_imp)
         END)
-        MntCapSouf ,
+        AS MNTCAPSOUF ,
         (CASE
         WHEN ($nbjImp*30)!=0 and e.inte=0 THEN (SELECT min(inte) from C##DBPROD.bkechprt where eve=e.eve and ave=(SELECT MAX(ave) FROM C##DBPROD.bkechprt WHERE eve=e.eve))
         WHEN ($nbjImp*30)=0 THEN 0
         ELSE e.inte
-        END) MntIntSouf,
+        END        ) AS MNTINTSOUF,
         e.inte interet,
         e.amo_imp capital,
         e.tot_ech,
@@ -295,12 +296,12 @@ public function GetEncours($MyDateArr)
         (CASE
         WHEN e.amo_imp=0 THEN 0
         ELSE e.tin
-        END) MntTaxSouf ,
+        END) AS MNTTAXSOUF ,
         -------------- fin
-        '0' MntAgiosSouf,
+        '0' AS MNTAGIOSSOUF,
         e.inte 
-        MntCreRat,
-        '' MntPro,  
+        \"MNTERAT\",
+        '' AS MNTPRO,  
         -- AJUSTEMENT NON DECLASSEES
         (CASE
         WHEN ($nbjImp*30)>89 and NVL($doutx,0)<1 THEN EXTRACT(DAY FROM e.dva)*2
@@ -446,6 +447,7 @@ public function GetEncoursAjust($MyDateArr)
         )
         SELECT DISTINCT 
             d.eve,
+            d.ave,
             d.cli,
             (15 || '/$DateArrMonth' || '/$DateArrYear') AS DVA,
             (SELECT cdr_parce_ncp(p.ncp)
@@ -490,7 +492,7 @@ public function GetEncoursAjust($MyDateArr)
             '0' AS MNTINTSOUF,
             0 AS MNTTAXSOUF,
             0 AS MNTAGIOSSOUF,
-            0 AS MNTCRERAT,
+            0 AS MNTERAT,
             0 AS MNTPRO,
             0 AS NBRJRSIMP,
             d.mon AS MNTTOTUTIL,
