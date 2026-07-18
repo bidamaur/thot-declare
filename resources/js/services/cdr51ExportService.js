@@ -82,7 +82,7 @@ const ENGAGEMENT_FIELDS = [
     ["TxEffGlob", "TXEFFGLOB", false, true],
     ["TypTxInt", "TYPTXINT"],
     ["IndRef", "INDREF"],
-    ["Sprd", "SPRD", false, true],
+    ["Sprd", "SPRD"],
     ["DatDeb", "DATDEB", true],
     ["DatFin", "DATFIN", true],
     ["Periodicite", "PERIODICITE"],

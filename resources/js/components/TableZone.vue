@@ -334,7 +334,8 @@ watch(
         currentPage.value = 1;
         sortKey.value = "";
         sortOrder.value = "asc";
-        searchQuery.value = "";
+        // La recherche (searchQuery) est conservée intentionally : elle ne doit
+        // être effacée que par l'utilisateur lui-même (via l'input de recherche).
     },
 );
 </script>
