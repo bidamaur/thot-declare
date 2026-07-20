@@ -154,7 +154,7 @@ public function GetEncours($MyDateArr)
         --- encours 0 et debut d'echeance
         WHEN e.res=0 and e.num<2  and e.ctr not in (3,8) THEN d.mon
         -- SI on est a la fin et il ya les impayes
-        WHEN e.res=0 and $nbjImp>0 THEN ROUND(e.amo_imp)
+        WHEN e.res=0 and $nbjImp>0 THEN ROUND(e.amo_imp+e.tini+e.pen)
         -- WHEN e.res=0 and e.num=0  THEN d.mon
         WHEN e.res=0 and e.ctr!=3 and (SELECT SUM(res) from C##DBPROD.bkechprt 
         where eve=d.eve and CDR_DATE(dva)<CDR_DATE('$DateArr') 
@@ -326,8 +326,8 @@ public function GetEncours($MyDateArr)
         C##DBPROD.bkechprt e,
         C##DBPROD.bkcom co
         WHERE e.eve=d.eve
-        AND d.eta  ='VA'
-        and e.ctr not in(3)
+        AND d.eta  in ('VA','DE')
+       -- and e.ctr not in(3)
         AND d.cli=co.cli
         AND (e.dva BETWEEN CDR_DATE('01$DateMonthYear') AND CDR_DATE('01-'||TO_CHAR(ADD_MONTHS(CDR_DATE('$DateArr'), 1), 'MM-YYYY')))
         AND CDR_DATE(e.dva)<=CDR_DATE('$DateArr')

@@ -254,7 +254,10 @@
             :error="zones.engagements.error"
             :items-per-page="10"
             :editable="true"
+            :selectable="true"
             @cell-edit="(p) => onCellEdit('engagements', p)"
+            @selection-change="(ids) => onSelectionChange('engagements', ids)"
+            @selection-clear="clearZoneSelection('engagements')"
             exportable
             export-name="engagements"
         />
@@ -269,7 +272,10 @@
             :error="zones.encours.error"
             :items-per-page="10"
             :editable="true"
+            :selectable="true"
             @cell-edit="(p) => onCellEdit('encours', p)"
+            @selection-change="(ids) => onSelectionChange('encours', ids)"
+            @selection-clear="clearZoneSelection('encours')"
             exportable
             export-name="encours"
         />
@@ -284,7 +290,10 @@
             :error="zones.encoursAjust.error"
             :items-per-page="10"
             :editable="true"
+            :selectable="true"
             @cell-edit="(p) => onCellEdit('encoursAjust', p)"
+            @selection-change="(ids) => onSelectionChange('encoursAjust', ids)"
+            @selection-clear="clearZoneSelection('encoursAjust')"
             exportable
             export-name="encours_ajustes"
         />
@@ -353,7 +362,7 @@ const xmlConfig = ref({
 });
 
 // Sections incluses dans le XML généré (par défaut : engagements + encours + ajustements)
-const includeOptions = ref({
+const includeOptions = reactive({
     engagements: true,
     encours: true,
     encoursAjust: true,
@@ -387,17 +396,44 @@ const totalLignes = computed(
 );
 
 const exportXml = () => {
-    const opts = includeOptions.value;
+    const opts = includeOptions;
     const result = generateCdr51Xml({
-        engagements: opts.engagements ? zones.engagements.data : [],
-        encours: opts.encours ? zones.encours.data : [],
-        encoursAjust: opts.encoursAjust ? zones.encoursAjust.data : [],
+        engagements: opts.engagements
+            ? filterBySelection("engagements", zones.engagements.data)
+            : [],
+        encours: opts.encours
+            ? filterBySelection("encours", zones.encours.data)
+            : [],
+        encoursAjust: opts.encoursAjust
+            ? filterBySelection("encoursAjust", zones.encoursAjust.data)
+            : [],
         xmlConfig: xmlConfig.value,
         selectedDate: selectedDate.value,
         includeGaranties: opts.garanties,
         includeCompteDebiteur: opts.compteDebiteur,
     });
     downloadCdr51Xml(result.xml, result.filename);
+};
+
+// --- Sélection de lignes (export uniquement sur les lignes cochées) ---
+const selections = reactive({
+    engagements: [],
+    encours: [],
+    encoursAjust: [],
+});
+const onSelectionChange = (zone, ids) => {
+    selections[zone] = ids;
+};
+const clearZoneSelection = (zone) => {
+    selections[zone] = [];
+};
+const filterBySelection = (zone, rows) => {
+    const ids = selections[zone];
+    if (!ids || ids.length === 0) return []; // aucune ligne cochée => rien en sortie
+    const setIds = new Set(ids);
+    return rows.filter(
+        (r) => r && r.__idx !== undefined && setIds.has(r.__idx),
+    );
 };
 
 const zones = reactive({
@@ -559,6 +595,22 @@ const encoursColumns = [
     { key: "NBRECHIMP", label: "Échéances Impayées" },
     { key: "NBRECHRES", label: "Échéances Restantes" },
     { key: "CLADEPREC", label: "Classe Dépréciation" },
+    { key: "MNTPAY", label: "Montant Payé", format: "number" },
+    { key: "MNTAGI", label: "Montant Agios", format: "number" },
+    { key: "ESTSENSIBLE", label: "Est Sensible" },
+    { key: "MNTCRESOUF", label: "Montant Créance Souffrance", format: "number" },
+    { key: "MNTCAPSOUF", label: "Montant Capital Souffrance", format: "number" },
+    { key: "MNTINTSOUF", label: "Montant Intérêt Souffrance", format: "number" },
+    { key: "MNTTAXSOUF", label: "Montant Taxe Souffrance", format: "number" },
+    { key: "MNTAGIOSSOUF", label: "Montant Agios Souffrance", format: "number" },
+    { key: "MNTPRO", label: "Montant Provision", format: "number" },
+    { key: "NBRJRSIMP", label: "Nb Jours Impayés" },
+    { key: "INTERET", label: "Intérêt", format: "number" },
+    { key: "CAPITAL", label: "Capital", format: "number" },
+    { key: "TOT_ECH", label: "Total Échéance", format: "number" },
+    { key: "ECHIMPAYE", label: "Échéance Impayée", format: "number" },
+    { key: "AVE", label: "Ave" },
+    { key: "DATECH", label: "Date Échéance (fmt)", format: "date" },
 ];
 
 const encoursAjustColumns = [
@@ -573,6 +625,19 @@ const encoursAjustColumns = [
     { key: "NBRECHRES", label: "Échéances Restantes" },
     { key: "MNTTOTUTIL", label: "Montant Tot. Utilisé", format: "number" },
     { key: "CLADEPREC", label: "Classe Dépréciation" },
+    { key: "MNTAGI", label: "Montant Agios", format: "number" },
+    { key: "ESTSENSIBLE", label: "Est Sensible" },
+    { key: "MNTCRESOUF", label: "Montant Créance Souffrance", format: "number" },
+    { key: "MNTCAPSOUF", label: "Montant Capital Souffrance", format: "number" },
+    { key: "MNTINTSOUF", label: "Montant Intérêt Souffrance", format: "number" },
+    { key: "MNTTAXSOUF", label: "Montant Taxe Souffrance", format: "number" },
+    { key: "MNTAGIOSSOUF", label: "Montant Agios Souffrance", format: "number" },
+    { key: "MNTERAT", label: "Montant Échéance", format: "number" },
+    { key: "MNTPRO", label: "Montant Provision", format: "number" },
+    { key: "NBRJRSIMP", label: "Nb Jours Impayés" },
+    { key: "DATECH", label: "Date Échéance (fmt)", format: "date" },
+    { key: "TYP", label: "Type" },
+    { key: "DMEP", label: "Date Mise en Place", format: "date" },
 ];
 
 // --- Normalisation des dates JSON vers le format JJMMAAAA attendu par le kit CDR ---
@@ -640,10 +705,20 @@ const rowToControlLine = (row, type) => {
             nbrEchPay: get("NBRECHPAY"),
             nbrEchImp: get("NBRECHIMP"),
             nbrEchRes: get("NBRECHRES"),
-            MntCreRat: get("MNTCRERAT"),
+            MntCreRat: get("MNTERAT"),
             MntCreSouf: get("MNTCRESOUF"),
+            MntCapSouf: get("MNTCAPSOUF"),
+            MntIntSouf: get("MNTINTSOUF"),
+            MntTaxSouf: get("MNTTAXSOUF"),
+            MntAgiosSouf: get("MNTAGIOSSOUF"),
+            MntPro: get("MNTPRO"),
             nbrJrsImp: get("NBRJRSIMP"),
             ClaDeprec: get("CLADEPREC"),
+            EstSensible: get("ESTSENSIBLE"),
+            Interet: get("INTERET"),
+            Capital: get("CAPITAL"),
+            TotEch: get("TOT_ECH"),
+            EchImp: get("ECHIMPAYE"),
         },
     };
 };

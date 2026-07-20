@@ -30,6 +30,14 @@
                     >{{ filteredData.length }} ligne(s)</span
                 >
                 <button
+                    v-if="selectable"
+                    @click="clearSelection"
+                    class="px-2 py-0.5 text-xs bg-slate-100 rounded hover:bg-slate-200"
+                    title="Désélectionner toutes les lignes"
+                >
+                    Désélectionner tout
+                </button>
+                <button
                     v-if="exportable"
                     @click="exportToExcel"
                     class="px-2 py-0.5 text-xs bg-emerald-100 rounded hover:bg-emerald-200"
@@ -67,6 +75,17 @@
                 <thead class="bg-slate-50 border-b border-slate-200">
                     <tr>
                         <th
+                            v-if="selectable"
+                            class="px-2 py-1 text-center font-semibold text-slate-600 w-8"
+                        >
+                            <input
+                                type="checkbox"
+                                :checked="allPageSelected"
+                                @change="toggleAllPage($event.target.checked)"
+                                title="Tout sélectionner (page courante)"
+                            />
+                        </th>
+                        <th
                             class="px-2 py-1 text-left font-semibold text-slate-600 w-8"
                         >
                             #
@@ -99,6 +118,18 @@
                         :key="index"
                         class="table-row"
                     >
+                        <td
+                            v-if="selectable"
+                            class="px-2 py-1 text-center"
+                        >
+                            <input
+                                type="checkbox"
+                                :checked="isSelected(row.__idx)"
+                                @change="
+                                    toggleRow(row.__idx, $event.target.checked)
+                                "
+                            />
+                        </td>
                         <td class="px-2 py-1 text-slate-500">
                             {{ (currentPage - 1) * itemsPerPage + index + 1 }}
                         </td>
@@ -209,14 +240,75 @@ const props = defineProps({
     exportable: { type: Boolean, default: false },
     exportName: { type: String, default: "" },
     editable: { type: Boolean, default: false },
+    selectable: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(["cell-edit"]);
+const emit = defineEmits(["cell-edit", "selection-change", "selection-clear"]);
 
 const emitEdit = (idx, colKey, value) => {
     if (idx === undefined || idx === null) return;
     emit("cell-edit", { idx, colKey, value });
 };
+
+const clearSelection = () => {
+    selected.value = new Set();
+    emit("selection-clear");
+};
+
+const searchQuery = ref("");
+const filteredData = computed(() => {
+    const query = searchQuery.value.trim().toLowerCase();
+    if (!query) return props.data;
+
+    return props.data.filter((row) =>
+        props.columns.some((col) => {
+            const value = row[col.key];
+            if (value === null || value === undefined) return false;
+            return String(value).toLowerCase().includes(query);
+        }),
+    );
+});
+
+// --- Sélection de lignes (cochées par défaut) ---
+// La sélection porte sur les lignes FILTRÉES par la recherche (filteredData),
+// pas sur tout le dataset : ainsi, en recherchant un contrat, seules les lignes
+// correspondantes restent sélectionnées pour l'export.
+const selected = ref(new Set());
+
+const isSelected = (idx) => selected.value.has(idx);
+const emitSelection = () =>
+    emit("selection-change", Array.from(selected.value));
+const toggleRow = (idx, checked) => {
+    if (checked) selected.value.add(idx);
+    else selected.value.delete(idx);
+    emitSelection();
+};
+const toggleAllPage = (checked) => {
+    (props.data || []).forEach((row) => {
+        if (checked) selected.value.add(row.__idx);
+        else selected.value.delete(row.__idx);
+    });
+    emitSelection();
+};
+const allPageSelected = computed(() => {
+    const rows = filteredData.value;
+    if (!rows.length) return false;
+    return rows.every((row) => selected.value.has(row.__idx));
+});
+// (Ré)initialise à "tout coché" uniquement quand le nombre de lignes du dataset
+// change (nouveau chargement), afin de ne PAS écraser les décoches faites par
+// l'utilisateur à chaque changement de recherche.
+watch(
+    () => (props.data || []).length,
+    () => {
+        selected.value = new Set();
+        (props.data || []).forEach((r) => {
+            if (r && r.__idx !== undefined) selected.value.add(r.__idx);
+        });
+        emitSelection();
+    },
+    { immediate: true },
+);
 
 const exportToExcel = () => {
     if (!props.data.length) return;
@@ -261,20 +353,6 @@ const currentPage = ref(1);
 const internalItemsPerPage = ref(props.itemsPerPage);
 const sortKey = ref("");
 const sortOrder = ref("asc");
-const searchQuery = ref("");
-
-const filteredData = computed(() => {
-    const query = searchQuery.value.trim().toLowerCase();
-    if (!query) return props.data;
-
-    return props.data.filter((row) =>
-        props.columns.some((col) => {
-            const value = row[col.key];
-            if (value === null || value === undefined) return false;
-            return String(value).toLowerCase().includes(query);
-        }),
-    );
-});
 
 const sortedData = computed(() => {
     if (!sortKey.value) return filteredData.value;
