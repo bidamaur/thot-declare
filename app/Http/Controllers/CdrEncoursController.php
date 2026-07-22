@@ -113,7 +113,7 @@ public function GetEncours($MyDateArr)
                  AND (ncp LIKE '344%' OR ncp LIKE '345%') 
                  AND CDR_DATE(dco) <= CDR_DATE('$DateArr'))";
 
-    $mon_douteux = "NVL((
+    $mon_douteux = "ABS(NVL((
         SELECT mon FROM C##DBPROD.bksld 
         WHERE cli = d.cli 
           AND (ncp LIKE '344%' OR ncp LIKE '345%')
@@ -126,9 +126,9 @@ public function GetEncours($MyDateArr)
                 AND CDR_DATE(dco) <= CDR_DATE('$DateArr')
           ) 
           AND ROWNUM = 1
-    ), 0)";
+    ), 0))";
 
-    $mon_impaye = "NVL((
+    $mon_impaye = "ABS(NVL((
         SELECT mon FROM C##DBPROD.bksld 
         WHERE cli = d.cli 
           AND cha = '3411000'
@@ -138,10 +138,11 @@ public function GetEncours($MyDateArr)
               WHERE cli = d.cli 
                 AND cha = '3411000' 
                 AND mon != 0 
-                AND CDR_DATE(dco) <= CDR_DATE('$DateArr')
+                AND CDR_DATE(dco) <= CDR_DATE('$DateArr') 
+                and $NbrJrsImp!=0
           ) 
           AND ROWNUM = 1
-    ), 0)";
+    ), 0))";
 
     // Numéro de la dernière échéance du dossier pour cet avenant précis
     $last_num_echeance = "(SELECT MAX(num) FROM C##DBPROD.bkechprt WHERE eve = d.eve AND ave = d.ave)";
@@ -228,7 +229,7 @@ public function GetEncours($MyDateArr)
         e.tot_ech,
 
         (CASE
-            WHEN $NbrEchImp >= 2 AND NVL($doutx, 0) = 0 THEN 2 
+            WHEN $NbrEchImp >= 2 AND $mon_douteux = 0 THEN 2 
             ELSE 1 
         END) echimpaye,
 
@@ -244,11 +245,11 @@ public function GetEncours($MyDateArr)
         $NbrJrsImp AS nbrJrsImp,
 
         (CASE
-            WHEN ($NbrJrsImp > 0 AND $NbrJrsImp < 90) AND NVL($doutx, 0) != 0 THEN '04'
-            WHEN $NbrJrsImp >= 90 AND $NbrJrsImp < 110 AND NVL($doutx, 0) != 0 THEN '07'
-            WHEN $NbrJrsImp >= 110 AND $NbrJrsImp < 365 AND NVL($doutx, 0) != 0 THEN '08'
-            WHEN $NbrJrsImp >= 365 AND $NbrJrsImp < 730 AND NVL($doutx, 0) != 0 THEN '08'
-            WHEN $NbrJrsImp >= 730 AND $NbrJrsImp < 1095 AND NVL($doutx, 0) != 0 THEN '09'
+            WHEN ($NbrJrsImp > 0 AND $NbrJrsImp < 90) AND $mon_douteux = 0 THEN '04'
+            WHEN $NbrJrsImp >= 90 AND $NbrJrsImp < 110 AND $mon_douteux != 0 THEN '07'
+            WHEN $NbrJrsImp >= 110 AND $NbrJrsImp < 365 AND $mon_douteux != 0 THEN '08'
+            WHEN $NbrJrsImp >= 365 AND $NbrJrsImp < 730 AND $mon_douteux != 0 THEN '08'
+            WHEN $NbrJrsImp >= 730 AND $NbrJrsImp < 1095 AND $mon_douteux != 0 THEN '09'
             ELSE '01'
         END) AS ClaDeprec,
 
