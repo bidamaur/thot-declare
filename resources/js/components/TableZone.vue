@@ -256,17 +256,43 @@ const clearSelection = () => {
 };
 
 const searchQuery = ref("");
+const normalizeText = (value) => {
+    if (value === null || value === undefined) return "";
+    return String(value)
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .trim();
+};
+
+const getSearchableText = (row) =>
+    props.columns
+        .map((col) => normalizeText(row[col.key]))
+        .filter(Boolean)
+        .join(" ");
+
+const primaryKeyColumns = ["EVE", "CLI", "REFCONTCMPT", "REFINT", "AVE", "DVA", "DATEVE", "DATPAI"];
+
 const filteredData = computed(() => {
-    const query = searchQuery.value.trim().toLowerCase();
+    const query = normalizeText(searchQuery.value);
     if (!query) return props.data;
 
-    return props.data.filter((row) =>
-        props.columns.some((col) => {
-            const value = row[col.key];
-            if (value === null || value === undefined) return false;
-            return String(value).toLowerCase().includes(query);
-        }),
-    );
+    const terms = query.split(/\s+/).filter(Boolean);
+
+    return props.data.filter((row) => {
+        const primaryMatch = primaryKeyColumns.some((key) => {
+            const value = normalizeText(row[key]);
+            return value.includes(query);
+        });
+
+        const generalMatch = props.columns.some((col) => {
+            const value = normalizeText(row[col.key]);
+            if (!value) return false;
+            return terms.every((term) => value.includes(term));
+        });
+
+        return primaryMatch || generalMatch;
+    });
 });
 
 // --- Sélection de lignes (cochées par défaut) ---
