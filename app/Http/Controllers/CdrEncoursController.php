@@ -50,7 +50,8 @@ public function GetEncours($MyDateArr)
         strlen($GetPosition[0]) !== 2 ||
         (int) $GetPosition[0] < 1 ||
         (int) $GetPosition[0] > 12 ||
-        strlen($GetPosition[1]) !== 4
+        strlen($GetPosition[1]) !== 4 ||
+        !checkdate((int) $GetPosition[0], 1, (int) $GetPosition[1])
     ) {
         return response()->json([
             [
@@ -62,16 +63,16 @@ public function GetEncours($MyDateArr)
         ], 400);
     }
 
-    // Variables de dates
+    // Variables de dates calculées via Carbon
     $dateArret     = Carbon::create((int) $GetPosition[1], (int) $GetPosition[0], 1)->endOfMonth();
+    $dateDebutMois = Carbon::create((int) $GetPosition[1], (int) $GetPosition[0], 1)->startOfMonth();
+
     $DateArr       = $dateArret->format('d/m/Y');
-    $DateArrYear   = $dateArret->year;
-    $DateArrMonth  = $dateArret->format('m');
-    $DateMonthYear = '/' . $DateArrMonth . '/' . $DateArrYear;
+    $DateDebMois   = $dateDebutMois->format('d/m/Y');
 
     // --- BLOCS SQL DYNAMIQUES POUR LES CALCULS D'ÉCHÉANCES ---
     
-    // 1. Nombre total d'échéances pour L'AVENANT COURANT (d.eve + d.ave)
+    // 1. Nombre total d'échéances pour L'AVENANT COURANT
     $NbrEchTotal = "(CASE 
         WHEN EXISTS (SELECT 1 FROM C##DBPROD.bkechprt WHERE num = 0 AND eve = d.eve AND ave = d.ave) THEN 
             (SELECT COUNT(dva) FROM C##DBPROD.bkechprt WHERE eve = d.eve AND ave = d.ave) - 1
@@ -79,27 +80,29 @@ public function GetEncours($MyDateArr)
             (SELECT COUNT(dva) FROM C##DBPROD.bkechprt WHERE eve = d.eve AND ave = d.ave)
     END)";
 
-    // 2. Nombre d'échéances payées (ctr = 9 ou 3)
+    // 2. Nombre d'échéances payées (ctr = 9)
     $NbrEchPay = "(CASE 
         WHEN EXISTS (SELECT 1 FROM C##DBPROD.bkechprt WHERE num = 0 AND eve = d.eve AND ave = d.ave AND CDR_DATE(dva) <= CDR_DATE('$DateArr')) THEN 
-            (SELECT COUNT(dva) FROM C##DBPROD.bkechprt WHERE eve =d.eve AND ave = d.ave AND ctr=9 AND eta = 'VA' AND CDR_DATE(dva) <= CDR_DATE('$DateArr')) - 1
+            (SELECT COUNT(dva) FROM C##DBPROD.bkechprt WHERE eve = d.eve AND ave = d.ave AND ctr = 9 AND eta = 'VA' AND CDR_DATE(dva) <= CDR_DATE('$DateArr')) - 1
         ELSE 
-            (SELECT COUNT(dva) FROM C##DBPROD.bkechprt WHERE eve =d.eve AND ave = d.ave AND ctr=9 AND eta = 'VA' AND CDR_DATE(dva) <= CDR_DATE('$DateArr'))
+            (SELECT COUNT(dva) FROM C##DBPROD.bkechprt WHERE eve = d.eve AND ave = d.ave AND ctr = 9 AND eta = 'VA' AND CDR_DATE(dva) <= CDR_DATE('$DateArr'))
     END)";
 
     // 3. Nombre d'échéances impayées
     $NbrEchImp = "(CASE
         WHEN NOT EXISTS (
-            SELECT 1 FROM C##DBPROD.bkcom 
-            WHERE (ncp LIKE '344%' OR (ncp LIKE '345%' AND sde != 0)) 
-              AND cli = d.cli
+            SELECT 1 FROM C##DBPROD.bksld 
+            WHERE cli = d.cli 
+              AND (ncp LIKE '344%' OR ncp LIKE '345%') 
+              AND sde != 0 
+              AND CDR_DATE(dco) <= CDR_DATE('$DateArr')
         ) AND (
             SELECT COUNT(dva) FROM C##DBPROD.bkechprt 
-            WHERE ctr = 8 AND eve = d.eve AND ave = d.ave AND CDR_DATE(dva) < CDR_DATE('$DateArr')
+            WHERE ctr = 8 AND eve = d.eve AND ave = d.ave AND CDR_DATE(dva) <= CDR_DATE('$DateArr')
         ) > 2 THEN 2
         ELSE (
             SELECT COUNT(dva) FROM C##DBPROD.bkechprt 
-            WHERE ctr = 8 AND eve = d.eve AND ave = d.ave AND CDR_DATE(dva) < CDR_DATE('$DateArr')
+            WHERE ctr = 8 AND eve = d.eve AND ave = d.ave AND CDR_DATE(dva) <= CDR_DATE('$DateArr')
         )
     END)";
 
@@ -128,20 +131,31 @@ public function GetEncours($MyDateArr)
           AND ROWNUM = 1
     ), 0))";
 
+    $montant_provision_imp = "ABS(NVL((
+        SELECT SUM(mon) 
+        FROM C##DBPROD.bksld 
+        WHERE cli = d.cli 
+          AND cha = '3911000'
+          AND TO_CHAR(CDR_DATE(dco), 'MM/YYYY') = TO_CHAR(CDR_DATE('$DateArr'), 'MM/YYYY') 
+          AND $NbrJrsImp != 0
+    ), 0))";
+
+    $montant_provision_dtx = "ABS(NVL((
+        SELECT SUM(mon) 
+        FROM C##DBPROD.bksld 
+        WHERE cli = d.cli 
+          AND cha = '3943000'
+          AND TO_CHAR(CDR_DATE(dco), 'MM/YYYY') = TO_CHAR(CDR_DATE('$DateArr'), 'MM/YYYY') 
+          AND $NbrJrsImp != 0
+    ), 0))";
+
     $mon_impaye = "ABS(NVL((
-        SELECT mon FROM C##DBPROD.bksld 
+        SELECT SUM(mon) 
+        FROM C##DBPROD.bksld 
         WHERE cli = d.cli 
           AND cha = '3411000'
-          AND CDR_DATE(dco) = (
-              SELECT MAX(CDR_DATE(dco)) 
-              FROM C##DBPROD.bksld 
-              WHERE cli = d.cli 
-                AND cha = '3411000' 
-                AND mon != 0 
-                AND CDR_DATE(dco) <= CDR_DATE('$DateArr') 
-                and $NbrJrsImp!=0
-          ) 
-          AND ROWNUM = 1
+          AND TO_CHAR(CDR_DATE(dco), 'MM/YYYY') = TO_CHAR(CDR_DATE('$DateArr'), 'MM/YYYY') 
+          AND $NbrJrsImp != 0
     ), 0))";
 
     // Numéro de la dernière échéance du dossier pour cet avenant précis
@@ -240,33 +254,36 @@ public function GetEncours($MyDateArr)
 
         '0' AS MNTAGIOSSOUF,
         e.inte MNTERAT,
-        '' AS MNTPRO,
+        (CASE
+            WHEN $mon_douteux != 0 THEN $montant_provision_dtx
+            WHEN $mon_impaye != 0 THEN $montant_provision_imp
+            ELSE 0
+        END) AS MNTPRO,
 
         $NbrJrsImp AS nbrJrsImp,
 
+        -- Classes de dépréciation
         (CASE
-            WHEN ($NbrJrsImp > 0 AND $NbrJrsImp < 90) AND $mon_douteux = 0 THEN '04'
-            WHEN $NbrJrsImp >= 90 AND $NbrJrsImp < 110 AND $mon_douteux != 0 THEN '07'
-            WHEN $NbrJrsImp >= 110 AND $NbrJrsImp < 365 AND $mon_douteux != 0 THEN '08'
-            WHEN $NbrJrsImp >= 365 AND $NbrJrsImp < 730 AND $mon_douteux != 0 THEN '08'
-            WHEN $NbrJrsImp >= 730 AND $NbrJrsImp < 1095 AND $mon_douteux != 0 THEN '09'
+            WHEN $NbrJrsImp = 0 AND $mon_douteux = 0 THEN '01'
+            WHEN $NbrJrsImp BETWEEN 1 AND 90 AND $mon_douteux = 0 THEN '02'
+            WHEN ($NbrJrsImp BETWEEN 91 AND 180) OR ($mon_douteux != 0 AND $NbrJrsImp <= 180) THEN '03'
+            WHEN $NbrJrsImp BETWEEN 181 AND 360 THEN '04'
+            WHEN $NbrJrsImp > 360 THEN '05'
             ELSE '01'
         END) AS ClaDeprec,
 
         $NbrEchImp AS testeeee
 
-        FROM C##DBPROD.bkdosprt d,
-             C##DBPROD.bkechprt e
-        WHERE e.eve = d.eve
-          AND e.ave = d.ave
-          AND d.eta IN ('VA', 'DE')
-          AND (e.dva BETWEEN CDR_DATE('01$DateMonthYear') AND CDR_DATE('01-'||TO_CHAR(ADD_MONTHS(CDR_DATE('$DateArr'), 1), 'MM-YYYY')))
+        FROM C##DBPROD.bkdosprt d
+        INNER JOIN C##DBPROD.bkechprt e ON e.eve = d.eve AND e.ave = d.ave
+        WHERE d.eta IN ('VA', 'DE')
+          AND e.dva BETWEEN CDR_DATE('$DateDebMois') AND CDR_DATE('$DateArr')
           AND CDR_DATE(e.dva) <= CDR_DATE('$DateArr')
           AND d.tau_int != 0
           AND d.eve NOT IN ('002259')
-          AND e.ctr!=3"
-          ;
+          AND e.ctr != 3";
 
+    $stid = null;
     try {
         $stid = oci_parse($connection, $MyRequest);
         oci_execute($stid);
@@ -280,17 +297,8 @@ public function GetEncours($MyDateArr)
         // Convertir en UTF-8 après la récupération
         $results = mb_convert_encoding($results, 'UTF-8', 'ISO-8859-1');
 
-        // Libérer les ressources
-        oci_free_statement($stid);
-        oci_close($connection);
-
-        // Retourner les résultats
         return response()->json($results);
     } catch (\Throwable $e) {
-        if (isset($stid)) {
-            oci_free_statement($stid);
-        }
-
         return response()->json([
             [
                 'Erreur' => [
@@ -299,6 +307,13 @@ public function GetEncours($MyDateArr)
                 ],
             ],
         ], 500);
+    } finally {
+        if ($stid) {
+            oci_free_statement($stid);
+        }
+        if (isset($connection) && $connection) {
+            oci_close($connection);
+        }
     }
 }
 /** Fin de encours */
