@@ -140,7 +140,12 @@
                         >
                             <input
                                 v-if="editable && !col.readonly"
-                                class="w-full text-xs border border-amber-300 rounded px-1 py-0.5 bg-amber-50 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                                class="w-full text-xs rounded px-1 py-0.5 focus:outline-none focus:ring-1"
+                                :class="[
+                                    isModified(row.__idx, col.key)
+                                        ? 'border border-amber-300 bg-amber-50 focus:ring-amber-500'
+                                        : 'border border-transparent'
+                                ]"
                                 :value="row[col.key]"
                                 @input="
                                     emitEdit(
@@ -241,9 +246,15 @@ const props = defineProps({
     exportName: { type: String, default: "" },
     editable: { type: Boolean, default: false },
     selectable: { type: Boolean, default: false },
+    corrections: { type: Object, default: () => ({ }) },
 });
 
 const emit = defineEmits(["cell-edit", "selection-change", "selection-clear"]);
+
+const isModified = (idx, colKey) => {
+    if (!idx || !colKey) return false;
+    return !!(props.corrections && props.corrections[idx] && props.corrections[idx][colKey] !== undefined);
+};
 
 const emitEdit = (idx, colKey, value) => {
     if (idx === undefined || idx === null) return;

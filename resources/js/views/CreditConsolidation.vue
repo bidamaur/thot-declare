@@ -252,12 +252,13 @@
             :data="effectiveData('engagements')"
             :loading="zones.engagements.loading"
             :error="zones.engagements.error"
-            :items-per-page="-1"
+            :items-per-page="5"
             :editable="true"
             :selectable="true"
             @cell-edit="(p) => onCellEdit('engagements', p)"
             @selection-change="(ids) => onSelectionChange('engagements', ids)"
             @selection-clear="clearZoneSelection('engagements')"
+            :corrections="corrections.engagements"
             exportable
             export-name="engagements"
         />
@@ -270,12 +271,13 @@
             :data="effectiveData('encours')"
             :loading="zones.encours.loading"
             :error="zones.encours.error"
-            :items-per-page="-1"
+            :items-per-page="5"
             :editable="true"
             :selectable="true"
             @cell-edit="(p) => onCellEdit('encours', p)"
             @selection-change="(ids) => onSelectionChange('encours', ids)"
             @selection-clear="clearZoneSelection('encours')"
+            :corrections="corrections.encours"
             exportable
             export-name="encours"
         />
@@ -288,12 +290,13 @@
             :data="effectiveData('encoursAjust')"
             :loading="zones.encoursAjust.loading"
             :error="zones.encoursAjust.error"
-            :items-per-page="-1"
+            :items-per-page="5"
             :editable="true"
             :selectable="true"
             @cell-edit="(p) => onCellEdit('encoursAjust', p)"
             @selection-change="(ids) => onSelectionChange('encoursAjust', ids)"
             @selection-clear="clearZoneSelection('encoursAjust')"
+            :corrections="corrections.encoursAjust"
             exportable
             export-name="encours_ajustes"
         />
@@ -558,8 +561,6 @@ const fetchAll = async () => {
 
     await Promise.all(calls.map(runCall));
 };
-
-onMounted(fetchAll);
 
 const engagementsColumns = [
     { key: "CLI", label: "Client" },
