@@ -139,8 +139,7 @@ export function normaliserDateVersCdr(dateStr) {
 function validerTauxFormat(val) {
     const num = Number(val);
     if (isNaN(num)) return false;
-    // Format attendu : ###.## (séparateur point, pas de %) [cite: 418]
-    return /^\d+(\.\d{1,2})?$/.test(val.toString());
+    return /^\d+(\.\d{1,3})?$/.test(val.toString());
 }
 
 // Extrait la valeur brute d'un montant depuis un champ (gère les objets XML

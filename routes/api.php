@@ -25,12 +25,13 @@ Route::get('/cdr_pp/{DateArr?}', [CdrPpController::class, 'index']);
 Route::get('/cdr_pm/{DateArr?}', [CdrPmController::class, 'index']);
 Route::get('/cdr_engagements/{DateArr}', [CdrEngagementsController::class, 'GetEngagements']);
 Route::get('/cdr_ctrEngagements', [CdrEngagementsController::class, 'ctrEngagements']);
+Route::get('/cdr_ctrEngagements/compare/{DateArr}/{DateDeb}', [CdrEngagementsController::class, 'compareEngagements']);
 Route::get('/cdr_encours/{DateArr}', [CdrEncoursController::class, 'GetEncours']);
 Route::get('/cdr_encours_ajust/{DateArr}', [CdrEncoursController::class, 'GetEncoursAjust']);
 Route::get('/cdr_garanties/{DateArr}', [GarantiesController::class, 'getGaranties']);
 //route mise en application apres 
 Route::get('/cdr_encours', [CdrEncoursController::class, 'index']);
-
+Route::get('/cdr_engagements_echus/{DateArr}/{DateDeb}', [CdrEngagementsController::class, 'GetEngagementsEchus']);
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();

@@ -141,11 +141,11 @@
                             <input
                                 v-if="editable && !col.readonly"
                                 class="w-full text-xs rounded px-1 py-0.5 focus:outline-none focus:ring-1"
-                                :class="[
-                                    isModified(row.__idx, col.key)
-                                        ? 'border border-amber-300 bg-amber-50 focus:ring-amber-500'
-                                        : 'border border-transparent'
-                                ]"
+:class="[
+                                        isModified(row.__idx, col.key)
+                                            ? 'border border-orange-300 bg-orange-50 focus:ring-orange-500'
+                                            : 'border border-transparent'
+                                    ]"
                                 :value="row[col.key]"
                                 @input="
                                     emitEdit(
