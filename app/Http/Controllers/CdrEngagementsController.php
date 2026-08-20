@@ -57,30 +57,30 @@ public function GetEngagements($MyDateArr)
          (SELECT cdr_parce_ncp(p.ncp)
          ||(
         CASE
-        WHEN cdr_date(d.dmep)>cdr_date('30/11/2023') THEN (SELECT clc from C##DBPROD.bkcom where ncp=p.ncp)
+        WHEN cdr_date(d.dmep)>cdr_date('30/11/2023') THEN (SELECT clc from DBPROD.bkcom where ncp=p.ncp)
         END)
-         FROM C##DBPROD.bkcptprt p
+         FROM DBPROD.bkcptprt p
          WHERE p.eve=d.eve
          AND p.nat  ='004'
          AND p.ave  =
-           (SELECT MAX(ave) FROM C##DBPROD.bkcptprt WHERE eve=p.eve
+           (SELECT MAX(ave) FROM DBPROD.bkcptprt WHERE eve=p.eve
            )
          ) RefContCmpt,
              (SELECT p.ncp
-         FROM C##DBPROD.bkcptprt p
+         FROM DBPROD.bkcptprt p
          WHERE p.eve=d.eve
          AND p.nat  ='004'
          AND p.ave  =
-           (SELECT MAX(ave) FROM C##DBPROD.bkcptprt WHERE eve=p.eve
+           (SELECT MAX(ave) FROM DBPROD.bkcptprt WHERE eve=p.eve
            )
          ) ncp_ori,
          '10030' CodAge,
     (CASE
     WHEN e.ctr=3 THEN '02'
-    WHEN (SELECT DVA FROM C##DBPROD.bkechprt where res=0 and eve=d.eve and ave=(SELECT MAX(ave) FROM C##DBPROD.bkechprt  WHERE eve=d.eve) and 
+    WHEN (SELECT DVA FROM DBPROD.bkechprt where res=0 and eve=d.eve and ave=(SELECT MAX(ave) FROM DBPROD.bkechprt  WHERE eve=d.eve) and 
     ( cdr_date(dva) 
     between cdr_date('01$DateMonthYear') and add_months(cdr_date('01$DateMonthYear'),1)   ))=d.ddec THEN '02'
-    WHEN (SELECT max(ctr) from C##DBPROD.bkechprt where eve=d.eve AND ave=(SELECT MAX(ave) FROM C##DBPROD.bkechprt  WHERE eve=d.eve) AND ( cdr_date(dva) 
+    WHEN (SELECT max(ctr) from DBPROD.bkechprt where eve=d.eve AND ave=(SELECT MAX(ave) FROM DBPROD.bkechprt  WHERE eve=d.eve) AND ( cdr_date(dva) 
     between cdr_date('$DateArr') and add_months(cdr_date('$DateArr'),1)   ))=3 THEN '02'
     ELSE '00'
     END
@@ -153,8 +153,8 @@ public function GetEngagements($MyDateArr)
          -- TO_CHAR(d.dpec,'ddmmyyyy') DatDeb, -- date de premiere echeance du crédit à revoir avec les diferes
          (
           CASE
-          WHEN (select count(dva) from C##DBPROD.bkechprt where eve=d.eve and ave=(select max(ave) from C##DBPROD.bkechprt where eve=d.eve)) in(2,1) THEN TO_CHAR(d.dmep,'ddmmyyyy')
-          ELSE (SELECT TO_CHAR(max(dva),'ddmmyyyy') from C##DBPROD.bkechprt where num=01 and eve=d.eve)
+          WHEN (select count(dva) from DBPROD.bkechprt where eve=d.eve and ave=(select max(ave) from DBPROD.bkechprt where eve=d.eve)) in(2,1) THEN TO_CHAR(d.dmep,'ddmmyyyy')
+          ELSE (SELECT TO_CHAR(max(dva),'ddmmyyyy') from DBPROD.bkechprt where num=01 and eve=d.eve)
           END
           ) DatDeb,
          TO_CHAR(d.ddec,'ddmmyyyy') DatFin, --derniere echeance
@@ -187,21 +187,21 @@ public function GetEngagements($MyDateArr)
          d.tech NbrEch,                         
           '03' MoyRem,
           '01' \"TYECH\",
-          ( SELECT MAX(tot_ech) FROM C##DBPROD.bkechprt WHERE EXTRACT(DAY FROM dva)=EXTRACT(DAY FROM d.dpec) AND eve=d.eve and amo_cal!=0
+          ( SELECT MAX(tot_ech) FROM DBPROD.bkechprt WHERE EXTRACT(DAY FROM dva)=EXTRACT(DAY FROM d.dpec) AND eve=d.eve and amo_cal!=0
           )MntEch,  
           '03' \"TYAMO\",
          (SELECT SUM(inte)
-         FROM C##DBPROD.bkechprt
+         FROM DBPROD.bkechprt
          WHERE eve=d.eve
          ) TotInt,
-          ROUND((SELECT sum(mon_fra) from C##DBPROD.bkdosprt where eve=d.eve) ) \"FRADOS\",
+          ROUND((SELECT sum(mon_fra) from DBPROD.bkdosprt where eve=d.eve) ) \"FRADOS\",
     (
     CASE 
-         WHEN ROUND((SELECT (SUM(d.mon_co1)+SUM(d.mon_co2)) from C##DBPROD.bkdosprt where eve=d.eve))=0 THEN  ROUND(
-         (SELECT SUM(mnt) FROM C##DBPROD.bkcanprt WHERE eve=d.eve AND ges_teg='O'
+         WHEN ROUND((SELECT (SUM(d.mon_co1)+SUM(d.mon_co2)) from DBPROD.bkdosprt where eve=d.eve))=0 THEN  ROUND(
+         (SELECT SUM(mnt) FROM DBPROD.bkcanprt WHERE eve=d.eve AND ges_teg='O'
          ))
          ELSE
-        ROUND((SELECT (SUM(d.mon_co1)+SUM(d.mon_co2)) from C##DBPROD.bkdosprt where eve=d.eve))
+        ROUND((SELECT (SUM(d.mon_co1)+SUM(d.mon_co2)) from DBPROD.bkdosprt where eve=d.eve))
     END
      )\"FRANNEXE\",
          '0' MntPrm, 
@@ -209,8 +209,8 @@ public function GetEngagements($MyDateArr)
          TO_CHAR(d.dmep,'ddmmyyyy') DatEve,
      d.eve RefInt,
      d.cli IdInt 
-     FROM C##DBPROD.bkdosprt d,C##DBPROD.bkechprt e ,
-         C##DBPROD.bkcli c
+     FROM DBPROD.bkdosprt d,DBPROD.bkechprt e ,
+         DBPROD.bkcli c
        WHERE 
        e.eve=d.eve
        --and d.eve='002221'
@@ -219,13 +219,13 @@ public function GetEngagements($MyDateArr)
        AND d.eta      in ('VA','DE')
      AND (EXTRACT(YEAR FROM d.ddec)>2022)
      
-    AND d.ave=(SELECT MAX(bb.ave) FROM C##DBPROD.bkdosprt bb WHERE bb.eve=d.eve)
+    AND d.ave=(SELECT MAX(bb.ave) FROM DBPROD.bkdosprt bb WHERE bb.eve=d.eve)
     and e.ctr not in(3)
     --  and (cdr_date(e.dva) between cdr_date('01/07/2023') and cdr_date('31/07/2023'))
     --AND (cdr_date(d.dmep) between cdr_date('01" . $DateMonthYear . "') and cdr_date('$DateArr'))
     AND (EXTRACT(MONTH FROM d.dmep)='$DateArrMonth' and EXTRACT(YEAR FROM CDR_DATE(d.dmep))='$DateArrYear' )
     AND cdr_date(d.dmep)<cdr_date('01-'||TO_CHAR(ADD_MONTHS(CDR_DATE('01$DateMonthYear'), 1), 'MM-YYYY'))
-    --AND e.ave=(SELECT max(ave) from C##DBPROD.bkechprt where eve=d.eve)
+    --AND e.ave=(SELECT max(ave) from DBPROD.bkechprt where eve=d.eve)
     AND d.tau_int!=0 ";
     
     $stid = oci_parse($connection, $query);
@@ -264,7 +264,7 @@ public function ctrEngagements()
         d.ddec as DATFIN,
         d.tech as duree,
         d.ctr
-      FROM C##DBPROD.bkcli c, C##DBPROD.bkdosprt d
+      FROM DBPROD.bkcli c, DBPROD.bkdosprt d
       WHERE c.cli = d.cli";
 
     $stid = oci_parse($connection, $query);
@@ -325,7 +325,7 @@ public function ctrEngagements()
             d.ddec as DATFIN,
             d.tech as duree,
             d.ctr
-          FROM C##DBPROD.bkcli c, C##DBPROD.bkdosprt d
+          FROM DBPROD.bkcli c, DBPROD.bkdosprt d
           WHERE c.cli = d.cli";
 
         $stid = oci_parse($connection, $ctrQuery);
@@ -342,30 +342,30 @@ public function ctrEngagements()
             d.ave,
             (SELECT cdr_parce_ncp(p.ncp)
             ||(CASE
-            WHEN cdr_date(d.dmep)>cdr_date('30/11/2023') THEN (SELECT clc from C##DBPROD.bkcom where ncp=p.ncp)
+            WHEN cdr_date(d.dmep)>cdr_date('30/11/2023') THEN (SELECT clc from DBPROD.bkcom where ncp=p.ncp)
             END)
-            FROM C##DBPROD.bkcptprt p
+            FROM DBPROD.bkcptprt p
             WHERE p.eve=d.eve
             AND p.nat  ='004'
             AND p.ave  =
-              (SELECT MAX(ave) FROM C##DBPROD.bkcptprt WHERE eve=p.eve
+              (SELECT MAX(ave) FROM DBPROD.bkcptprt WHERE eve=p.eve
               )
             ) RefContCmpt,
             (SELECT p.ncp
-            FROM C##DBPROD.bkcptprt p
+            FROM DBPROD.bkcptprt p
             WHERE p.eve=d.eve
             AND p.nat  ='004'
             AND p.ave  =
-              (SELECT MAX(ave) FROM C##DBPROD.bkcptprt WHERE eve=p.eve
+              (SELECT MAX(ave) FROM DBPROD.bkcptprt WHERE eve=p.eve
               )
             ) ncp_ori,
             '10030' CodAge,
             (CASE
             WHEN e.ctr=3 THEN '02'
-            WHEN (SELECT DVA FROM C##DBPROD.bkechprt where res=0 and eve=d.eve and ave=(SELECT MAX(ave) FROM C##DBPROD.bkechprt  WHERE eve=d.eve) and
+            WHEN (SELECT DVA FROM DBPROD.bkechprt where res=0 and eve=d.eve and ave=(SELECT MAX(ave) FROM DBPROD.bkechprt  WHERE eve=d.eve) and
             ( cdr_date(dva)
             between cdr_date('01$DateMonthYear') and add_months(cdr_date('01$DateMonthYear'),1)   ))=d.ddec THEN '02'
-            WHEN (SELECT max(ctr) from C##DBPROD.bkechprt where eve=d.eve AND ave=(SELECT MAX(ave) FROM C##DBPROD.bkechprt  WHERE eve=d.eve) AND ( cdr_date(dva)
+            WHEN (SELECT max(ctr) from DBPROD.bkechprt where eve=d.eve AND ave=(SELECT MAX(ave) FROM DBPROD.bkechprt  WHERE eve=d.eve) AND ( cdr_date(dva)
             between cdr_date('$DateArr') and add_months(cdr_date('$DateArr'),1)   ))=3 THEN '02'
             ELSE '00'
             END
@@ -389,14 +389,14 @@ public function ctrEngagements()
             d.dmep DatMep,
             d.tech Duree,
             d.ctr
-          FROM C##DBPROD.bkdosprt d, C##DBPROD.bkechprt e,
-              C##DBPROD.bkcli c
+          FROM DBPROD.bkdosprt d, DBPROD.bkechprt e,
+              DBPROD.bkcli c
             WHERE
             e.eve=d.eve
             and c.cli    =d.cli
             AND d.eta      in ('VA','DE')
           AND (EXTRACT(YEAR FROM d.ddec)>2022)
-         AND d.ave=(SELECT MAX(bb.ave) FROM C##DBPROD.bkdosprt bb WHERE bb.eve=d.eve)
+         AND d.ave=(SELECT MAX(bb.ave) FROM DBPROD.bkdosprt bb WHERE bb.eve=d.eve)
          and e.ctr not in(3)
          AND (EXTRACT(MONTH FROM d.dmep)='$DateArrMonth' and EXTRACT(YEAR FROM CDR_DATE(d.dmep))='$DateArrYear' )
          AND cdr_date(d.dmep)<cdr_date('01-'||TO_CHAR(ADD_MONTHS(CDR_DATE('01$DateMonthYear'), 1), 'MM-YYYY'))
@@ -584,7 +584,7 @@ public function GetEngagementsEchus($MyDateArr, $MyDateDeb = '12/2023')
     $dateDebut = Carbon::create((int) $GetPositionDeb[1], (int) $GetPositionDeb[0], 1)->startOfMonth();
     $DateDeb = $dateDebut->format('d/m/Y');
     $clientsDtx="SELECT distinct cli
-                    FROM C##DBPROD.bksld 
+                    FROM DBPROD.bksld 
                     WHERE
                        TO_CHAR(cdr_date(dco), 'MM/YYYY') = TO_CHAR(cdr_date('$DateArr'), 'MM/YYYY')
                       AND (ncp LIKE '344%' OR ncp LIKE '345%') and mon!=0";
@@ -594,13 +594,13 @@ public function GetEngagementsEchus($MyDateArr, $MyDateDeb = '12/2023')
     }}]';
 $mont_dtx="ABS(NVL((
                     SELECT SUM(mon) 
-                    FROM C##DBPROD.bksld 
+                    FROM DBPROD.bksld 
                     WHERE cli = d.cli 
                       AND TO_CHAR(cdr_date(dco), 'MM/YYYY') = TO_CHAR(cdr_date('$DateArr'), 'MM/YYYY')
                       AND (ncp LIKE '344%' OR ncp LIKE '345%')
                       
                 ), 0))";
-    $DossierReglement_anticipe="SELECT eve FROM C##DBPROD.bkechprt WHERE (cdr_date(dva) BETWEEN cdr_date('$DateDeb') AND cdr_date('$DateArr')) AND ctr=3";  
+    $DossierReglement_anticipe="SELECT eve FROM DBPROD.bkechprt WHERE (cdr_date(dva) BETWEEN cdr_date('$DateDeb') AND cdr_date('$DateArr')) AND ctr=3";  
     $query = "SELECT DISTINCT 
             TRIM(c.cli) AS cli,
             TRIM(c.tcli) AS tcli,
@@ -609,18 +609,18 @@ $mont_dtx="ABS(NVL((
             (SELECT cdr_parce_ncp(p.ncp) || 
                     (CASE 
                         WHEN cdr_date(d.dmep) > cdr_date('30/11/2023') 
-                        THEN (SELECT clc FROM C##DBPROD.bkcom WHERE ncp = p.ncp)
+                        THEN (SELECT clc FROM DBPROD.bkcom WHERE ncp = p.ncp)
                      END)
-             FROM C##DBPROD.bkcptprt p
+             FROM DBPROD.bkcptprt p
              WHERE p.eve = d.eve
                AND p.nat = '004'
-               AND p.ave = (SELECT MAX(ave) FROM C##DBPROD.bkcptprt WHERE eve = p.eve)
+               AND p.ave = (SELECT MAX(ave) FROM DBPROD.bkcptprt WHERE eve = p.eve)
             ) RefContCmpt,
             (SELECT p.ncp
-             FROM C##DBPROD.bkcptprt p
+             FROM DBPROD.bkcptprt p
              WHERE p.eve = d.eve
                AND p.nat = '004'
-               AND p.ave = (SELECT MAX(ave) FROM C##DBPROD.bkcptprt WHERE eve = p.eve)
+               AND p.ave = (SELECT MAX(ave) FROM DBPROD.bkcptprt WHERE eve = p.eve)
             ) ncp_ori,
             '10030' CodAge,
             
@@ -628,7 +628,7 @@ $mont_dtx="ABS(NVL((
             (CASE
                 /* BLOC 1 : Remboursement anticipe total */
                 WHEN EXISTS (
-                    SELECT 1 FROM C##DBPROD.bkechprt 
+                    SELECT 1 FROM DBPROD.bkechprt 
                     WHERE eve = d.eve 
                       AND ctr = 3 
                       AND eta = 'VA' 
@@ -641,7 +641,7 @@ $mont_dtx="ABS(NVL((
                 /* BLOC 3 : Passage en perte (Solde comptes 344/345) */
                 WHEN ABS(NVL((
                     SELECT SUM(mon) 
-                    FROM C##DBPROD.bksld 
+                    FROM DBPROD.bksld 
                     WHERE cli = d.cli 
                       AND TO_CHAR(cdr_date(dco), 'MM/YYYY') = TO_CHAR(cdr_date('$DateArr'), 'MM/YYYY')
                       AND (ncp LIKE '344%' OR ncp LIKE '345%')
@@ -649,8 +649,8 @@ $mont_dtx="ABS(NVL((
 
                 /* FALLBACKS PREEXISTANTS */
                 WHEN e.ctr = 3 THEN '02'
-                WHEN (SELECT DVA FROM C##DBPROD.bkechprt WHERE res = 0 AND eve = d.eve AND ave = (SELECT MAX(ave) FROM C##DBPROD.bkechprt WHERE eve = d.eve) AND (cdr_date(dva) BETWEEN cdr_date('01$DateMonthYear') AND add_months(cdr_date('01$DateMonthYear'), 1))) = d.ddec THEN '02'
-                WHEN (SELECT MAX(ctr) FROM C##DBPROD.bkechprt WHERE eve = d.eve AND ave = (SELECT MAX(ave) FROM C##DBPROD.bkechprt WHERE eve = d.eve) AND (cdr_date(dva) BETWEEN cdr_date('$DateArr') AND add_months(cdr_date('$DateArr'), 1))) = 3 THEN '02'
+                WHEN (SELECT DVA FROM DBPROD.bkechprt WHERE res = 0 AND eve = d.eve AND ave = (SELECT MAX(ave) FROM DBPROD.bkechprt WHERE eve = d.eve) AND (cdr_date(dva) BETWEEN cdr_date('01$DateMonthYear') AND add_months(cdr_date('01$DateMonthYear'), 1))) = d.ddec THEN '02'
+                WHEN (SELECT MAX(ctr) FROM DBPROD.bkechprt WHERE eve = d.eve AND ave = (SELECT MAX(ave) FROM DBPROD.bkechprt WHERE eve = d.eve) AND (cdr_date(dva) BETWEEN cdr_date('$DateArr') AND add_months(cdr_date('$DateArr'), 1))) = 3 THEN '02'
                 
                 ELSE '00'
             END) Statut,
@@ -662,7 +662,7 @@ $mont_dtx="ABS(NVL((
             (CASE
                 /* BLOC 1 : Remboursement anticipe total */
                 WHEN EXISTS (
-                    SELECT 1 FROM C##DBPROD.bkechprt 
+                    SELECT 1 FROM DBPROD.bkechprt 
                     WHERE eve = d.eve 
                       AND ctr = 3 
                       AND eta = 'VA' 
@@ -712,9 +712,9 @@ $mont_dtx="ABS(NVL((
             '' IndRef,
             '' Sprd,
             (CASE
-                WHEN (SELECT COUNT(dva) FROM C##DBPROD.bkechprt WHERE eve = d.eve AND ave = (SELECT MAX(ave) FROM C##DBPROD.bkechprt WHERE eve = d.eve)) IN (1, 2) 
+                WHEN (SELECT COUNT(dva) FROM DBPROD.bkechprt WHERE eve = d.eve AND ave = (SELECT MAX(ave) FROM DBPROD.bkechprt WHERE eve = d.eve)) IN (1, 2) 
                 THEN TO_CHAR(d.dmep, 'ddmmyyyy')
-                ELSE (SELECT TO_CHAR(MAX(dva), 'ddmmyyyy') FROM C##DBPROD.bkechprt WHERE num = 01 AND eve = d.eve)
+                ELSE (SELECT TO_CHAR(MAX(dva), 'ddmmyyyy') FROM DBPROD.bkechprt WHERE num = 01 AND eve = d.eve)
              END) DatDeb,
             TO_CHAR(d.ddec, 'ddmmyyyy') DatFin,
             (CASE
@@ -738,25 +738,25 @@ $mont_dtx="ABS(NVL((
             d.tech NbrEch,                         
             '03' MoyRem,
             '01' \"TYECH\",
-            (SELECT MAX(tot_ech) FROM C##DBPROD.bkechprt WHERE EXTRACT(DAY FROM dva) = EXTRACT(DAY FROM d.dpec) AND eve = d.eve AND amo_cal != 0) MntEch,  
+            (SELECT MAX(tot_ech) FROM DBPROD.bkechprt WHERE EXTRACT(DAY FROM dva) = EXTRACT(DAY FROM d.dpec) AND eve = d.eve AND amo_cal != 0) MntEch,  
             '03' \"TYAMO\",
-            (SELECT SUM(inte) FROM C##DBPROD.bkechprt WHERE eve = d.eve) TotInt,
-            ROUND((SELECT SUM(mon_fra) FROM C##DBPROD.bkdosprt WHERE eve = d.eve)) \"FRADOS\",
+            (SELECT SUM(inte) FROM DBPROD.bkechprt WHERE eve = d.eve) TotInt,
+            ROUND((SELECT SUM(mon_fra) FROM DBPROD.bkdosprt WHERE eve = d.eve)) \"FRADOS\",
             (CASE 
-                WHEN ROUND((SELECT (SUM(d.mon_co1) + SUM(d.mon_co2)) FROM C##DBPROD.bkdosprt WHERE eve = d.eve)) = 0 
-                THEN ROUND((SELECT SUM(mnt) FROM C##DBPROD.bkcanprt WHERE eve = d.eve AND ges_teg = 'O'))
-                ELSE ROUND((SELECT (SUM(d.mon_co1) + SUM(d.mon_co2)) FROM C##DBPROD.bkdosprt WHERE eve = d.eve))
+                WHEN ROUND((SELECT (SUM(d.mon_co1) + SUM(d.mon_co2)) FROM DBPROD.bkdosprt WHERE eve = d.eve)) = 0 
+                THEN ROUND((SELECT SUM(mnt) FROM DBPROD.bkcanprt WHERE eve = d.eve AND ges_teg = 'O'))
+                ELSE ROUND((SELECT (SUM(d.mon_co1) + SUM(d.mon_co2)) FROM DBPROD.bkdosprt WHERE eve = d.eve))
              END) \"FRANNEXE\",
             '0' MntPrm, 
             '' MntTax,                 
             TO_CHAR(d.dmep, 'ddmmyyyy') DatEve,
             d.eve RefInt,
             d.cli IdInt 
-        FROM C##DBPROD.bkdosprt d
-        JOIN C##DBPROD.bkechprt e ON e.eve = d.eve
-        JOIN C##DBPROD.bkcli c ON c.cli = d.cli
+        FROM DBPROD.bkdosprt d
+        JOIN DBPROD.bkechprt e ON e.eve = d.eve
+        JOIN DBPROD.bkcli c ON c.cli = d.cli
         WHERE d.eta IN ('VA', 'DE')
-AND d.ave=(SELECT MAX(bb.ave) FROM C##DBPROD.bkdosprt bb WHERE bb.eve = d.eve)
+AND d.ave=(SELECT MAX(bb.ave) FROM DBPROD.bkdosprt bb WHERE bb.eve = d.eve)
           AND d.tau_int != 0
           /* Date de déclaration = DateArr, Date de début = DateDeb */
           AND cdr_date(d.dmep) <= cdr_date('$DateArr')

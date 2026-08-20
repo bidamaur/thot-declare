@@ -131,9 +131,9 @@ public function index($DateArr = null)
          WHERE t.typ = (SELECT MAX(t1.typ) FROM bktelcli t1 WHERE t1.cli = t.cli)) t 
         ON t.cli = c.cli
     LEFT JOIN 
-        (SELECT C##DBPROD.CDR_PARSEUTF8(nom_ville) AS ville, code_region AS region, code_ville AS ville_code 
+        (SELECT DBPROD.CDR_PARSEUTF8(nom_ville) AS ville, code_region AS region, code_ville AS ville_code 
          FROM cdr_ville_region) vr 
-        ON vr.ville = C##DBPROD.CDR_PARSEUTF8(ai.ville)
+        ON vr.ville = DBPROD.CDR_PARSEUTF8(ai.ville)
     WHERE 
         c.tcli IN (1)
         " . $dateFilter . "

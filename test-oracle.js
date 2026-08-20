@@ -5,7 +5,7 @@ async function testConnection() {
 
     try {
         connection = await oracledb.getConnection({
-            user: "C##dbprod",
+            user: "DBPROD",
             password: "dbprod",
             connectString: "localhost:1521/XE",
         });

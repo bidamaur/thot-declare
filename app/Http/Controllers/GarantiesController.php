@@ -50,9 +50,9 @@ class GarantiesController extends Controller
        'XAF' CodDevGar,
        g.mont MntGar,
        (
-            SELECT mon FROM C##DBPROD.bksld WHERE (ncp like '455%' or ncp like '458%' ) and eve =SUBSTR(en.neng,1,6)
+            SELECT mon FROM DBPROD.bksld WHERE (ncp like '455%' or ncp like '458%' ) and eve =SUBSTR(en.neng,1,6)
             and dco=(SELECT 
- MAX(dco) from C##DBPROD.bksld where (ncp like '455%' or ncp like '458%' ) and eve =SUBSTR(en.neng,1,6)
+ MAX(dco) from DBPROD.bksld where (ncp like '455%' or ncp like '458%' ) and eve =SUBSTR(en.neng,1,6)
  AND cdr_date(dco)<cdr_date('$DateArr'))
             ) as MntAffGar,
        en.mnta MntAffGar,
@@ -64,13 +64,13 @@ class GarantiesController extends Controller
          THEN 01
          ELSE 08
        END )TypRefGar,
-       (SELECT DISTINCT cli FROM C##DBPROD.bkdosprt WHERE eve=SUBSTR(en.neng,1,6)
+       (SELECT DISTINCT cli FROM DBPROD.bkdosprt WHERE eve=SUBSTR(en.neng,1,6)
        ) IdIntGarant,
-       ( SELECT trim(nom||''||pre) FROM C##DBPROD.bkcli WHERE cli=en.cli
+       ( SELECT trim(nom||''||pre) FROM DBPROD.bkcli WHERE cli=en.cli
        )NomNaiGarant,
        '01' StatutGar
-     FROM C##DBPROD.bkeng en,
-       C##DBPROD.bkgar g
+     FROM DBPROD.bkeng en,
+       DBPROD.bkgar g
      WHERE g.eve=en.ngar";
 
     $stid = oci_parse($connection, $MyQuery);
