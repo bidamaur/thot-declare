@@ -143,6 +143,7 @@ public function GetEncours($MyDateArr)
         FROM DBPROD.bksld 
         WHERE cli = d.cli 
           AND cha = '3411000'
+          and ncp=(select max(ncp) from bkcptprt   where eve=d.eve and ncp like '341%')
           AND TO_CHAR(CDR_DATE(dco), 'MM/YYYY') = TO_CHAR(CDR_DATE('$DateArr'), 'MM/YYYY') 
           AND $NbrJrsImp != 0
     ), 0))";
@@ -429,6 +430,7 @@ public function GetEncours($MyDateArr)
         FROM DBPROD.bksld 
         WHERE cli = d.cli 
           AND cha = '3411000'
+          and ncp=(select max(ncp) from bkcptprt   where eve=d.eve and ncp like '341%')
           AND TO_CHAR(CDR_DATE(dco), 'MM/YYYY') = TO_CHAR(CDR_DATE('$DateArr'), 'MM/YYYY') 
           AND $NbrJrsImp != 0
     ), 0))";
