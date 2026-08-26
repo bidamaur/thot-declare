@@ -133,7 +133,7 @@
             </div>
         </div>
 
-        <div v-if="errorClients > 0" class="space-y-4">
+        <div v-if="anomalyRows.length > 0" class="space-y-4">
             <div class="flex items-center justify-between">
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 flex-1">
                     <div
@@ -166,10 +166,10 @@
                         <p
                             class="text-xs font-medium text-red-700 uppercase tracking-wider"
                         >
-                            Erreurs
+                            Anomalies
                         </p>
                         <p class="text-2xl font-semibold text-red-900 mt-1">
-                            {{ errorClients }}
+                            {{ anomalyRows.length }}
                         </p>
                     </div>
                 </div>
@@ -191,7 +191,7 @@
                         Anomalies détectées
                     </h2>
                     <span class="text-xs text-slate-500"
-                        >{{ errorClients }} résultat(s)</span
+                        >{{ anomalyRows.length }} résultat(s)</span
                     >
                 </div>
                 <div class="overflow-x-auto">
@@ -243,15 +243,12 @@
                                 </th>
                                 <th
                                     class="px-3 py-2 text-left cursor-pointer select-none"
-                                    @click="errorSortBy('errors[0].type')"
+                                    @click="errorSortBy('err.type')"
                                 >
                                     <div class="flex items-center gap-1">
                                         <span>Type</span>
                                         <span
-                                            v-if="
-                                                errorSortKey ===
-                                                'errors[0].type'
-                                            "
+                                            v-if="errorSortKey === 'err.type'"
                                             class="material-icons text-xs"
                                         >
                                             {{
@@ -264,15 +261,12 @@
                                 </th>
                                 <th
                                     class="px-3 py-2 text-left cursor-pointer select-none"
-                                    @click="errorSortBy('errors[0].field')"
+                                    @click="errorSortBy('err.field')"
                                 >
                                     <div class="flex items-center gap-1">
                                         <span>Champ</span>
                                         <span
-                                            v-if="
-                                                errorSortKey ===
-                                                'errors[0].field'
-                                            "
+                                            v-if="errorSortKey === 'err.field'"
                                             class="material-icons text-xs"
                                         >
                                             {{
@@ -285,16 +279,14 @@
                                 </th>
                                 <th
                                     class="px-3 py-2 text-left cursor-pointer select-none"
-                                    @click="
-                                        errorSortBy('errors[0].currentValue')
-                                    "
+                                    @click="errorSortBy('err.currentValue')"
                                 >
                                     <div class="flex items-center gap-1">
                                         <span>Valeur actuelle</span>
                                         <span
                                             v-if="
                                                 errorSortKey ===
-                                                'errors[0].currentValue'
+                                                'err.currentValue'
                                             "
                                             class="material-icons text-xs"
                                         >
@@ -308,14 +300,13 @@
                                 </th>
                                 <th
                                     class="px-3 py-2 text-left cursor-pointer select-none"
-                                    @click="errorSortBy('errors[0].message')"
+                                    @click="errorSortBy('err.message')"
                                 >
                                     <div class="flex items-center gap-1">
                                         <span>Message d'erreur</span>
                                         <span
                                             v-if="
-                                                errorSortKey ===
-                                                'errors[0].message'
+                                                errorSortKey === 'err.message'
                                             "
                                             class="material-icons text-xs"
                                         >
@@ -329,15 +320,12 @@
                                 </th>
                                 <th
                                     class="px-3 py-2 text-left cursor-pointer select-none"
-                                    @click="errorSortBy('errors[0].code')"
+                                    @click="errorSortBy('err.code')"
                                 >
                                     <div class="flex items-center gap-1">
                                         <span>Code</span>
                                         <span
-                                            v-if="
-                                                errorSortKey ===
-                                                'errors[0].code'
-                                            "
+                                            v-if="errorSortKey === 'err.code'"
                                             class="material-icons text-xs"
                                         >
                                             {{
@@ -352,7 +340,7 @@
                         </thead>
                         <tbody class="divide-y divide-slate-100">
                             <tr
-                                v-for="(item, idx) in paginatedInvalidClients"
+                                v-for="(item, idx) in paginatedAnomalyRows"
                                 :key="item.data.IDINTCLI + '-' + idx"
                                 class="table-row"
                             >
@@ -368,25 +356,25 @@
                                 <td class="px-3 py-2">
                                     <span
                                         :class="
-                                            item.errors[0].type === 'Erreur'
+                                            item.err.type === 'Erreur'
                                                 ? 'text-red-700 font-medium'
                                                 : 'text-amber-700 font-medium'
                                         "
                                     >
-                                        {{ item.errors[0].type }}
+                                        {{ item.err.type }}
                                     </span>
                                 </td>
                                 <td class="px-3 py-2 font-medium text-red-700">
-                                    {{ item.errors[0].field }}
+                                    {{ item.err.field }}
                                 </td>
                                 <td class="px-3 py-2 font-mono text-red-700">
-                                    {{ item.errors[0].currentValue }}
+                                    {{ item.err.currentValue }}
                                 </td>
                                 <td class="px-3 py-2">
-                                    {{ item.errors[0].message }}
+                                    {{ item.err.message }}
                                 </td>
                                 <td class="px-3 py-2 font-mono">
-                                    {{ item.errors[0].code }}
+                                    {{ item.err.code }}
                                 </td>
                             </tr>
                         </tbody>
@@ -398,7 +386,7 @@
                 >
                     <div class="flex items-center gap-2">
                         <p class="text-slate-500">
-                            {{ errorClients }} résultats - Page
+                            {{ anomalyRows.length }} résultats - Page
                             {{ errorPage }}/{{ errorTotalPages }}
                         </p>
                     </div>
@@ -612,13 +600,15 @@ const validationResults = ref([]);
 
 const totalClients = computed(() => validationResults.value.length);
 const validClients = computed(
-    () => validationResults.value.filter((r) => r.isValid).length,
+    () => validationResults.value.filter((r) => r.errors.length === 0).length,
 );
-const errorClients = computed(
-    () => validationResults.value.filter((r) => !r.isValid).length,
+const anomalyClients = computed(() =>
+    validationResults.value.filter((r) => r.errors.length > 0),
 );
-const invalidClients = computed(() =>
-    validationResults.value.filter((r) => !r.isValid),
+const anomalyRows = computed(() =>
+    anomalyClients.value.flatMap((item) =>
+        item.errors.map((err) => ({ data: item.data, err })),
+    ),
 );
 
 const xmlConfig = ref({
@@ -661,8 +651,8 @@ const errorSortKey = ref("");
 const errorSortOrder = ref("asc");
 
 const sortedInvalidClients = computed(() => {
-    if (!errorSortKey.value) return invalidClients.value;
-    return [...invalidClients.value].sort((a, b) => {
+    if (!errorSortKey.value) return anomalyRows.value;
+    return [...anomalyRows.value].sort((a, b) => {
         const valA =
             errorSortKey.value.split(".").reduce((obj, key) => obj?.[key], a) ??
             "";
@@ -683,7 +673,7 @@ const errorTotalPages = computed(() => {
     );
 });
 
-const paginatedInvalidClients = computed(() => {
+const paginatedAnomalyRows = computed(() => {
     if (errorPerPage.value === -1) return sortedInvalidClients.value;
     const start = (errorPage.value - 1) * errorPerPage.value;
     return sortedInvalidClients.value.slice(start, start + errorPerPage.value);
@@ -715,7 +705,7 @@ watch(errorPerPage, () => {
     errorPage.value = 1;
 });
 
-watch(invalidClients, () => {
+watch(anomalyClients, () => {
     errorPage.value = 1;
     errorSortKey.value = "";
     errorSortOrder.value = "asc";
@@ -728,7 +718,10 @@ const onDataLoaded = (dataArray) => {
                 ...result,
                 errors: result.errors.map((err) => ({
                     ...err,
-                    currentValue: result.data[err.field] ?? "",
+                    currentValue:
+                        result.data[err.field] ??
+                        (err.field === "SectAct" ? result.data.SECTACT : "") ??
+                        "",
                 })),
             }),
         );
@@ -740,16 +733,16 @@ const onDataLoaded = (dataArray) => {
 };
 
 const exportAnomaliesToExcel = () => {
-    if (!invalidClients.value.length) return;
+    if (!anomalyClients.value.length) return;
     const XLSX = window.XLSX;
-    const exportData = invalidClients.value.map((item) => ({
+    const exportData = anomalyRows.value.map((item) => ({
         "Nom Client": item.data.NOM,
         "N° Client": item.data.IDINTCLI,
-        Type: item.errors[0].type,
-        Champ: item.errors[0].field,
-        "Valeur actuelle": item.errors[0].currentValue,
-        "Message d'erreur": item.errors[0].message,
-        Code: item.errors[0].code,
+        Type: item.err.type,
+        Champ: item.err.field,
+        "Valeur actuelle": item.err.currentValue,
+        "Message d'erreur": item.err.message,
+        Code: item.err.code,
     }));
     const worksheet = XLSX.utils.json_to_sheet(exportData);
     const workbook = XLSX.utils.book_new();

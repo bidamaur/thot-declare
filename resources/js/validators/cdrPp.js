@@ -5,6 +5,8 @@
  */
 
 // Référentiels de base du kit BEAC
+import { isValidNaemaSector } from "./cdrPm.js";
+
 const VALID_SEXE = ["M", "F"];
 const VALID_RESIDENT = ["01", "02", "03"]; // 01=Résident, 02=Non rés. CEMAC, 03=Non rés. Hors CEMAC
 const VALID_PRENAI = ["01", "02", "03"]; // 01=Date complète, 02=Mois/Année, 03=Année seule
@@ -755,6 +757,34 @@ export function validatePersonnePhysique(data, currentCountry = "CM") {
                     "Le champ nombre d'employé ne doit pas être renseigné",
                 );
         }
+    }
+
+    // SectAct est conditionné par AgeEco et contrôlé par l'Annexe 4 du KIT FRCB.
+    const ageEco = String(data.AGEECO ?? "").trim();
+    const sectAct = String(data.SECTACT ?? "").trim();
+    if (ageEco === "1080") {
+        if (!sectAct) {
+            pushErr(
+                "OBL002",
+                "Erreur",
+                "SectAct",
+                "Champ obligatoire non fourni (Requis pour l'agent économique professionnel 1080)",
+            );
+        } else if (!isValidNaemaSector(sectAct)) {
+            pushErr(
+                "OBL003",
+                "Erreur",
+                "SectAct",
+                "Valeur référentielle invalide",
+            );
+        }
+    } else if (sectAct) {
+        pushErr(
+            "LOG065",
+            "Avertissement",
+            "SectAct",
+            "Le champ SectAct ne doit pas être renseigné",
+        );
     }
 
     // LOG023 / LOG026 / LOG029 / LOG034 : Vérification d'unicité des identifiants relationnels liés

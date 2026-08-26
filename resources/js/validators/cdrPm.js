@@ -589,6 +589,10 @@ const VALID_NAEMA_SECTORS_NORM = new Set(
     [...VALID_NAEMA_SECTORS].map(normalizeNaema),
 );
 
+export function isValidNaemaSector(code) {
+    return VALID_NAEMA_SECTORS_NORM.has(normalizeNaema(code));
+}
+
 function checkBEACDate(dateStr) {
     if (!dateStr || dateStr === "PND")
         return { syntaxValid: false, logicalValid: false };
@@ -694,7 +698,7 @@ export function validatePersonneMorale(data, currentCountry = "CM") {
     // REVISE ET COMPLET - TEST D'EXISTENCE STRICT SUR LA TABLE NAEMA (SECACT)
     if (data.SECACT) {
         const secActStr = data.SECACT.toString().trim();
-        if (!VALID_NAEMA_SECTORS_NORM.has(normalizeNaema(secActStr))) {
+        if (!isValidNaemaSector(secActStr)) {
             pushErr(
                 "OBL004",
                 "Erreur",
