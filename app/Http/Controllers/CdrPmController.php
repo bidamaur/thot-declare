@@ -7,10 +7,23 @@ use Illuminate\Http\Request;
 
 class CdrPmController extends Controller
 {
-    public function index($DateArr = null)
+    public function index(Request $request, $DateArr = null, $clientId = null)
     {
         $dateFilter = '';
         $bindings = [];
+
+        $dateParam = trim((string) $request->query('date', $DateArr ?? ''));
+        $clientParam = trim((string) $request->query('client_id', $request->query('clientId', $clientId ?? '')));
+        $searchTerm = trim((string) $request->query('q', ''));
+
+        if ($clientParam === '' && preg_match('/^\d+$/', $searchTerm)) {
+            $clientParam = $searchTerm;
+            $searchTerm = '';
+        }
+
+        if ($dateParam !== '') {
+            $DateArr = $dateParam;
+        }
 
         if ($DateArr) {
             $DateArr = trim($DateArr);
@@ -29,7 +42,26 @@ class CdrPmController extends Controller
             }
         }
 
-        $results = DB::select("SELECT 
+        $customerFilter = '';
+        if ($clientParam !== '') {
+            $customerFilter = "AND TRIM(c.cli) = ?";
+            $bindings[] = $clientParam;
+        }
+
+        $searchFilter = '';
+        if ($searchTerm !== '') {
+            $like = '%' . strtoupper($searchTerm) . '%';
+            $searchFilter = "AND (
+                UPPER(TRIM(c.rso)) LIKE ? OR
+                UPPER(TRIM(c.sig)) LIKE ? OR
+                TRIM(c.cli) LIKE ? OR
+                UPPER(TRIM(c.nidf)) LIKE ?
+            )";
+            $bindings = array_merge($bindings, [$like, $like, $like, $like]);
+        }
+
+        try {
+            $results = DB::select("SELECT 
         TRIM(c.cli) AS IDINTCLI,
         TRIM(c.nidf) AS NIF_NIU,
        REPLACE(TRIM(c.rso),'&',' et ') AS RAISOC,
@@ -139,10 +171,20 @@ class CdrPmController extends Controller
         WHERE 
             c.tcli IN (2, 3)
             AND c.cli NOT IN (000020, 100500)
+            " . $customerFilter . "
+            " . $searchFilter . "
             " . $dateFilter . "
             --and c.cli>100924
         ORDER BY 1
         ", $bindings);
+        } catch (\Exception $e) {
+            $msg = $e->getMessage();
+            if (stripos($msg, 'ORA-00942') !== false || stripos($msg, 'table or view does not exist') !== false) {
+                return response()->json([]);
+            }
+            return response()->json([[ 'type' => 'Erreur', 'Description' => $msg ]]);
+        }
+
         $results = array_map(function ($row) {
             return array_change_key_case((array) $row, CASE_UPPER);
         }, $results);

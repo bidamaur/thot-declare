@@ -118,10 +118,7 @@
                         :key="index"
                         class="table-row"
                     >
-                        <td
-                            v-if="selectable"
-                            class="px-2 py-1 text-center"
-                        >
+                        <td v-if="selectable" class="px-2 py-1 text-center">
                             <input
                                 type="checkbox"
                                 :checked="isSelected(row.__idx)"
@@ -141,20 +138,13 @@
                             <input
                                 v-if="editable && !col.readonly"
                                 class="w-full text-xs rounded px-1 py-0.5 focus:outline-none focus:ring-1"
-:class="[
-                                        isModified(row.__idx, col.key)
-                                            ? 'border border-orange-300 bg-orange-50 focus:ring-orange-500'
-                                            : 'border border-transparent'
-                                    ]"
+                                :class="[
+                                    isModified(row.__idx, col.key)
+                                        ? 'border border-orange-300 bg-orange-50 focus:ring-orange-500'
+                                        : 'border border-transparent',
+                                ]"
                                 :value="row[col.key]"
                                 @input="
-                                    emitEdit(
-                                        row.__idx,
-                                        col.key,
-                                        $event.target.value,
-                                    )
-                                "
-                                @blur="
                                     emitEdit(
                                         row.__idx,
                                         col.key,
@@ -246,14 +236,18 @@ const props = defineProps({
     exportName: { type: String, default: "" },
     editable: { type: Boolean, default: false },
     selectable: { type: Boolean, default: false },
-    corrections: { type: Object, default: () => ({ }) },
+    corrections: { type: Object, default: () => ({}) },
 });
 
 const emit = defineEmits(["cell-edit", "selection-change", "selection-clear"]);
 
 const isModified = (idx, colKey) => {
-    if (!idx || !colKey) return false;
-    return !!(props.corrections && props.corrections[idx] && props.corrections[idx][colKey] !== undefined);
+    if (idx === undefined || idx === null || !colKey) return false;
+    return !!(
+        props.corrections &&
+        props.corrections[idx] &&
+        props.corrections[idx][colKey] !== undefined
+    );
 };
 
 const emitEdit = (idx, colKey, value) => {
@@ -282,7 +276,16 @@ const getSearchableText = (row) =>
         .filter(Boolean)
         .join(" ");
 
-const primaryKeyColumns = ["EVE", "CLI", "REFCONTCMPT", "REFINT", "AVE", "DVA", "DATEVE", "DATPAI"];
+const primaryKeyColumns = [
+    "EVE",
+    "CLI",
+    "REFCONTCMPT",
+    "REFINT",
+    "AVE",
+    "DVA",
+    "DATEVE",
+    "DATPAI",
+];
 
 const filteredData = computed(() => {
     const query = normalizeText(searchQuery.value);

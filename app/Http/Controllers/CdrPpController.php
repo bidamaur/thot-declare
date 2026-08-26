@@ -7,11 +7,26 @@ use Illuminate\Http\Request;
 
 class CdrPpController extends Controller
 {
-public function index($DateArr = null)
+    /**
+     * Display a listing of the resource.
+     */
+    public function index(Request $request, $DateArr = null, $clientId = null)
     {
         $dateFilter = '';
         $bindings = [];
 
+        $dateParam = trim((string) $request->query('date', $DateArr ?? ''));
+        $clientParam = trim((string) $request->query('client_id', $request->query('clientId', $clientId ?? '')));
+        $searchTerm = trim((string) $request->query('q', ''));
+
+        if ($clientParam === '' && preg_match('/^\d+$/', $searchTerm)) {
+            $clientParam = $searchTerm;
+            $searchTerm = '';
+        }
+
+        if ($dateParam !== '') {
+            $DateArr = $dateParam;
+        }
         if ($DateArr) {
             $DateArr = trim($DateArr);
             if (preg_match('/^\d{8}$/', $DateArr)) {
@@ -27,6 +42,92 @@ public function index($DateArr = null)
                 $dateFilter = "AND TO_CHAR(c.dou, 'MMYYYY') = ?";
                 $bindings[] = $DateArr;
             }
+        }
+
+        $customerFilter = '';
+        if ($clientParam !== '') {
+            $customerFilter = "AND TRIM(c.cli) = ?";
+            $bindings[] = $clientParam;
+        }
+
+        $searchFilter = '';
+        if ($searchTerm !== '') {
+            $like = '%' . strtoupper($searchTerm) . '%';
+            $searchFilter = "AND (
+                UPPER(TRIM(c.nom)) LIKE ? OR
+                UPPER(TRIM(c.pre)) LIKE ? OR
+                UPPER(TRIM(c.sext)) LIKE ? OR
+                TRIM(c.cli) LIKE ? OR
+                UPPER(TRIM(c.nid)) LIKE ?
+            )";
+            $bindings = array_merge($bindings, [$like, $like, $like, $like, $like]);
+        }
+
+        function parseUtf8($input_string)
+        {
+            // Liste des caractères accentués et leurs remplacements
+            $trans = [
+                'á' => 'a',
+                'à' => 'a',
+                'â' => 'a',
+                'ä' => 'a',
+                'ã' => 'a',
+                'å' => 'a',
+                'ç' => 'c',
+                'é' => 'e',
+                'è' => 'e',
+                'ê' => 'e',
+                'ë' => 'e',
+                'í' => 'i',
+                'ì' => 'i',
+                'î' => 'i',
+                'ï' => 'i',
+                'ñ' => 'n',
+                'ó' => 'o',
+                'ò' => 'o',
+                'ô' => 'o',
+                'ö' => 'o',
+                'õ' => 'o',
+                'ú' => 'u',
+                'ù' => 'u',
+                'û' => 'u',
+                'ü' => 'u',
+                'ý' => 'y',
+                'ÿ' => 'y',
+                '!' => '',
+                '@' => '',
+                '#' => '',
+                '$' => '',
+                '%' => '',
+                '^' => '',
+                '&' => '',
+                '*' => '',
+                '(' => '',
+                ')' => '',
+                '_' => '',
+                '+' => '',
+                '{' => '',
+                '}' => '',
+                '[' => '',
+                ']' => '',
+                '|' => '',
+                ';' => '',
+                ':' => '',
+                '"' => '',
+                '-' => '',
+                '<' => '',
+                '>' => '',
+                ',' => '',
+                '.' => '',
+                '?' => '',
+                '/' => ''
+            ];
+
+            // Remplace les caractères accentués et autres caractères spéciaux
+            $output_string = strtr($input_string, $trans);
+
+            // Supprime les espaces et met tout en majuscules
+            return strtoupper(trim(str_replace(' ', '', $output_string)));
         }
 
         $results = DB::select("SELECT 
@@ -131,15 +232,24 @@ public function index($DateArr = null)
          WHERE t.typ = (SELECT MAX(t1.typ) FROM bktelcli t1 WHERE t1.cli = t.cli)) t 
         ON t.cli = c.cli
     LEFT JOIN 
-        (SELECT DBPROD.CDR_PARSEUTF8(nom_ville) AS ville, code_region AS region, code_ville AS ville_code 
+        (SELECT dbprod.cdr_parseUtf8(nom_ville) AS ville, code_region AS region, code_ville AS ville_code 
          FROM cdr_ville_region) vr 
-        ON vr.ville = DBPROD.CDR_PARSEUTF8(ai.ville)
+        ON vr.ville = dbprod.cdr_parseUtf8(ai.ville)
     WHERE 
         c.tcli IN (1)
+        " . $customerFilter . "
+        " . $searchFilter . "
         " . $dateFilter . "
         -- AND c.cli <> 100534
         -- AND c.cli > 100914
-        ORDER BY 1", $bindings);
+    ORDER BY 1", $bindings);
+        if (!$results) {
+            echo "[{
+                'type':'Erreur',
+                'Description':'Personne physique non disponible'
+            }]";
+            return false;
+        }
 
         $results = array_map(function ($row) {
             return array_change_key_case((array) $row, CASE_UPPER);

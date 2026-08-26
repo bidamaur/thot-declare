@@ -21,8 +21,8 @@ use App\Http\Controllers\CdrPmController;
 | be assigned to the "api" middleware group. Make something great!
 |
 */
-Route::get('/cdr_pp/{DateArr?}', [CdrPpController::class, 'index']);
-Route::get('/cdr_pm/{DateArr?}', [CdrPmController::class, 'index']);
+Route::get('/cdr_pp/{DateArr?}/{clientId?}', [CdrPpController::class, 'index']);
+Route::get('/cdr_pm/{DateArr?}/{clientId?}', [CdrPmController::class, 'index']);
 Route::get('/cdr_engagements/{DateArr}', [CdrEngagementsController::class, 'GetEngagements']);
 Route::get('/cdr_ctrEngagements', [CdrEngagementsController::class, 'ctrEngagements']);
 Route::get('/cdr_ctrEngagements/compare/{DateArr}/{DateDeb}', [CdrEngagementsController::class, 'compareEngagements']);
