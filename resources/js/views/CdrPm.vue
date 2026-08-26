@@ -8,8 +8,20 @@
             :columns="columns"
             :enable-filters="true"
             filter-column="DATENTRELPAR"
+            :editable="true"
+            :corrections="corrections"
             @data-loaded="onDataLoaded"
+            @cell-edit="onCellEdit"
         />
+
+        <div v-if="totalCorrections" class="flex justify-end">
+            <button
+                @click="clearCorrections"
+                class="px-2 py-0.5 text-xs bg-amber-100 rounded hover:bg-amber-200"
+            >
+                Vider les corrections ({{ totalCorrections }})
+            </button>
+        </div>
 
         <div
             v-if="totalClients > 0"
@@ -58,18 +70,14 @@
                     >
                     <select
                         v-model="xmlConfig.TypDec"
+                        disabled
                         class="w-full text-xs border border-slate-300 rounded px-2 py-1"
                     >
-                        <option value="01">01 - Déclaration mensuelle</option>
+                        <option value="01">
+                            01 - Déclaration personne physique
+                        </option>
                         <option value="02">
-                            02 - Déclaration trimestrielle
-                        </option>
-                        <option value="03">
-                            03 - Déclaration semestrielle
-                        </option>
-                        <option value="04">04 - Déclaration annuelle</option>
-                        <option value="05">
-                            05 - Déclaration ponctuelle / événementielle
+                            02 - Déclaration personne morale
                         </option>
                     </select>
                 </div>
@@ -473,6 +481,51 @@ import {
 } from "../services/frcbExportService.js";
 
 const dataTable = ref(null);
+const corrections = ref({});
+
+const totalCorrections = computed(() =>
+    Object.values(corrections.value).reduce(
+        (total, rowCorrections) => total + Object.keys(rowCorrections).length,
+        0,
+    ),
+);
+
+const loadCorrections = () => {
+    try {
+        const stored = localStorage.getItem("cdr_pm_corrections_v1");
+        if (stored) corrections.value = JSON.parse(stored) || {};
+    } catch (e) {
+        corrections.value = {};
+    }
+};
+
+const saveCorrections = () => {
+    try {
+        localStorage.setItem(
+            "cdr_pm_corrections_v1",
+            JSON.stringify(corrections.value),
+        );
+    } catch (e) {
+        /* ignore */
+    }
+};
+
+const onCellEdit = ({ idx, colKey, value }) => {
+    if (idx === undefined || idx === null) return;
+    corrections.value[idx] = corrections.value[idx] || {};
+    corrections.value[idx][colKey] = value;
+    saveCorrections();
+};
+
+const clearCorrections = () => {
+    corrections.value = {};
+    try {
+        localStorage.removeItem("cdr_pm_corrections_v1");
+    } catch (e) {
+        /* ignore */
+    }
+    dataTable.value?.fetchData?.();
+};
 
 const columns = [
     { key: "IDINTCLI", label: "ID Client" },
@@ -533,8 +586,8 @@ const invalidClients = computed(() =>
 const xmlConfig = ref({
     NumDec: "0001",
     CodDec: "10030",
-    TypDec: "01",
-    NatDec: "01",
+    TypDec: "02",
+    NatDec: "00",
     TypPers: "02",
     comment: "",
 });
@@ -698,6 +751,8 @@ const exportAnomaliesToExcel = () => {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
 };
+
+loadCorrections();
 </script>
 
 <style scoped>

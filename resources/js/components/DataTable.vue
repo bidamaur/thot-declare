@@ -159,7 +159,24 @@
                                 :key="col.key"
                                 class="table-cell px-2 py-1"
                             >
-                                <span v-if="col.format === 'date'">{{
+                                <input
+                                    v-if="editable && !col.readonly"
+                                    class="w-full text-xs rounded px-1 py-0.5 focus:outline-none focus:ring-1"
+                                    :class="[
+                                        isModified(row.__idx, col.key)
+                                            ? 'border border-orange-300 bg-orange-50 focus:ring-orange-500'
+                                            : 'border border-transparent',
+                                    ]"
+                                    :value="row[col.key] ?? ''"
+                                    @input="
+                                        emitEdit(
+                                            row.__idx,
+                                            col.key,
+                                            $event.target.value,
+                                        )
+                                    "
+                                />
+                                <span v-else-if="col.format === 'date'">{{
                                     formatDate(row[col.key])
                                 }}</span>
                                 <span
@@ -241,7 +258,7 @@
 import { ref, onMounted, computed, watch } from "vue";
 import axios from "axios";
 
-const emit = defineEmits(["dataLoaded"]);
+const emit = defineEmits(["dataLoaded", "cell-edit"]);
 
 const props = defineProps({
     title: String,
@@ -264,7 +281,27 @@ const props = defineProps({
         type: Number,
         default: 5,
     },
+    editable: {
+        type: Boolean,
+        default: false,
+    },
+    corrections: {
+        type: Object,
+        default: () => ({}),
+    },
 });
+
+const isModified = (idx, colKey) =>
+    props.corrections?.[idx]?.[colKey] !== undefined;
+
+const emitEdit = (idx, colKey, value) => {
+    if (idx === undefined || idx === null) return;
+    const row = data.value.find((item) => item.__idx === idx);
+    if (!row) return;
+    row[colKey] = value;
+    emit("cell-edit", { idx, colKey, value });
+    emit("dataLoaded", data.value);
+};
 
 const formatDate = (val) => {
     if (!val) return "-";
@@ -340,7 +377,13 @@ const fetchData = async () => {
                 rows[0].Description || "Erreur lors du chargement des données";
             data.value = [];
         } else {
-            data.value = Array.isArray(responseData) ? responseData : [];
+            data.value = (Array.isArray(responseData) ? responseData : []).map(
+                (row, index) => ({
+                    ...row,
+                    __idx: index,
+                    ...(props.corrections?.[index] || {}),
+                }),
+            );
         }
         emit("dataLoaded", data.value);
         currentPage.value = 1;
@@ -476,6 +519,7 @@ onMounted(() => {
 
 defineExpose({
     selectedRows,
+    fetchData,
 });
 </script>
 
