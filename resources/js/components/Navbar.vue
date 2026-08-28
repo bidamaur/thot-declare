@@ -65,8 +65,6 @@ const pageTitle = computed(() => {
         "/": "Tableau de bord",
         "/personnes-physiques": "Personnes physiques",
         "/personnes-morales": "Personnes morales",
-        "/encours": "Encours",
-        "/encours-ajust": "Encours ajusté",
         "/engagements": "Engagements",
         "/credit-consolidation": "Consolidation Crédit",
         "/garanties": "Garanties",

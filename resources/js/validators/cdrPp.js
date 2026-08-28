@@ -452,7 +452,10 @@ export function validatePersonnePhysique(data, currentCountry = "CM") {
             const isRel = f === "PRENOMREL" || f === "NOMREL";
 
             // SYN008 / SYN0008 : Contient uniquement une valeur exclue
-            if (FORBIDDEN_WORDS.has(upperStr)) {
+            // Exception : si NATDEC (Nature de déclaration) = "00", ignorer le contrôle SYN008
+            if (data.NATDEC && data.NATDEC.toString() === "00") {
+                // NATDEC=00 : les contrôles SYN008/SYN0008 sont désactivés
+            } else if (FORBIDDEN_WORDS.has(upperStr)) {
                 pushErr(
                     isRel ? "SYN0008" : "SYN008",
                     isRel ? "Avertissement" : "Erreur",

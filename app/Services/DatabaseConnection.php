@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\Crypt;
+
 class DatabaseConnection
 {
     protected $connection;
@@ -13,6 +15,25 @@ class DatabaseConnection
 
     public function getConnectionConfig(): array
     {
+        $adminConfigPath = base_path('storage/app/admin-config.json');
+        if (is_file($adminConfigPath)) {
+            $adminConfig = json_decode((string) file_get_contents($adminConfigPath), true) ?: [];
+            $database = $adminConfig['database'] ?? [];
+            if (!empty($database['driver'])) {
+                $password = $database['password'] ?? '';
+                try {
+                    $password = Crypt::decryptString($password);
+                } catch (\Throwable $exception) {
+                }
+                return [
+                    'connectionString' => $database['service'] ?: (($database['host'] ?? 'localhost') . ':' . ($database['port'] ?? 1521) . '/' . ($database['database'] ?? 'XE')),
+                    'database' => $database['database'] ?? 'XE',
+                    'username' => $database['username'] ?? '',
+                    'password' => $password,
+                ];
+            }
+        }
+
         $tns = env('ORACLE_TNS');
 
         if (empty($tns)) {

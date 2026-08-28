@@ -9,6 +9,7 @@ use App\Http\Controllers\CdrEngagementsController;
 use App\Http\Controllers\GarantiesController;
 use App\Http\Controllers\CdrPpController;
 use App\Http\Controllers\CdrPmController;
+use App\Http\Controllers\AdminConfigController;
 
 
 /*
@@ -32,6 +33,14 @@ Route::get('/cdr_garanties/{DateArr}', [GarantiesController::class, 'getGarantie
 //route mise en application apres 
 Route::get('/cdr_encours', [CdrEncoursController::class, 'index']);
 Route::get('/cdr_engagements_echus/{DateArr}/{DateDeb}', [CdrEngagementsController::class, 'GetEngagementsEchus']);
+Route::get('/admin/config', [AdminConfigController::class, 'show']);
+Route::put('/admin/config', [AdminConfigController::class, 'update']);
+Route::post('/admin/database/test', [AdminConfigController::class, 'testDatabase']);
+Route::get('/admin/queries', [AdminConfigController::class, 'queries']);
+Route::put('/admin/queries/{key}', [AdminConfigController::class, 'updateQuery']);
+Route::post('/admin/queries/{key}/test', [AdminConfigController::class, 'testQuery']);
+Route::get('/admin/themes', [AdminConfigController::class, 'listThemes']);
+Route::post('/admin/themes/select', [AdminConfigController::class, 'selectTheme']);
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();

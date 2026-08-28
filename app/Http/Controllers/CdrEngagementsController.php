@@ -222,9 +222,9 @@ public function GetEngagements($MyDateArr)
     AND d.ave=(SELECT MAX(bb.ave) FROM DBPROD.bkdosprt bb WHERE bb.eve=d.eve)
     and e.ctr not in(3)
     --  and (cdr_date(e.dva) between cdr_date('01/07/2023') and cdr_date('31/07/2023'))
-    --AND (cdr_date(d.dmep) between cdr_date('01" . $DateMonthYear . "') and cdr_date('$DateArr'))
+    --AND (cdr_date(d.dmep) between cdr_date('01$DateMonthYear') and cdr_date('$DateArr'))
     AND (EXTRACT(MONTH FROM d.dmep)='$DateArrMonth' and EXTRACT(YEAR FROM CDR_DATE(d.dmep))='$DateArrYear' )
-    AND cdr_date(d.dmep)<cdr_date('01-'||TO_CHAR(ADD_MONTHS(CDR_DATE('01$DateMonthYear'), 1), 'MM-YYYY'))
+    AND cdr_date(d.dmep)<ADD_MONTHS(cdr_date('01$DateMonthYear'), 1)
     --AND e.ave=(SELECT max(ave) from DBPROD.bkechprt where eve=d.eve)
     AND d.tau_int!=0 ";
     
@@ -399,7 +399,7 @@ public function ctrEngagements()
          AND d.ave=(SELECT MAX(bb.ave) FROM DBPROD.bkdosprt bb WHERE bb.eve=d.eve)
          and e.ctr not in(3)
          AND (EXTRACT(MONTH FROM d.dmep)='$DateArrMonth' and EXTRACT(YEAR FROM CDR_DATE(d.dmep))='$DateArrYear' )
-         AND cdr_date(d.dmep)<cdr_date('01-'||TO_CHAR(ADD_MONTHS(CDR_DATE('01$DateMonthYear'), 1), 'MM-YYYY'))
+         AND cdr_date(d.dmep)<ADD_MONTHS(cdr_date('01$DateMonthYear'), 1)
          AND d.tau_int!=0";
 
         $stid2 = oci_parse($connection, $engQuery);

@@ -8,6 +8,7 @@ import EncoursAjust from "../views/EncoursAjust.vue";
 import Engagements from "../views/Engagements.vue";
 import Garanties from "../views/Garanties.vue";
 import CreditConsolidation from "../views/CreditConsolidation.vue";
+import Admin from "../views/Admin.vue";
 
 const routes = [
     {
@@ -15,13 +16,34 @@ const routes = [
         component: AppLayout,
         children: [
             { path: "", component: Dashboard, name: "Dashboard" },
-            { path: "personnes-physiques", component: CdrPp, name: "PersonnesPhysiques" },
-            { path: "personnes-morales", component: CdrPm, name: "PersonnesMorales" },
+            {
+                path: "personnes-physiques",
+                component: CdrPp,
+                name: "PersonnesPhysiques",
+            },
+            {
+                path: "personnes-morales",
+                component: CdrPm,
+                name: "PersonnesMorales",
+            },
             { path: "encours", component: Encours, name: "Encours" },
-            { path: "encours-ajust", component: EncoursAjust, name: "EncoursAjust" },
-            { path: "engagements", component: Engagements, name: "Engagements" },
-            { path: "credit-consolidation", component: CreditConsolidation, name: "CreditConsolidation" },
+            {
+                path: "encours-ajust",
+                component: EncoursAjust,
+                name: "EncoursAjust",
+            },
+            {
+                path: "engagements",
+                component: Engagements,
+                name: "Engagements",
+            },
+            {
+                path: "credit-consolidation",
+                component: CreditConsolidation,
+                name: "CreditConsolidation",
+            },
             { path: "garanties", component: Garanties, name: "Garanties" },
+            { path: "admin", component: Admin, name: "Admin" },
         ],
     },
 ];

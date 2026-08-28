@@ -821,7 +821,11 @@ export function validatePersonneMorale(data, currentCountry = "CM") {
             const upperStr = valStr.toUpperCase();
             const isRel = f === "NOMREL" || f === "NOMACT";
 
-            if (FORBIDDEN_WORDS.has(upperStr)) {
+            // SYN008 / SYN0008 : Contient uniquement une valeur exclue
+            // Exception : si NATDEC (Nature de déclaration) = "00", ignorer le contrôle SYN008
+            if (data.NATDEC && data.NATDEC.toString() === "00") {
+                // NATDEC=00 : les contrôles SYN008/SYN0008 sont désactivés
+            } else if (FORBIDDEN_WORDS.has(upperStr)) {
                 pushErr(
                     isRel ? "SYN0008" : "SYN008",
                     isRel ? "Avertissement" : "Erreur",

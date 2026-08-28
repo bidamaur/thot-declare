@@ -1,15 +1,16 @@
 <template>
     <div
-        class="border border-slate-200 rounded-lg bg-white shadow-sm overflow-hidden"
+        class="premium-card overflow-hidden"
     >
         <div
-            class="px-4 py-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between"
+            class="px-4 py-3 border-b flex items-center justify-between"
+            style="border-color: rgb(var(--border));"
         >
             <div>
-                <h2 class="text-sm font-semibold text-slate-800">
+                <h2 class="text-sm font-semibold" style="color: rgb(var(--foreground));">
                     {{ title }}
                 </h2>
-                <p v-if="subtitle" class="text-xs text-slate-500 mt-0.5">
+                <p v-if="subtitle" class="text-xs mt-0.5" style="color: rgb(var(--muted));">
                     {{ subtitle }}
                 </p>
             </div>
@@ -19,20 +20,22 @@
                         v-model="searchQuery"
                         type="text"
                         placeholder="Recherche rapide"
-                        class="w-44 text-xs border border-slate-300 rounded pl-7 pr-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        class="w-44 text-xs border rounded pl-7 pr-2 py-1 focus:outline-none focus:ring-1"
+                        style="background: rgb(var(--surface)), border-color: rgb(var(--border)), color: rgb(var(--foreground));"
                     />
                     <span
-                        class="material-icons absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-sm"
+                        class="absolute left-2 top-1/2 -translate-y-1/2 text-sm pointer-events-none"
+                        style="color: rgb(var(--muted));"
                         >search</span
                     >
                 </div>
-                <span class="text-xs text-slate-500"
-                    >{{ filteredData.length }} ligne(s)</span
+                <span class="text-xs" style="color: rgb(var(--muted));">
+                    {{ filteredData.length }} ligne(s)</span
                 >
                 <button
                     v-if="selectable"
                     @click="clearSelection"
-                    class="px-2 py-0.5 text-xs bg-slate-100 rounded hover:bg-slate-200"
+                    class="action-btn"
                     title="Désélectionner toutes les lignes"
                 >
                     Désélectionner tout
@@ -40,7 +43,7 @@
                 <button
                     v-if="exportable"
                     @click="exportToExcel"
-                    class="px-2 py-0.5 text-xs bg-emerald-100 rounded hover:bg-emerald-200"
+                    class="action-btn-success"
                 >
                     Excel
                 </button>
@@ -52,7 +55,7 @@
                 <div
                     class="animate-spin rounded-full h-6 w-6 border-2 border-blue-600 border-t-transparent"
                 ></div>
-                <p class="text-xs text-slate-500">Chargement...</p>
+                <p class="text-xs" style="color: rgb(var(--muted));">Chargement...</p>
             </div>
         </div>
 
@@ -64,19 +67,20 @@
         </div>
 
         <div v-else-if="data.length === 0" class="p-8 text-center">
-            <span class="material-icons text-2xl text-slate-300 mb-1"
+            <span class="material-icons text-2xl mb-1"
                 >inbox</span
             >
-            <p class="text-slate-500 text-xs">Aucune donnée.</p>
+            <p class="text-xs" style="color: rgb(var(--muted));">Aucune donnée.</p>
         </div>
 
         <div v-else class="overflow-x-auto">
             <table class="w-full text-xs">
-                <thead class="bg-slate-50 border-b border-slate-200">
-                    <tr>
+                <thead class="table-header">
+                    <tr style="border-bottom-color: rgb(var(--border));">
                         <th
                             v-if="selectable"
-                            class="px-2 py-1 text-center font-semibold text-slate-600 w-8"
+                            class="px-2 py-1 text-center font-semibold w-8"
+                            style="color: rgb(var(--muted));"
                         >
                             <input
                                 type="checkbox"
@@ -86,7 +90,8 @@
                             />
                         </th>
                         <th
-                            class="px-2 py-1 text-left font-semibold text-slate-600 w-8"
+                            class="px-2 py-1 text-left font-semibold w-8"
+                            style="color: rgb(var(--muted));"
                         >
                             #
                         </th>
@@ -112,7 +117,7 @@
                         </th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-100">
+                <tbody class="divide-y" style="division-color: rgb(var(--border));">
                     <tr
                         v-for="(row, index) in paginatedData"
                         :key="index"
@@ -127,7 +132,7 @@
                                 "
                             />
                         </td>
-                        <td class="px-2 py-1 text-slate-500">
+                        <td class="px-2 py-1" style="color: rgb(var(--muted));">
                             {{ (currentPage - 1) * itemsPerPage + index + 1 }}
                         </td>
                         <td
@@ -157,10 +162,17 @@
                             }}</span>
                             <span
                                 v-else-if="col.format === 'number'"
-                                class="font-medium text-slate-900"
+                                class="font-medium"
+                                style="color: rgb(var(--foreground));"
                                 >{{ formatNumber(row[col.key]) }}</span
                             >
-                            <span v-else>{{ row[col.key] ?? "-" }}</span>
+                            <span
+                                v-else-if="col.format === 'currency'"
+                                class="font-semibold"
+                                style="color: rgb(var(--foreground));"
+                                >{{ formatCurrency(row[col.key]) }}</span
+                            >
+                            <span v-else style="color: rgb(var(--foreground));">{{ row[col.key] ?? "-" }}</span>
                         </td>
                     </tr>
                 </tbody>
@@ -169,9 +181,10 @@
 
         <div
             v-if="data.length > 0"
-            class="flex items-center justify-between px-3 py-2 bg-white border-t border-slate-200 text-xs"
+            class="flex items-center justify-between px-3 py-2 border-t text-xs"
+            style="border-color: rgb(var(--border));"
         >
-            <p class="text-slate-500">
+            <p style="color: rgb(var(--muted));">
                 {{ data.length }} résultats - Page {{ currentPage }}/{{
                     totalPages
                 }}
@@ -179,7 +192,8 @@
             <div class="flex items-center gap-1">
                 <select
                     v-model="internalItemsPerPage"
-                    class="text-xs border border-slate-300 rounded px-1 py-0.5"
+                    class="text-xs border rounded px-1 py-0.5"
+                    style="background: rgb(var(--surface)), border-color: rgb(var(--border)), color: rgb(var(--foreground));"
                 >
                     <option :value="5">5</option>
                     <option :value="10">10</option>
@@ -191,11 +205,11 @@
                 <button
                     @click="prevPage"
                     :disabled="currentPage === 1 || internalItemsPerPage === -1"
-                    class="px-2 py-0.5 rounded border text-xs"
+                    class="action-btn"
                     :class="
                         currentPage === 1 || internalItemsPerPage === -1
                             ? 'opacity-50 cursor-not-allowed'
-                            : 'hover:bg-slate-100'
+                            : ''
                     "
                 >
                     Préc.
@@ -206,12 +220,12 @@
                         currentPage === totalPages ||
                         internalItemsPerPage === -1
                     "
-                    class="px-2 py-0.5 rounded border text-xs"
+                    class="action-btn"
                     :class="
                         currentPage === totalPages ||
                         internalItemsPerPage === -1
                             ? 'opacity-50 cursor-not-allowed'
-                            : 'hover:bg-slate-100'
+                            : ''
                     "
                 >
                     Suiv.
@@ -460,12 +474,40 @@ watch(
 
 <style scoped>
 .table-header {
-    @apply text-xs font-semibold text-slate-600 uppercase tracking-wider;
+    @apply text-xs font-semibold uppercase tracking-wider;
+    color: rgb(var(--muted));
 }
 .table-cell {
-    @apply text-xs text-slate-800;
+    @apply text-xs;
+    color: rgb(var(--foreground));
 }
 .table-row:hover {
-    @apply bg-slate-50;
+    background: rgb(var(--surface-secondary));
+}
+.action-btn {
+    @apply px-2 py-0.5 rounded text-xs font-medium transition-all;
+    border: 1px solid rgb(var(--border));
+    color: rgb(var(--muted));
+}
+.action-btn:hover {
+    background: rgb(var(--primary));
+    color: #fff;
+}
+.action-btn-primary {
+    @apply px-2 py-0.5 rounded text-xs font-medium text-white transition-all;
+    background: rgb(var(--primary));
+    border: none;
+}
+.action-btn-primary:hover {
+    background: rgb(var(--primary-hover));
+}
+.action-btn-success {
+    @apply px-2 py-0.5 rounded text-xs font-medium text-white transition-all;
+    background: rgb(var(--success));
+    border: none;
+}
+.action-btn-success:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 </style>
