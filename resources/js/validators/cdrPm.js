@@ -630,7 +630,7 @@ export function validatePersonneMorale(data, currentCountry = "CM") {
     const pushErr = (code, type, field, msg) =>
         errors.push({ code, type, field, message: msg });
 
-    const paysDeclarant = data["DBPROD."] || data["DBPROD"] || currentCountry;
+    const paysDeclarant = data[""] || data["DBPROD"] || currentCountry;
     const countryConfig =
         PM_LENGTHS_BY_COUNTRY[paysDeclarant] || PM_LENGTHS_BY_COUNTRY["CM"];
 

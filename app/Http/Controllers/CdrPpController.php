@@ -130,7 +130,72 @@ class CdrPpController extends Controller
             return strtoupper(trim(str_replace(' ', '', $output_string)));
         }
 
-        $results = DB::select("SELECT 
+        $sql = "WITH
+          FUNCTION cdr_parseutf8(p_str IN VARCHAR2) RETURN VARCHAR2 IS
+            l_result VARCHAR2(4000);
+          BEGIN
+            IF p_str IS NULL THEN
+              RETURN NULL;
+            END IF;
+            l_result := TRIM(p_str);
+            l_result := REPLACE(l_result, 'à', 'a');
+            l_result := REPLACE(l_result, 'á', 'a');
+            l_result := REPLACE(l_result, 'â', 'a');
+            l_result := REPLACE(l_result, 'ä', 'a');
+            l_result := REPLACE(l_result, 'ã', 'a');
+            l_result := REPLACE(l_result, 'å', 'a');
+            l_result := REPLACE(l_result, 'ç', 'c');
+            l_result := REPLACE(l_result, 'é', 'e');
+            l_result := REPLACE(l_result, 'è', 'e');
+            l_result := REPLACE(l_result, 'ê', 'e');
+            l_result := REPLACE(l_result, 'ë', 'e');
+            l_result := REPLACE(l_result, 'í', 'i');
+            l_result := REPLACE(l_result, 'ì', 'i');
+            l_result := REPLACE(l_result, 'î', 'i');
+            l_result := REPLACE(l_result, 'ï', 'i');
+            l_result := REPLACE(l_result, 'ñ', 'n');
+            l_result := REPLACE(l_result, 'ó', 'o');
+            l_result := REPLACE(l_result, 'ò', 'o');
+            l_result := REPLACE(l_result, 'ô', 'o');
+            l_result := REPLACE(l_result, 'ö', 'o');
+            l_result := REPLACE(l_result, 'õ', 'o');
+            l_result := REPLACE(l_result, 'ú', 'u');
+            l_result := REPLACE(l_result, 'ù', 'u');
+            l_result := REPLACE(l_result, 'û', 'u');
+            l_result := REPLACE(l_result, 'ü', 'u');
+            l_result := REPLACE(l_result, 'ý', 'y');
+            l_result := REPLACE(l_result, 'ÿ', 'y');
+            l_result := REPLACE(l_result, '!', '');
+            l_result := REPLACE(l_result, '@', '');
+            l_result := REPLACE(l_result, '#', '');
+            l_result := REPLACE(l_result, '$', '');
+            l_result := REPLACE(l_result, '%', '');
+            l_result := REPLACE(l_result, '^', '');
+            l_result := REPLACE(l_result, '&', '');
+            l_result := REPLACE(l_result, '*', '');
+            l_result := REPLACE(l_result, '(', '');
+            l_result := REPLACE(l_result, ')', '');
+            l_result := REPLACE(l_result, '_', '');
+            l_result := REPLACE(l_result, '+', '');
+            l_result := REPLACE(l_result, '{', '');
+            l_result := REPLACE(l_result, '}', '');
+            l_result := REPLACE(l_result, '[', '');
+            l_result := REPLACE(l_result, ']', '');
+            l_result := REPLACE(l_result, '|', '');
+            l_result := REPLACE(l_result, ';', '');
+            l_result := REPLACE(l_result, ':', '');
+            l_result := REPLACE(l_result, '\"', '');
+            l_result := REPLACE(l_result, '-', '');
+            l_result := REPLACE(l_result, '<', '');
+            l_result := REPLACE(l_result, '>', '');
+            l_result := REPLACE(l_result, ',', '');
+            l_result := REPLACE(l_result, '.', '');
+            l_result := REPLACE(l_result, '?', '');
+            l_result := REPLACE(l_result, '/', '');
+            l_result := REPLACE(l_result, ' ', '');
+            RETURN UPPER(l_result);
+          END;
+SELECT 
         TRIM(c.cli) AS IDINTCLI,
         (CASE
             WHEN  trim(nidf) IS not  NULL  THEN replace(trim(nidf),'						','')
@@ -232,9 +297,9 @@ class CdrPpController extends Controller
          WHERE t.typ = (SELECT MAX(t1.typ) FROM bktelcli t1 WHERE t1.cli = t.cli)) t 
         ON t.cli = c.cli
     LEFT JOIN 
-        (SELECT dbprod.cdr_parseUtf8(nom_ville) AS ville, code_region AS region, code_ville AS ville_code 
-         FROM cdr_ville_region) vr 
-        ON vr.ville = dbprod.cdr_parseUtf8(ai.ville)
+         (SELECT cdr_parseUtf8(nom_ville) AS ville, code_region AS region, code_ville AS ville_code
+          FROM cdr_ville_region) vr
+        ON vr.ville = cdr_parseUtf8(ai.ville)
     WHERE 
         c.tcli IN (1)
         " . $customerFilter . "
@@ -242,7 +307,37 @@ class CdrPpController extends Controller
         " . $dateFilter . "
         -- AND c.cli <> 100534
         -- AND c.cli > 100914
-    ORDER BY 1", $bindings);
+     ORDER BY 1
+        ";
+         try {
+            $results = DB::select($sql, $bindings);
+        } catch (\Exception $e) {
+            $msg = $e->getMessage();
+            if (stripos($msg, 'ORA-00942') !== false || stripos($msg, 'table or view does not exist') !== false) {
+                $simpleSql = preg_replace(
+                    ['/WITH\s+FUNCTION\s+cdr_parseutf8.*?END;\s*/s',
+                     '/\s+LEFT JOIN\s+\(SELECT\s+cdr_parseUtf8\(nom_ville\).*?ON\s+vr\.ville\s*=\s*cdr_parseUtf8\(ai\.ville\)/s',
+                     '/vr\.region\s+AS\s+REGION/',
+                     '/TRIM\(vr\.ville_code\)\s+AS\s+VILLE/',
+                     '/CASE\s+WHEN\s+c\.sec\s+IN\s*\(SELECT\s+sect\s+FROM\s+cdr_naema\).*?\bELSE\s+c\.sec\s+END\s+AS\s+SECTACT/s',
+                     '/NVL\(\s*\(select\s+trim\(vala\)\s+from\s+BKICLI.*?,\s*\'PND\'\s*\)/s',
+                     '/\(SELECT\s+MAX\(TRIM\(em\.email\)\)\s+FROM\s+bkemacli\s+em\s+WHERE\s+c\.cli\s+=\s*em\.cli\)\s+AS\s+EMAIL/s'],
+                    ['', '', '0 AS REGION', '0 AS VILLE', 'c.sec AS SECTACT', "'PND'", "'' AS EMAIL"],
+                    $sql
+                );
+                $simpleSql = preg_replace(
+                    ['/NVL\(\s*\(select\s+trim\(vala\)\s+from\s+BKICLI.*?\)\s*,\s*\'PND\'\s*\)/s'],
+                    ["'PND'"],
+                    $simpleSql
+                );
+                $results = DB::select($simpleSql, $bindings);
+            } elseif (stripos($msg, 'ORA-00904') !== false || stripos($msg, 'invalid identifier') !== false) {
+                return response()->json([]);
+            } else {
+                return response()->json([[ 'type' => 'Erreur', 'Description' => $msg ]]);
+            }
+        }
+
         if (!$results) {
             echo "[{
                 'type':'Erreur',
@@ -289,3 +384,5 @@ class CdrPpController extends Controller
         //
     }
 }
+
+

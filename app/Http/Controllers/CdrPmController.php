@@ -60,8 +60,72 @@ class CdrPmController extends Controller
             $bindings = array_merge($bindings, [$like, $like, $like, $like]);
         }
 
-        try {
-            $results = DB::select("SELECT 
+        $sql = "WITH
+          FUNCTION cdr_parseutf8(p_str IN VARCHAR2) RETURN VARCHAR2 IS
+            l_result VARCHAR2(4000);
+          BEGIN
+            IF p_str IS NULL THEN
+              RETURN NULL;
+            END IF;
+            l_result := TRIM(p_str);
+            l_result := REPLACE(l_result, 'à', 'a');
+            l_result := REPLACE(l_result, 'á', 'a');
+            l_result := REPLACE(l_result, 'â', 'a');
+            l_result := REPLACE(l_result, 'ä', 'a');
+            l_result := REPLACE(l_result, 'ã', 'a');
+            l_result := REPLACE(l_result, 'å', 'a');
+            l_result := REPLACE(l_result, 'ç', 'c');
+            l_result := REPLACE(l_result, 'é', 'e');
+            l_result := REPLACE(l_result, 'è', 'e');
+            l_result := REPLACE(l_result, 'ê', 'e');
+            l_result := REPLACE(l_result, 'ë', 'e');
+            l_result := REPLACE(l_result, 'í', 'i');
+            l_result := REPLACE(l_result, 'ì', 'i');
+            l_result := REPLACE(l_result, 'î', 'i');
+            l_result := REPLACE(l_result, 'ï', 'i');
+            l_result := REPLACE(l_result, 'ñ', 'n');
+            l_result := REPLACE(l_result, 'ó', 'o');
+            l_result := REPLACE(l_result, 'ò', 'o');
+            l_result := REPLACE(l_result, 'ô', 'o');
+            l_result := REPLACE(l_result, 'ö', 'o');
+            l_result := REPLACE(l_result, 'õ', 'o');
+            l_result := REPLACE(l_result, 'ú', 'u');
+            l_result := REPLACE(l_result, 'ù', 'u');
+            l_result := REPLACE(l_result, 'û', 'u');
+            l_result := REPLACE(l_result, 'ü', 'u');
+            l_result := REPLACE(l_result, 'ý', 'y');
+            l_result := REPLACE(l_result, 'ÿ', 'y');
+            l_result := REPLACE(l_result, '!', '');
+            l_result := REPLACE(l_result, '@', '');
+            l_result := REPLACE(l_result, '#', '');
+            l_result := REPLACE(l_result, '$', '');
+            l_result := REPLACE(l_result, '%', '');
+            l_result := REPLACE(l_result, '^', '');
+            l_result := REPLACE(l_result, '&', '');
+            l_result := REPLACE(l_result, '*', '');
+            l_result := REPLACE(l_result, '(', '');
+            l_result := REPLACE(l_result, ')', '');
+            l_result := REPLACE(l_result, '_', '');
+            l_result := REPLACE(l_result, '+', '');
+            l_result := REPLACE(l_result, '{', '');
+            l_result := REPLACE(l_result, '}', '');
+            l_result := REPLACE(l_result, '[', '');
+            l_result := REPLACE(l_result, ']', '');
+            l_result := REPLACE(l_result, '|', '');
+            l_result := REPLACE(l_result, ';', '');
+            l_result := REPLACE(l_result, ':', '');
+            l_result := REPLACE(l_result, '\"', '');
+            l_result := REPLACE(l_result, '-', '');
+            l_result := REPLACE(l_result, '<', '');
+            l_result := REPLACE(l_result, '>', '');
+            l_result := REPLACE(l_result, ',', '');
+            l_result := REPLACE(l_result, '.', '');
+            l_result := REPLACE(l_result, '?', '');
+            l_result := REPLACE(l_result, '/', '');
+            l_result := REPLACE(l_result, ' ', '');
+            RETURN UPPER(l_result);
+          END;
+SELECT 
         TRIM(c.cli) AS IDINTCLI,
         TRIM(c.nidf) AS NIF_NIU,
        REPLACE(TRIM(c.rso),'&',' et ') AS RAISOC,
@@ -176,13 +240,29 @@ class CdrPmController extends Controller
             " . $dateFilter . "
             --and c.cli>100924
         ORDER BY 1
-        ", $bindings);
+        ";
+
+         try {
+            $results = DB::select($sql, $bindings);
         } catch (\Exception $e) {
             $msg = $e->getMessage();
             if (stripos($msg, 'ORA-00942') !== false || stripos($msg, 'table or view does not exist') !== false) {
+                $simpleSql = preg_replace(
+                    ['/WITH\s+FUNCTION\s+cdr_parseutf8.*?END;\s*/s',
+                     '/CASE\s+WHEN\s+cdr_parseutf8.*?\bELSE\s+0\s+END\s+AS\s+REGION/s',
+                     '/CASE\s+WHEN\s+cdr_parseutf8.*?\bELSE\s+0\s+END\s+AS\s+ville/s',
+                     '/CASE\s+WHEN\s+c\.sec\s+IN\s*\(SELECT\s+sect\s+FROM\s+cdr_naema\).*?\bELSE\s+c\.sec\s+END\s+AS\s+SECACT/s',
+                     '/\(SELECT\s+MAX\(TRIM\(em\.email\)\)\s+FROM\s+bkemacli.*?\)\s+AS\s+EMAIL/s',
+                     '/TRIM\(REPLACE\(.*?bkcntcli.*?END.*?\)\)\s+AS\s+TEL/s'],
+                    ['', '0 AS REGION', '0 AS ville', 'c.sec AS SECACT', "'' AS EMAIL", "'' AS TEL"],
+                    $sql
+                );
+                $results = DB::select($simpleSql, $bindings);
+            } elseif (stripos($msg, 'ORA-00904') !== false || stripos($msg, 'invalid identifier') !== false) {
                 return response()->json([]);
+            } else {
+                return response()->json([[ 'type' => 'Erreur', 'Description' => $msg ]]);
             }
-            return response()->json([[ 'type' => 'Erreur', 'Description' => $msg ]]);
         }
 
         $results = array_map(function ($row) {
@@ -223,3 +303,5 @@ class CdrPmController extends Controller
         //
     }
 }
+
+

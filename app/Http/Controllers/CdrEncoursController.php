@@ -14,11 +14,11 @@ class CdrEncoursController extends Controller
     /**
      * Display a listing of the resource.
      */
-    protected $dbConnection;
-    public function __construct(DatabaseConnection $dbConnection)
-    {
-        $this->dbConnection = $dbConnection;
-    }
+  protected $dbConnection;
+  public function __construct(DatabaseConnection $dbConnection)
+  {
+    $this->dbConnection = $dbConnection;
+  }
     public function index()
     {
         return '[{"Erreur": {
@@ -74,37 +74,37 @@ public function GetEncours($MyDateArr)
     
     // 1. Nombre total d'échéances pour L'AVENANT COURANT
     $NbrEchTotal = "(CASE 
-        WHEN EXISTS (SELECT 1 FROM DBPROD.bkechprt WHERE num = 0 AND eve = d.eve AND ave = d.ave) THEN 
-            (SELECT COUNT(dva) FROM DBPROD.bkechprt WHERE eve = d.eve AND ave = d.ave) - 1
+        WHEN EXISTS (SELECT 1 FROM bkechprt WHERE num = 0 AND eve = d.eve AND ave = d.ave) THEN 
+            (SELECT COUNT(dva) FROM bkechprt WHERE eve = d.eve AND ave = d.ave) - 1
         ELSE 
-            (SELECT COUNT(dva) FROM DBPROD.bkechprt WHERE eve = d.eve AND ave = d.ave)
+            (SELECT COUNT(dva) FROM bkechprt WHERE eve = d.eve AND ave = d.ave)
     END)";
 
     // 2. Nombre d'échéances payées (ctr = 9)
     $NbrEchPay = "(CASE 
-        WHEN EXISTS (SELECT 1 FROM DBPROD.bkechprt WHERE num = 0 AND eve = d.eve AND ave = d.ave AND CDR_DATE(dva) <= CDR_DATE('$DateArr')) THEN 
-            (SELECT COUNT(dva) FROM DBPROD.bkechprt WHERE eve = d.eve AND ave = d.ave AND ctr = 9 AND eta = 'VA' AND CDR_DATE(dva) <= CDR_DATE('$DateArr')) - 1
+        WHEN EXISTS (SELECT 1 FROM bkechprt WHERE num = 0 AND eve = d.eve AND ave = d.ave AND TO_DATE(dva, 'DD/MM/RR') <= TO_DATE('$DateArr', 'DD/MM/RR')) THEN 
+            (SELECT COUNT(dva) FROM bkechprt WHERE eve = d.eve AND ave = d.ave AND ctr = 9 AND eta = 'VA' AND TO_DATE(dva, 'DD/MM/RR') <= TO_DATE('$DateArr', 'DD/MM/RR')) - 1
         ELSE 
-            (SELECT COUNT(dva) FROM DBPROD.bkechprt WHERE eve = d.eve AND ave = d.ave AND ctr = 9 AND eta = 'VA' AND CDR_DATE(dva) <= CDR_DATE('$DateArr'))
+            (SELECT COUNT(dva) FROM bkechprt WHERE eve = d.eve AND ave = d.ave AND ctr = 9 AND eta = 'VA' AND TO_DATE(dva, 'DD/MM/RR') <= TO_DATE('$DateArr', 'DD/MM/RR'))
     END)";
     $mon_douteux = "ABS(NVL((
-    SELECT SUM(mon) FROM DBPROD.bksld 
+    SELECT SUM(mon) FROM bksld 
     WHERE cli = d.cli 
       AND (ncp LIKE '344%' OR ncp LIKE '345%')
       AND mon != 0 
-      AND to_char(dco,'MM/YYYY') = to_char(cdr_date('$DateArr'),'MM/YYYY')
+      AND to_char(dco,'MM/YYYY') = to_char(TO_DATE('$DateArr', 'DD/MM/RR'),'MM/YYYY')
     ), 0))";
     // 3. Nombre d'échéances impayées
      $NbrEchImp = "(CASE 
     WHEN $mon_douteux = 0 THEN LEAST((
-        SELECT COUNT(dva) FROM DBPROD.bkechprt 
+        SELECT COUNT(dva) FROM bkechprt 
         WHERE ctr = 8 AND eve = d.eve AND ave = d.ave 
-          AND CDR_DATE(dva) <= CDR_DATE('$DateArr')
+          AND TO_DATE(dva, 'DD/MM/RR') <= TO_DATE('$DateArr', 'DD/MM/RR')
     ), 2)
     ELSE (
-        SELECT COUNT(dva) FROM DBPROD.bkechprt 
+        SELECT COUNT(dva) FROM bkechprt 
         WHERE ctr = 8 AND eve = d.eve AND ave = d.ave 
-          AND CDR_DATE(dva) <= CDR_DATE('$DateArr')
+          AND TO_DATE(dva, 'DD/MM/RR') <= TO_DATE('$DateArr', 'DD/MM/RR')
     )
     END)";
 
@@ -113,42 +113,42 @@ public function GetEncours($MyDateArr)
     $NbrJrsImp = "($NbrEchImp * 30)";
 
     // --- SUBQUERIES BKSLD SÉCURISÉES SUR CLI ---
-    $doutx = "(SELECT SUM(mon) FROM DBPROD.bksld 
+    $doutx = "(SELECT SUM(mon) FROM bksld 
                WHERE cli = d.cli 
                  AND (ncp LIKE '344%' OR ncp LIKE '345%') 
-                 AND CDR_DATE(dco) <= CDR_DATE('$DateArr'))";
+                 AND TO_DATE(dco, 'DD/MM/RR') <= TO_DATE('$DateArr', 'DD/MM/RR'))";
 
    
 
     $montant_provision_imp = "ABS(NVL((
         SELECT SUM(mon) 
-        FROM DBPROD.bksld 
+        FROM bksld 
         WHERE cli = d.cli 
           AND cha = '3911000'
-          AND TO_CHAR(CDR_DATE(dco), 'MM/YYYY') = TO_CHAR(CDR_DATE('$DateArr'), 'MM/YYYY') 
+          AND TO_CHAR(TO_DATE(dco, 'DD/MM/RR'), 'MM/YYYY') = TO_CHAR(TO_DATE('$DateArr', 'DD/MM/RR'), 'MM/YYYY') 
           AND $NbrJrsImp != 0
     ), 0))";
 
     $montant_provision_dtx = "ABS(NVL((
         SELECT SUM(mon) 
-        FROM DBPROD.bksld 
+        FROM bksld 
         WHERE cli = d.cli 
           AND cha = '3943000'
-          AND TO_CHAR(CDR_DATE(dco), 'MM/YYYY') = TO_CHAR(CDR_DATE('$DateArr'), 'MM/YYYY') 
+          AND TO_CHAR(TO_DATE(dco, 'DD/MM/RR'), 'MM/YYYY') = TO_CHAR(TO_DATE('$DateArr', 'DD/MM/RR'), 'MM/YYYY') 
           AND $NbrJrsImp != 0
     ), 0))";
 
     $mon_impaye = "ABS(NVL((
         SELECT SUM(mon) 
-        FROM DBPROD.bksld 
+        FROM bksld 
         WHERE cli = d.cli 
           AND cha = '3411000'
-          AND TO_CHAR(CDR_DATE(dco), 'MM/YYYY') = TO_CHAR(CDR_DATE('$DateArr'), 'MM/YYYY') 
+          AND TO_CHAR(TO_DATE(dco, 'DD/MM/RR'), 'MM/YYYY') = TO_CHAR(TO_DATE('$DateArr', 'DD/MM/RR'), 'MM/YYYY') 
           AND $NbrJrsImp != 0
     ), 0))";
 
     // Numéro de la dernière échéance du dossier pour cet avenant précis
-    $last_num_echeance = "(SELECT MAX(num) FROM DBPROD.bkechprt WHERE eve = d.eve AND ave = d.ave)";
+    $last_num_echeance = "(SELECT MAX(num) FROM bkechprt WHERE eve = d.eve AND ave = d.ave)";
 
     // --- REQUÊTE PRINCIPALE ALIGNÉE SUR (EVE, AVE) ---
     $MyRequest = "SELECT DISTINCT 
@@ -156,33 +156,33 @@ public function GetEncours($MyDateArr)
         d.ave,
         e.dva,
         d.cli, 
-        (SELECT CDR_PARCE_NCP(p.ncp)
+        (SELECT CASE WHEN TRIM(p.ncp) LIKE '313%' THEN '311' || SUBSTR(TRIM(p.ncp), 4) WHEN TRIM(p.ncp) LIKE '322%' OR TRIM(p.ncp) LIKE '326%' OR TRIM(p.ncp) LIKE '323%' THEN '321' || SUBSTR(TRIM(p.ncp), 4) ELSE TRIM(p.ncp) END
             || (CASE
-                WHEN CDR_DATE(d.dmep) > CDR_DATE('30/11/2023') THEN (SELECT MAX(clc) FROM DBPROD.bkcom WHERE ncp = p.ncp)
+                WHEN TO_DATE(d.dmep, 'DD/MM/RR') > TO_DATE('30/11/2023', 'DD/MM/RR') THEN (SELECT MAX(clc) FROM bkcom WHERE ncp = p.ncp)
             END)
-         FROM DBPROD.bkcptprt p
+         FROM bkcptprt p
          WHERE p.eve = d.eve
            AND p.ave = d.ave
            AND p.nat = '004'
         ) RefContCmpt,
 
         (SELECT MAX(aa.dco)
-         FROM DBPROD.bkauxprt aa
+         FROM bkauxprt aa
          WHERE aa.sen = 'C'
            AND aa.eve = d.eve
-           AND CDR_DATE(aa.dco) <= CDR_DATE('$DateArr')
+           AND TO_DATE(aa.dco, 'DD/MM/RR') <= TO_DATE('$DateArr', 'DD/MM/RR')
         ) datPai,
 
-        CDR_DATE(e.dva) DatEch,
+        TO_DATE(e.dva, 'DD/MM/RR') DatEch,
 
         (SELECT MAX(mon)
-         FROM DBPROD.bkauxprt
+         FROM bkauxprt
          WHERE sen = 'C'
            AND eve = d.eve
            AND TO_DATE(dco, 'DD/MM/YYYY') < TO_DATE('$DateArr', 'DD/MM/YYYY')
            AND TO_DATE(dco, 'DD/MM/YYYY') = (
                SELECT MAX(TO_DATE(dco, 'DD/MM/YYYY'))
-               FROM DBPROD.bkauxprt
+               FROM bkauxprt
                WHERE sen = 'C'
                  AND eve = d.eve
                  AND TO_DATE(dco, 'DD/MM/YYYY') < TO_DATE('$DateArr', 'DD/MM/YYYY')
@@ -195,7 +195,7 @@ public function GetEncours($MyDateArr)
             WHEN e.num = $last_num_echeance THEN 0
             WHEN e.num IN (0, 1, 2, 3) AND e.res = 0 THEN d.mon
             WHEN (e.num >= 4 AND e.num <= $last_num_echeance) AND e.res = 0 THEN 
-                NVL((SELECT res FROM DBPROD.bkechprt 
+                NVL((SELECT res FROM bkechprt 
                      WHERE eve = d.eve 
                        AND ave = d.ave 
                        AND TO_CHAR(dva, 'MM/YYYY') = TO_CHAR(ADD_MONTHS(e.dva, -1), 'MM/YYYY')
@@ -222,7 +222,7 @@ public function GetEncours($MyDateArr)
         END) AS MNTCAPSOUF,
 
         (CASE
-            WHEN $NbrJrsImp != 0 AND e.inte = 0 THEN (SELECT MIN(inte) FROM DBPROD.bkechprt WHERE eve = e.eve AND ave = e.ave)
+            WHEN $NbrJrsImp != 0 AND e.inte = 0 THEN (SELECT MIN(inte) FROM bkechprt WHERE eve = e.eve AND ave = e.ave)
             WHEN $NbrJrsImp = 0 THEN 0
             ELSE (e.inte + NVL(e.ini, 0))
         END) AS MNTINTSOUF,
@@ -270,11 +270,11 @@ public function GetEncours($MyDateArr)
 
         $NbrEchImp AS testeeee
 
-        FROM DBPROD.bkdosprt d
-        INNER JOIN DBPROD.bkechprt e ON e.eve = d.eve AND e.ave = d.ave
+        FROM bkdosprt d
+        INNER JOIN bkechprt e ON e.eve = d.eve AND e.ave = d.ave
         WHERE d.eta IN ('VA', 'DE')
-          AND e.dva BETWEEN CDR_DATE('$DateDebMois') AND CDR_DATE('$DateArr')
-          AND CDR_DATE(e.dva) <= CDR_DATE('$DateArr')
+          AND e.dva BETWEEN TO_DATE('$DateDebMois', 'DD/MM/RR') AND TO_DATE('$DateArr', 'DD/MM/RR')
+          AND TO_DATE(e.dva, 'DD/MM/RR') <= TO_DATE('$DateArr', 'DD/MM/RR')
           AND d.ctr != 9
           AND d.tau_int != 0
           AND d.eve NOT IN ('002259')
@@ -283,7 +283,8 @@ public function GetEncours($MyDateArr)
     $stid = null;
     try {
         $stid = oci_parse($connection, $MyRequest);
-        oci_execute($stid);
+        if (!$stid) { $e = oci_error($connection); return response()->json([[ 'type' => 'Erreur OCI', 'Description' => $e['message'] ]]); }
+        if (!oci_execute($stid)) { $e = oci_error($stid); oci_free_statement($stid); oci_close($connection); return response()->json([[ 'type' => 'Erreur OCI', 'Description' => $e['message'] ]]); }
 
         $results = [];
 
@@ -365,38 +366,38 @@ public function GetEncours($MyDateArr)
 
     // 1. Nombre total d'échéances pour L'AVENANT COURANT
     $NbrEchTotal = "(CASE 
-        WHEN EXISTS (SELECT 1 FROM DBPROD.bkechprt WHERE num = 0 AND eve = d.eve AND ave = d.ave) THEN 
-            (SELECT COUNT(dva) FROM DBPROD.bkechprt WHERE eve = d.eve AND ave = d.ave) - 1
+        WHEN EXISTS (SELECT 1 FROM bkechprt WHERE num = 0 AND eve = d.eve AND ave = d.ave) THEN 
+            (SELECT COUNT(dva) FROM bkechprt WHERE eve = d.eve AND ave = d.ave) - 1
         ELSE 
-            (SELECT COUNT(dva) FROM DBPROD.bkechprt WHERE eve = d.eve AND ave = d.ave)
+            (SELECT COUNT(dva) FROM bkechprt WHERE eve = d.eve AND ave = d.ave)
     END)";
 
     // 2. Nombre d'échéances payées (ctr = 9) à la date de l'ajustement
     $NbrEchPay = "(CASE 
-        WHEN EXISTS (SELECT 1 FROM DBPROD.bkechprt WHERE num = 0 AND eve = d.eve AND ave = d.ave AND CDR_DATE(dva) <= CDR_DATE('$DateArr')) THEN 
-            (SELECT COUNT(dva) FROM DBPROD.bkechprt WHERE eve = d.eve AND ave = d.ave AND ctr = 9 AND eta = 'VA' AND CDR_DATE(dva) <= CDR_DATE('$DateArr')) - 1
+        WHEN EXISTS (SELECT 1 FROM bkechprt WHERE num = 0 AND eve = d.eve AND ave = d.ave AND TO_DATE(dva, 'DD/MM/RR') <= TO_DATE('$DateArr', 'DD/MM/RR')) THEN 
+            (SELECT COUNT(dva) FROM bkechprt WHERE eve = d.eve AND ave = d.ave AND ctr = 9 AND eta = 'VA' AND TO_DATE(dva, 'DD/MM/RR') <= TO_DATE('$DateArr', 'DD/MM/RR')) - 1
         ELSE 
-            (SELECT COUNT(dva) FROM DBPROD.bkechprt WHERE eve = d.eve AND ave = d.ave AND ctr = 9 AND eta = 'VA' AND CDR_DATE(dva) <= CDR_DATE('$DateArr'))
+            (SELECT COUNT(dva) FROM bkechprt WHERE eve = d.eve AND ave = d.ave AND ctr = 9 AND eta = 'VA' AND TO_DATE(dva, 'DD/MM/RR') <= TO_DATE('$DateArr', 'DD/MM/RR'))
         END)";
     //douteux
     $mon_douteux = "ABS(NVL((
-        SELECT SUM(mon) FROM DBPROD.bksld 
+        SELECT SUM(mon) FROM bksld 
     WHERE cli = d.cli 
       AND (ncp LIKE '344%' OR ncp LIKE '345%')
       AND mon != 0 
-      AND to_char(dco,'MM/YYYY') = to_char(cdr_date('30/06/2026'),'MM/YYYY')
+      AND to_char(dco,'MM/YYYY') = to_char(TO_DATE('30/06/2026', 'DD/MM/RR'),'MM/YYYY')
     ), 0))";
     // 3. Nombre d'échéances impayées
     $NbrEchImp = "(CASE 
     WHEN $mon_douteux = 0 THEN LEAST((
-        SELECT COUNT(dva) FROM DBPROD.bkechprt 
+        SELECT COUNT(dva) FROM bkechprt 
         WHERE ctr = 8 AND eve = d.eve AND ave = d.ave 
-          AND CDR_DATE(dva) <= CDR_DATE('$DateArr')
+          AND TO_DATE(dva, 'DD/MM/RR') <= TO_DATE('$DateArr', 'DD/MM/RR')
     ), 2)
     ELSE (
-        SELECT COUNT(dva) FROM DBPROD.bkechprt 
+        SELECT COUNT(dva) FROM bkechprt 
         WHERE ctr = 8 AND eve = d.eve AND ave = d.ave 
-          AND CDR_DATE(dva) <= CDR_DATE('$DateArr')
+          AND TO_DATE(dva, 'DD/MM/RR') <= TO_DATE('$DateArr', 'DD/MM/RR')
         )
     END)";
 
@@ -408,52 +409,52 @@ public function GetEncours($MyDateArr)
 
     $montant_provision_imp = "ABS(NVL((
         SELECT SUM(mon) 
-        FROM DBPROD.bksld 
+        FROM bksld 
         WHERE cli = d.cli 
           AND cha = '3911000'
-          AND TO_CHAR(CDR_DATE(dco), 'MM/YYYY') = TO_CHAR(CDR_DATE('$DateArr'), 'MM/YYYY') 
+          AND TO_CHAR(TO_DATE(dco, 'DD/MM/RR'), 'MM/YYYY') = TO_CHAR(TO_DATE('$DateArr', 'DD/MM/RR'), 'MM/YYYY') 
           AND $NbrJrsImp != 0
     ), 0))";
 
     $montant_provision_dtx = "ABS(NVL((
         SELECT SUM(mon) 
-        FROM DBPROD.bksld 
+        FROM bksld 
         WHERE cli = d.cli 
           AND cha = '3943000'
-          AND TO_CHAR(CDR_DATE(dco), 'MM/YYYY') = TO_CHAR(CDR_DATE('$DateArr'), 'MM/YYYY') 
+          AND TO_CHAR(TO_DATE(dco, 'DD/MM/RR'), 'MM/YYYY') = TO_CHAR(TO_DATE('$DateArr', 'DD/MM/RR'), 'MM/YYYY') 
           AND $NbrJrsImp != 0
     ), 0))";
 
     $mon_impaye = "ABS(NVL((
         SELECT SUM(mon) 
-        FROM DBPROD.bksld 
+        FROM bksld 
         WHERE cli = d.cli 
           AND cha = '3411000'
-          AND TO_CHAR(CDR_DATE(dco), 'MM/YYYY') = TO_CHAR(CDR_DATE('$DateArr'), 'MM/YYYY') 
+          AND TO_CHAR(TO_DATE(dco, 'DD/MM/RR'), 'MM/YYYY') = TO_CHAR(TO_DATE('$DateArr', 'DD/MM/RR'), 'MM/YYYY') 
           AND $NbrJrsImp != 0
     ), 0))";
 
-    $last_num_echeance = "(SELECT MAX(num) FROM DBPROD.bkechprt WHERE eve = d.eve AND ave = d.ave)";
+    $last_num_echeance = "(SELECT MAX(num) FROM bkechprt WHERE eve = d.eve AND ave = d.ave)";
 
     // --- REQUÊTE PRINCIPALE POUR LES AJUSTEMENTS ---
     $MyRequest = "WITH Last_Ech_Reelle AS (
         -- Recherche de la dernière vraie échéance connue (Exclusion CTR = 0 et CTR = 3)
         SELECT e_sub.*,
-               ROW_NUMBER() OVER (PARTITION BY e_sub.eve, e_sub.ave ORDER BY CDR_DATE(e_sub.dva) DESC) as rn
-        FROM DBPROD.bkechprt e_sub
-        WHERE CDR_DATE(e_sub.dva) <= CDR_DATE('$DateArr')
+               ROW_NUMBER() OVER (PARTITION BY e_sub.eve, e_sub.ave ORDER BY TO_DATE(e_sub.dva, 'DD/MM/RR') DESC) as rn
+        FROM bkechprt e_sub
+        WHERE TO_DATE(e_sub.dva, 'DD/MM/RR') <= TO_DATE('$DateArr', 'DD/MM/RR')
           AND e_sub.ctr NOT IN (0, 3)
     )
     SELECT DISTINCT 
         d.eve,
         d.ave,
-        TO_CHAR(CDR_DATE(last_e.dva), 'DD') || '/$MoisAnneeStr' AS DVA,
+        TO_CHAR(TO_DATE(last_e.dva, 'DD/MM/RR'), 'DD') || '/$MoisAnneeStr' AS DVA,
         d.cli, 
-        (SELECT CDR_PARCE_NCP(p.ncp)
+        (SELECT CASE WHEN TRIM(p.ncp) LIKE '313%' THEN '311' || SUBSTR(TRIM(p.ncp), 4) WHEN TRIM(p.ncp) LIKE '322%' OR TRIM(p.ncp) LIKE '326%' OR TRIM(p.ncp) LIKE '323%' THEN '321' || SUBSTR(TRIM(p.ncp), 4) ELSE TRIM(p.ncp) END
             || (CASE
-                WHEN CDR_DATE(d.dmep) > CDR_DATE('30/11/2023') THEN (SELECT MAX(clc) FROM DBPROD.bkcom WHERE ncp = p.ncp)
+                WHEN TO_DATE(d.dmep, 'DD/MM/RR') > TO_DATE('30/11/2023', 'DD/MM/RR') THEN (SELECT MAX(clc) FROM bkcom WHERE ncp = p.ncp)
             END)
-         FROM DBPROD.bkcptprt p
+         FROM bkcptprt p
          WHERE p.eve = d.eve
            AND p.ave = d.ave
            AND p.nat = '004'
@@ -461,23 +462,23 @@ public function GetEncours($MyDateArr)
 
         -- Récupération du dernier paiement réel
         (SELECT MAX(aa.dco)
-         FROM DBPROD.bkauxprt aa
+         FROM bkauxprt aa
          WHERE aa.sen = 'C'
            AND aa.eve = d.eve
-           AND CDR_DATE(aa.dco) <= CDR_DATE('$DateArr')
+           AND TO_DATE(aa.dco, 'DD/MM/RR') <= TO_DATE('$DateArr', 'DD/MM/RR')
         ) datPai,
 
-        TO_CHAR(CDR_DATE(last_e.dva), 'DD') || '/$MoisAnneeStr' AS DatEch,
+        TO_CHAR(TO_DATE(last_e.dva, 'DD/MM/RR'), 'DD') || '/$MoisAnneeStr' AS DatEch,
 
         -- Récupération du dernier montant payé réel
         (SELECT MAX(mon)
-         FROM DBPROD.bkauxprt
+         FROM bkauxprt
          WHERE sen = 'C'
            AND eve = d.eve
            AND TO_DATE(dco, 'DD/MM/YYYY') < TO_DATE('$DateArr', 'DD/MM/YYYY')
            AND TO_DATE(dco, 'DD/MM/YYYY') = (
                SELECT MAX(TO_DATE(dco, 'DD/MM/YYYY'))
-               FROM DBPROD.bkauxprt
+               FROM bkauxprt
                WHERE sen = 'C'
                  AND eve = d.eve
                  AND TO_DATE(dco, 'DD/MM/YYYY') < TO_DATE('$DateArr', 'DD/MM/YYYY')
@@ -491,7 +492,7 @@ public function GetEncours($MyDateArr)
             WHEN last_e.num = $last_num_echeance THEN 0
             WHEN last_e.num IN (0, 1, 2, 3) AND last_e.res = 0 THEN d.mon
             WHEN (last_e.num >= 4 AND last_e.num <= $last_num_echeance) AND last_e.res = 0 THEN 
-                NVL((SELECT res FROM DBPROD.bkechprt 
+                NVL((SELECT res FROM bkechprt 
                      WHERE eve = d.eve 
                        AND ave = d.ave 
                        AND TO_CHAR(dva, 'MM/YYYY') = TO_CHAR(ADD_MONTHS(last_e.dva, -1), 'MM/YYYY')
@@ -518,7 +519,7 @@ public function GetEncours($MyDateArr)
         END) AS MNTCAPSOUF,
 
         (CASE
-            WHEN $NbrJrsImp != 0 AND last_e.inte = 0 THEN (SELECT MIN(inte) FROM DBPROD.bkechprt WHERE eve = last_e.eve AND ave = last_e.ave)
+            WHEN $NbrJrsImp != 0 AND last_e.inte = 0 THEN (SELECT MIN(inte) FROM bkechprt WHERE eve = last_e.eve AND ave = last_e.ave)
             WHEN $NbrJrsImp = 0 THEN 0
             ELSE (last_e.inte + NVL(last_e.ini, 0))
         END) AS MNTINTSOUF,
@@ -568,28 +569,28 @@ public function GetEncours($MyDateArr)
 
         $NbrEchImp AS testeeee
 
-        FROM DBPROD.bkdosprt d
+        FROM bkdosprt d
         INNER JOIN Last_Ech_Reelle last_e ON last_e.eve = d.eve AND last_e.ave = d.ave AND last_e.rn = 1
         WHERE d.eta IN ('VA', 'DE')
           AND d.tau_int != 0
           AND d.eve NOT IN ('002259')
           
           -- 1. Date de déchéance/fin supérieure à la date d'arrêt (dossier en cours)
-          AND CDR_DATE(d.ddec) > CDR_DATE('$DateArr')
+          AND TO_DATE(d.ddec, 'DD/MM/RR') > TO_DATE('$DateArr', 'DD/MM/RR')
           
           -- 2. Exclusion des dossiers soldés (il doit rester du capital à amortir / échéances restantes)
           AND $NbrEchRes > 0
           
           -- 3. Validation que la mise en place (DMEP) est bien antérieure ou égale au mois d'arrêt
-          AND CDR_DATE(d.dmep) <= CDR_DATE('$DateArr')
+          AND TO_DATE(d.dmep, 'DD/MM/RR') <= TO_DATE('$DateArr', 'DD/MM/RR')
           
           -- 4. Aucune échéance réelle présente sur le mois d'analyse
           AND NOT EXISTS (
               SELECT 1 
-              FROM DBPROD.bkechprt ex
+              FROM bkechprt ex
               WHERE ex.eve = d.eve 
                 AND ex.ave = d.ave
-                AND TO_CHAR(CDR_DATE(ex.dva), 'MM/YYYY') = '$MoisAnneeStr'
+                AND TO_CHAR(TO_DATE(ex.dva, 'DD/MM/RR'), 'MM/YYYY') = '$MoisAnneeStr'
           )
           AND d.ctr!=9
         ORDER BY d.eve DESC";
@@ -597,7 +598,8 @@ public function GetEncours($MyDateArr)
     $stid = null;
     try {
         $stid = oci_parse($connection, $MyRequest);
-        oci_execute($stid);
+        if (!$stid) { $e = oci_error($connection); return response()->json([[ 'type' => 'Erreur OCI', 'Description' => $e['message'] ]]); }
+        if (!oci_execute($stid)) { $e = oci_error($stid); oci_free_statement($stid); oci_close($connection); return response()->json([[ 'type' => 'Erreur OCI', 'Description' => $e['message'] ]]); }
 
         $results = [];
 
@@ -659,3 +661,7 @@ public function GetEncours($MyDateArr)
         //
     }
 }
+
+
+
+

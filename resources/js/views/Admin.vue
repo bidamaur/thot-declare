@@ -233,127 +233,9 @@
                       {{ themeMessage }}
                  </span>
              </div>
-         </section>
-
-         <section v-else class="space-y-4">
-            <div
-                class="premium-card premium-card-header"
-            >
-                <h2 class="text-base font-semibold text-slate-900">
-                    Requêtes CDR
-                </h2>
-                <p class="mt-1 text-xs text-slate-500">
-                    Catalogue des routes et contrôleurs. Les surcharges sont
-                    limitées aux requêtes SELECT.
-                </p>
-            </div>
-            <div
-                v-for="query in queries"
-                :key="query.key"
-                class="premium-card premium-card-header"
-            >
-                <div
-                    class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between"
-                >
-                    <div>
-                        <h3 class="font-semibold text-slate-900">
-                            {{ query.label }}
-                        </h3>
-                        <p class="text-xs text-slate-500">
-                            {{ query.source }} · {{ query.route }}
-                        </p>
-                    </div>
-                    <span class="text-xs text-slate-400">{{
-                        query.sql
-                            ? "Surcharge enregistrée"
-                            : "Requête du contrôleur"
-                    }}</span>
-                </div>
-                 <textarea
-                     v-model="query.sql"
-                     rows="16"
-                     spellcheck="false"
-                     class="code-editor mt-3 w-full rounded border border-slate-300 bg-slate-950 p-3 font-mono text-xs text-emerald-100"
-                     placeholder="La requête SQL du contrôleur sera chargée ici"
-                 ></textarea>
-                  <div
-                      v-if="queryVariables[query.key]"
-                      class="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"
-                  >
-                      <div
-                          v-for="(label, name) in variableLabels"
-                          :key="name"
-                          class="field"
-                      >
-                          <label>{{ label }}</label>
-                          <input
-                              v-model="queryVariables[query.key][name]"
-                              type="text"
-                              spellcheck="false"
-                              class="w-full text-xs border border-slate-300 rounded px-2 py-1"
-                          />
-                      </div>
-                  </div>
-                  <div
-                      v-if="queryVariables[query.key] && sqlExpressionVariables(query).length"
-                      class="mt-3 space-y-2 border-t border-slate-200 pt-3"
-                  >
-                      <p class="text-xs font-semibold text-slate-500">
-                          Variables PHP (expressions SQL)
-                      </p>
-                      <div
-                          v-for="name in sqlExpressionVariables(query)"
-                          :key="name"
-                      >
-                          <label class="block text-xs font-medium text-slate-600 mb-1">{{ name }}</label>
-                          <textarea
-                              v-model="queryVariables[query.key][name]"
-                              rows="3"
-                              spellcheck="false"
-                              class="code-editor w-full rounded border border-slate-300 bg-slate-950 p-2 font-mono text-xs text-emerald-100"
-                          ></textarea>
-                      </div>
-                  </div>
-                <div class="mt-3 flex flex-wrap items-center gap-2">
-                    <button
-                        @click="testQuery(query)"
-                        :disabled="busy"
-                        class="button secondary"
-                    >
-                        Tester la requête
-                    </button>
-                    <button
-                        @click="saveQuery(query)"
-                        :disabled="busy"
-                        class="button primary"
-                    >
-                        Enregistrer la requête
-                    </button>
-                    <span
-                        v-if="query.status"
-                        class="text-sm"
-                        :class="
-                            query.status.ok
-                                ? 'text-emerald-700'
-                                : 'text-rose-700'
-                        "
-                        >{{ query.status.message
-                        }}<span v-if="query.status.ok">
-                            ({{ query.status.rows }} ligne(s))</span
-                        ></span
-                    >
-                </div>
-            </div>
-            <p
-                v-if="queryMessage"
-                class="text-sm"
-                :class="queryOk ? 'text-emerald-700' : 'text-rose-700'"
-            >
-                {{ queryMessage }}
-            </p>
-        </section>
-    </div>
-</template>
+          </section>
+     </div>
+ </template>
 
 <script setup>
 import { onMounted, ref } from "vue";
@@ -363,7 +245,6 @@ const tabs = [
     { key: "database", label: "Base de données" },
     { key: "application", label: "Application" },
     { key: "themes", label: "Thèmes" },
-    { key: "queries", label: "Requêtes CDR" },
 ];
 const activeTab = ref("database");
 const busy = ref(false);
@@ -382,34 +263,10 @@ const application = ref({
     language: "fr",
     theme: "light",
 });
-const queries = ref([]);
-const queryVariables = ref({});
-const variableLabels = {
-    DateArr: "DateArr (dd/mm/yy)",
-    DateDeb: "DateDeb (dd/mm/yyyy)",
-    DateDebMois: "DateDebMois (dd/mm/yyyy)",
-    DateArrYear: "DateArrYear (yyyy)",
-    DateArrMonth: "DateArrMonth (mm)",
-    DateArrDay: "DateArrDay (dd)",
-    DateMonthYear: "DateMonthYear (/mm/yyyy)",
-    MoisAnneeStr: "MoisAnneeStr (mm/yyyy)",
-};
-const defaultDateVariables = {
-    DateArr: "31/12/2025",
-    DateDeb: "01/01/2025",
-    DateDebMois: "01/12/2025",
-    DateArrYear: "2025",
-    DateArrMonth: "12",
-    DateArrDay: "31",
-    DateMonthYear: "/12/2025",
-    MoisAnneeStr: "12/2025",
-};
 const databaseMessage = ref("");
 const databaseOk = ref(false);
 const applicationMessage = ref("");
 const applicationOk = ref(false);
-const queryMessage = ref("");
-const queryOk = ref(false);
 const themeMessage = ref("");
 const themeOk = ref(false);
 
@@ -419,9 +276,8 @@ const customThemeName = ref("");
 const themeLoaded = ref(false);
 
 const load = async () => {
-    const [config, queryResponse, themeResponse] = await Promise.all([
+    const [config, themeResponse] = await Promise.all([
         axios.get("/api/admin/config"),
-        axios.get("/api/admin/queries"),
         axios.get("/api/admin/themes"),
     ]);
     database.value = {
@@ -430,14 +286,6 @@ const load = async () => {
         password: "",
     };
     application.value = { ...application.value, ...config.data.application };
-    queries.value = queryResponse.data;
-    queries.value.forEach((q) => {
-        const base = { ...defaultDateVariables };
-        if (q.variables && typeof q.variables === "object") {
-            Object.assign(base, q.variables);
-        }
-        queryVariables.value[q.key] = base;
-    });
     themes.value = themeResponse.data.themes || {};
     selectedTheme.value = themeResponse.data.current || "thot_light";
     customThemeName.value = themeResponse.data.customThemeName || "";
@@ -494,54 +342,6 @@ const saveApplication = async () => {
             error.response?.data?.message || "Enregistrement impossible.";
     }
 };
-const saveQuery = async (query) => {
-    busy.value = true;
-    queryMessage.value = "";
-    try {
-        const response = await axios.put(`/api/admin/queries/${query.key}`, {
-            sql: query.sql,
-        });
-        queryOk.value = true;
-        queryMessage.value = response.data.message;
-    } catch (error) {
-        queryOk.value = false;
-        queryMessage.value =
-            error.response?.data?.message || "Enregistrement impossible.";
-    } finally {
-        busy.value = false;
-    }
-};
-const testQuery = async (query) => {
-    busy.value = true;
-    query.status = null;
-    try {
-        const response = await axios.post(
-            `/api/admin/queries/${query.key}/test`,
-            {
-                sql: query.sql,
-                variables: queryVariables.value[query.key] || {},
-            },
-        );
-        query.status = {
-            ok: true,
-            message: response.data.message,
-            rows: response.data.rows,
-        };
-    } catch (error) {
-        query.status = {
-            ok: false,
-            message:
-                error.response?.data?.message || "Test de requête impossible.",
-        };
-    } finally {
-        busy.value = false;
-    }
-};
-const sqlExpressionVariables = (query) => {
-    const vars = queryVariables.value[query.key] || {};
-    return Object.keys(vars).filter((name) => !(name in variableLabels));
-};
-
 const applyTheme = (themeKey) => {
     const root = document.documentElement;
     root.classList.remove("theme-light", "theme-dark");
