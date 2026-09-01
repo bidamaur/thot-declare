@@ -133,7 +133,7 @@
                             />
                         </td>
                         <td class="px-2 py-1" style="color: rgb(var(--muted));">
-                            {{ (currentPage - 1) * itemsPerPage + index + 1 }}
+                            {{ row.__idx !== undefined ? row.__idx + 1 : (props.startIndex + (currentPage - 1) * itemsPerPage + index + 1) }}
                         </td>
                         <td
                             v-for="col in columns"
@@ -251,6 +251,7 @@ const props = defineProps({
     editable: { type: Boolean, default: false },
     selectable: { type: Boolean, default: false },
     corrections: { type: Object, default: () => ({}) },
+    startIndex: { type: Number, default: 0 },
 });
 
 const emit = defineEmits(["cell-edit", "selection-change", "selection-clear"]);
