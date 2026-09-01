@@ -491,22 +491,16 @@ public function GetEncours($MyDateArr)
 
         $mon_douteux AS MNTAGI,
 
-        -- Encours restant
-        (CASE 
-            -- Prêt mis en place le mois même avec 1ère échéance le mois suivant
-            WHEN TO_DATE(d.dmep, 'DD/MM/RR') BETWEEN TO_DATE('$DateDebMois', 'DD/MM/RR') AND TO_DATE('$DateArr', 'DD/MM/RR')
-                 AND TO_DATE(last_e.dva, 'DD/MM/RR') > TO_DATE('$DateArr', 'DD/MM/RR') THEN d.mon
-                 
-            WHEN last_e.num = $last_num_echeance THEN 0
-            WHEN last_e.num IN (0, 1, 2, 3) AND last_e.res = 0 THEN d.mon
-            WHEN (last_e.num >= 4 AND last_e.num <= $last_num_echeance) AND last_e.res = 0 THEN 
-                NVL((SELECT res FROM bkechprt 
-                     WHERE eve = d.eve 
-                       AND ave = d.ave 
-                       AND TO_CHAR(dva, 'MM/YYYY') = TO_CHAR(ADD_MONTHS(last_e.dva, -1), 'MM/YYYY')
-                       AND ROWNUM = 1), 0)
-            ELSE last_e.res
-        END) AS MNTCRD,
+                -- Encours restant
+      
+     NVL(
+     (
+     select ee.res from bkechprt ee 
+                where ee.eve=d.eve and ee.ave=d.ave and 
+                ee.dva=(select max(dva) from bkechprt where eve=ee.eve and ave=ee.ave
+                and to_date(dva,'dd/mm/rr')<=to_date('$DateArr','dd/mm/rr') and res!=0
+                )),d.mon
+    ) AS MNTCRD,
 
         '0' AS ESTSENSIBLE,
         d.mon AS MNTTOTUTIL,
