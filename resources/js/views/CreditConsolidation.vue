@@ -249,13 +249,12 @@
             title="Engagements"
             subtitle="Liste des engagements de crédit déclarés"
             :columns="engagementsColumns"
-            :data="engagementsEffective"
+            :data="engagementsIndexed"
             :loading="zones.engagements.loading"
             :error="zones.engagements.error"
             :items-per-page="5"
             :editable="true"
             :selectable="true"
-            :start-index="0"
             @cell-edit="(p) => onCellEdit('engagements', p)"
             @selection-change="(ids) => onSelectionChange('engagements', ids)"
             @selection-clear="clearZoneSelection('engagements')"
@@ -269,13 +268,12 @@
             title="Encours"
             subtitle="Suivi des encours de crédit par date d'arrêté"
             :columns="encoursColumns"
-            :data="encoursEffective"
+            :data="encoursIndexed"
             :loading="zones.encours.loading"
             :error="zones.encours.error"
             :items-per-page="5"
             :editable="true"
             :selectable="true"
-            :start-index="encoursStartIndex"
             @cell-edit="(p) => onCellEdit('encours', p)"
             @selection-change="(ids) => onSelectionChange('encours', ids)"
             @selection-clear="clearZoneSelection('encours')"
@@ -289,13 +287,12 @@
             title="Encours ajustés"
             subtitle="Encours créés pour ajustement (échéanciers flexibles)"
             :columns="encoursAjustColumns"
-            :data="encoursAjustEffective"
+            :data="encoursAjustIndexed"
             :loading="zones.encoursAjust.loading"
             :error="zones.encoursAjust.error"
             :items-per-page="5"
             :editable="true"
             :selectable="true"
-            :start-index="encoursAjustStartIndex"
             @cell-edit="(p) => onCellEdit('encoursAjust', p)"
             @selection-change="(ids) => onSelectionChange('encoursAjust', ids)"
             @selection-clear="clearZoneSelection('encoursAjust')"
@@ -488,10 +485,26 @@ const engagementsEffective = computed(() => effectiveData("engagements"));
 const encoursEffective = computed(() => effectiveData("encours"));
 const encoursAjustEffective = computed(() => effectiveData("encoursAjust"));
 
-const encoursStartIndex = computed(() => engagementsEffective.value.length);
-const encoursAjustStartIndex = computed(
-    () => engagementsEffective.value.length + encoursEffective.value.length,
+const engagementsIndexed = computed(() =>
+    engagementsEffective.value.map((row, i) => ({ ...row, __globalIdx: i })),
 );
+
+const encoursIndexed = computed(() => {
+    const offset = engagementsEffective.value.length;
+    return encoursEffective.value.map((row, i) => ({
+        ...row,
+        __globalIdx: offset + i,
+    }));
+});
+
+const encoursAjustIndexed = computed(() => {
+    const offset =
+        engagementsEffective.value.length + encoursEffective.value.length;
+    return encoursAjustEffective.value.map((row, i) => ({
+        ...row,
+        __globalIdx: offset + i,
+    }));
+});
 
 const onCellEdit = (zone, { idx, colKey, value }) => {
     if (idx === undefined || idx === null) return;

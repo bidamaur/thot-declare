@@ -133,7 +133,7 @@
                             />
                         </td>
                         <td class="px-2 py-1" style="color: rgb(var(--muted));">
-                            {{ row.__idx !== undefined ? row.__idx + 1 : (props.startIndex + (currentPage - 1) * itemsPerPage + index + 1) }}
+                            {{ row.__globalIdx !== undefined ? row.__globalIdx + 1 : ((props.startIndex || 0) + (currentPage - 1) * itemsPerPage + index + 1) }}
                         </td>
                         <td
                             v-for="col in columns"
