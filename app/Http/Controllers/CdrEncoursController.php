@@ -379,15 +379,17 @@ public function GetEncours($MyDateArr)
         ELSE 
             (SELECT COUNT(dva) FROM bkechprt WHERE eve = d.eve AND ave = d.ave AND ctr = 9 AND eta = 'VA' AND TO_DATE(dva, 'DD/MM/RR') <= TO_DATE('$DateArr', 'DD/MM/RR'))
         END)";
-    //douteux
+
+    // 3. Solde douteux (Correction de la date en dur '30/06/2026' -> '$DateArr')
     $mon_douteux = "ABS(NVL((
         SELECT SUM(mon) FROM bksld 
-    WHERE cli = d.cli 
-      AND (ncp LIKE '344%' OR ncp LIKE '345%')
-      AND mon != 0 
-      AND to_char(dco,'MM/YYYY') = to_char(TO_DATE('30/06/2026', 'DD/MM/RR'),'MM/YYYY')
+        WHERE cli = d.cli 
+          AND (ncp LIKE '344%' OR ncp LIKE '345%')
+          AND mon != 0 
+          AND TO_CHAR(dco, 'MM/YYYY') = TO_CHAR(TO_DATE('$DateArr', 'DD/MM/RR'), 'MM/YYYY')
     ), 0))";
-    // 3. Nombre d'échéances impayées
+
+    // 4. Nombre d'échéances impayées
     $NbrEchImp = "(CASE 
     WHEN $mon_douteux = 0 THEN LEAST((
         SELECT COUNT(dva) FROM bkechprt 
@@ -401,11 +403,9 @@ public function GetEncours($MyDateArr)
         )
     END)";
 
-    // 4. Calculs dérivés
+    // 5. Calculs dérivés
     $NbrEchRes = "($NbrEchTotal - ($NbrEchPay + $NbrEchImp))";
     $NbrJrsImp = "($NbrEchImp * 30)";
-
- 
 
     $montant_provision_imp = "ABS(NVL((
         SELECT SUM(mon) 
@@ -438,12 +438,16 @@ public function GetEncours($MyDateArr)
 
     // --- REQUÊTE PRINCIPALE POUR LES AJUSTEMENTS ---
     $MyRequest = "WITH Last_Ech_Reelle AS (
-        -- Recherche de la dernière vraie échéance connue (Exclusion CTR = 0 et CTR = 3)
+        -- Recherche de l'échéance de référence (inclut les 1ères échéances futures si nouveau prêt du mois)
         SELECT e_sub.*,
-               ROW_NUMBER() OVER (PARTITION BY e_sub.eve, e_sub.ave ORDER BY TO_DATE(e_sub.dva, 'DD/MM/RR') DESC) as rn
+               ROW_NUMBER() OVER (
+                   PARTITION BY e_sub.eve, e_sub.ave 
+                   ORDER BY 
+                       CASE WHEN TO_DATE(e_sub.dva, 'DD/MM/RR') <= TO_DATE('$DateArr', 'DD/MM/RR') THEN 1 ELSE 2 END,
+                       TO_DATE(e_sub.dva, 'DD/MM/RR') ASC
+               ) as rn
         FROM bkechprt e_sub
-        WHERE TO_DATE(e_sub.dva, 'DD/MM/RR') <= TO_DATE('$DateArr', 'DD/MM/RR')
-          AND e_sub.ctr NOT IN (0, 3)
+        WHERE e_sub.ctr NOT IN (3)
     )
     SELECT DISTINCT 
         d.eve,
@@ -489,6 +493,10 @@ public function GetEncours($MyDateArr)
 
         -- Encours restant
         (CASE 
+            -- Prêt mis en place le mois même avec 1ère échéance le mois suivant
+            WHEN TO_DATE(d.dmep, 'DD/MM/RR') BETWEEN TO_DATE('$DateDebMois', 'DD/MM/RR') AND TO_DATE('$DateArr', 'DD/MM/RR')
+                 AND TO_DATE(last_e.dva, 'DD/MM/RR') > TO_DATE('$DateArr', 'DD/MM/RR') THEN d.mon
+                 
             WHEN last_e.num = $last_num_echeance THEN 0
             WHEN last_e.num IN (0, 1, 2, 3) AND last_e.res = 0 THEN d.mon
             WHEN (last_e.num >= 4 AND last_e.num <= $last_num_echeance) AND last_e.res = 0 THEN 
@@ -548,12 +556,12 @@ public function GetEncours($MyDateArr)
 
         $NbrJrsImp AS nbrJrsImp,
 
-     -- Classes de dépréciation
+        -- Classes de dépréciation
         (CASE
             WHEN $NbrJrsImp = 0 AND $mon_douteux = 0 THEN '01'
             WHEN $NbrJrsImp BETWEEN 1 AND 90 AND $mon_douteux = 0 THEN '04'
             
-           WHEN $mon_douteux != 0 THEN
+            WHEN $mon_douteux != 0 THEN
         CASE
             WHEN $NbrJrsImp BETWEEN 91 AND 365 THEN '07'   -- Douteuses <= 1 an
             WHEN $NbrJrsImp BETWEEN 366 AND 730 THEN '08'  -- Douteuses > 1 an et <= 2 ans
@@ -562,7 +570,6 @@ public function GetEncours($MyDateArr)
             WHEN $NbrJrsImp > 1825 THEN '11'               -- Irrécouvrables (> 5 ans)
             ELSE '07'
         END
-
 
             ELSE '01'
         END) AS ClaDeprec,

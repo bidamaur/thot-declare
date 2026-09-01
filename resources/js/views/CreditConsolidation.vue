@@ -791,10 +791,14 @@ const runControleComplexe = async () => {
     complexExecuted.value = true;
     globalError.value = null;
     try {
-        complexAnomalies.value = await runComplexValidationFromApi(
+        console.log("[CtrlComplexe] encours envoyés :", zones.encours.data.length);
+        const result = await runComplexValidationFromApi(
             zones.encours.data,
         );
+        console.log("[CtrlComplexe] anomalies :", result.length, result);
+        complexAnomalies.value = result;
     } catch (e) {
+        console.error("[CtrlComplexe] erreur :", e);
         complexAnomalies.value = [];
         globalError.value = `Contrôle complexe impossible : ${e.message}`;
     } finally {
@@ -812,6 +816,7 @@ const anomalies = computed(() => {
         try {
             res = validerLigneCdr(line, { client, contrat });
         } catch (e) {
+            console.error(`[Anomalies] erreur validation ${type} ${client}/${contrat}:`, e);
             return;
         }
         (res.erreurs || []).forEach((err) => {
@@ -825,9 +830,11 @@ const anomalies = computed(() => {
             });
         });
     };
+    console.log("[Anomalies] engagements:", zones.engagements.data.length, "encours:", zones.encours.data.length, "encoursAjust:", zones.encoursAjust.data.length);
     zones.engagements.data.forEach((r) => addRow(r, "engagement"));
     zones.encours.data.forEach((r) => addRow(r, "encours"));
     zones.encoursAjust.data.forEach((r) => addRow(r, "encours"));
+    console.log("[Anomalies] total erreurs:", rows.length);
     return rows;
 });
 
