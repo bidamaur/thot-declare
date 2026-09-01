@@ -249,7 +249,7 @@
             title="Engagements"
             subtitle="Liste des engagements de crédit déclarés"
             :columns="engagementsColumns"
-            :data="engagementsIndexed"
+            :data="engagementsEffective"
             :loading="zones.engagements.loading"
             :error="zones.engagements.error"
             :items-per-page="5"
@@ -268,7 +268,7 @@
             title="Encours"
             subtitle="Suivi des encours de crédit par date d'arrêté"
             :columns="encoursColumns"
-            :data="encoursIndexed"
+            :data="encoursEffective"
             :loading="zones.encours.loading"
             :error="zones.encours.error"
             :items-per-page="5"
@@ -287,7 +287,7 @@
             title="Encours ajustés"
             subtitle="Encours créés pour ajustement (échéanciers flexibles)"
             :columns="encoursAjustColumns"
-            :data="encoursAjustIndexed"
+            :data="encoursAjustEffective"
             :loading="zones.encoursAjust.loading"
             :error="zones.encoursAjust.error"
             :items-per-page="5"
@@ -445,6 +445,14 @@ const zones = reactive({
     encoursAjust: { data: [], raw: [], loading: false, error: null },
 });
 
+const dataLoaded = reactive({
+    engagements: false,
+    encours: false,
+    encoursAjust: false,
+});
+
+const fetching = ref(false);
+
 // --- Corrections manuelles (édition en place) persistées en localStorage ---
 const CORRECTIONS_KEY = "cdr51_corrections_v1";
 const corrections = reactive({ engagements: {}, encours: {}, encoursAjust: {} });
@@ -479,28 +487,22 @@ const applyCorrections = (raw, zone) => {
     });
 };
 // Données effectives (brutes + corrections appliquées + index stable) pour l'affichage
-const effectiveData = (zone) => applyCorrections(zones[zone].raw, zone);
-
-const engagementsEffective = computed(() => effectiveData("engagements"));
-const encoursEffective = computed(() => effectiveData("encours"));
-const encoursAjustEffective = computed(() => effectiveData("encoursAjust"));
-
-const engagementsIndexed = computed(() =>
-    engagementsEffective.value.map((row, i) => ({ ...row, __globalIdx: i })),
+const engagementsEffective = computed(() =>
+    applyCorrections(zones.engagements.raw, "engagements").map((row, i) => ({
+        ...row,
+        __globalIdx: i,
+    })),
 );
-
-const encoursIndexed = computed(() => {
-    const offset = engagementsEffective.value.length;
-    return encoursEffective.value.map((row, i) => ({
+const encoursEffective = computed(() => {
+    const offset = zones.engagements.raw.length;
+    return applyCorrections(zones.encours.raw, "encours").map((row, i) => ({
         ...row,
         __globalIdx: offset + i,
     }));
 });
-
-const encoursAjustIndexed = computed(() => {
-    const offset =
-        engagementsEffective.value.length + encoursEffective.value.length;
-    return encoursAjustEffective.value.map((row, i) => ({
+const encoursAjustEffective = computed(() => {
+    const offset = zones.engagements.raw.length + zones.encours.raw.length;
+    return applyCorrections(zones.encoursAjust.raw, "encoursAjust").map((row, i) => ({
         ...row,
         __globalIdx: offset + i,
     }));
@@ -553,6 +555,11 @@ const fetchAll = async () => {
         globalError.value = "Veuillez choisir une date d'arrêté.";
         return;
     }
+    if (fetching.value) {
+        console.log("[fetchAll] déjà en cours, ignoré");
+        return;
+    }
+    fetching.value = true;
     globalError.value = null;
     completedRoutes.value = 0;
     loadingProgress.value = 0;
@@ -571,10 +578,17 @@ const fetchAll = async () => {
             zones[c.key].raw = raw.map((r) => ({ ...r }));
             zones[c.key].data = applyCorrections(raw, c.key);
             zones[c.key].error = null;
+            dataLoaded[c.key] = true;
+            console.log(`[fetchAll] ${c.key} chargé:`, raw.length, "lignes");
         } catch (e) {
-            zones[c.key].data = [];
-            zones[c.key].raw = [];
-            zones[c.key].error = "Erreur lors du chargement des données.";
+            console.error(`[fetchAll] erreur ${c.key}:`, e);
+            if (!dataLoaded[c.key]) {
+                zones[c.key].data = [];
+                zones[c.key].raw = [];
+                zones[c.key].error = "Erreur lors du chargement des données.";
+            } else {
+                zones[c.key].error = "Erreur lors du rechargement. Données conservées.";
+            }
         } finally {
             zones[c.key].loading = false;
             completedRoutes.value += 1;
@@ -585,6 +599,8 @@ const fetchAll = async () => {
     };
 
     await Promise.all(calls.map(runCall));
+    fetching.value = false;
+    console.log("[fetchAll] terminé. Engagements:", zones.engagements.data.length, "Encours:", zones.encours.data.length, "Ajust:", zones.encoursAjust.data.length);
 };
 
 const engagementsColumns = [
@@ -673,53 +689,78 @@ const normalizeDate = (val) => {
 };
 
 // --- Mapping des lignes plates vers la structure attendue par le validateur CDR ---
+const findEngagementForEncours = (row) => {
+    if (!zones.engagements.data.length) return null;
+    const cli = String(row.CLI ?? "").trim();
+    const eve = String(row.EVE ?? "").trim();
+    const ave = String(row.AVE ?? "").trim();
+    return zones.engagements.data.find(
+        (eng) =>
+            String(eng.CLI ?? "").trim() === cli &&
+            String(eng.EVE ?? "").trim() === eve &&
+            String(eng.AVE ?? "").trim() === ave
+    );
+};
+
+const engagementBlockFromRow = (row, fallbackEng) => {
+    const get = (k) =>
+        row[k] === undefined || row[k] === null ? "" : String(row[k]).trim();
+    const getD = (k) => normalizeDate(get(k));
+    const src = fallbackEng || {};
+    return {
+        RefContCmpt: get("REFCONTCMPT"),
+        CodAge: get("CODAGE"),
+        Statut: get("STATUT"),
+        NatConso: get("NATCONSO"),
+        TypConso: get("TYPCONSO"),
+        Motif: get("MOTIF"),
+        TypEng: get("TYPENG") || String(src.TYPENG ?? src.TypEng ?? "").trim(),
+        NatEng: get("NATENG") || String(src.NATENG ?? src.NatEng ?? "").trim(),
+        CodDev: get("CODDEV"),
+        MntEng: get("MNTENG"),
+        MntCrCedee: get("MNTCRCEDEE"),
+        MntEpargne: get("MNTEPARGNE"),
+        ModRembEpargne: get("MODREMBEPARGNE"),
+        TauxRenum: get("TAUXRENUM"),
+        DatMep: getD("DATMEP"),
+        TxInt: get("TXINT"),
+        TxComm: get("TXCOMM"),
+        TxEffGlob: get("TXEFFGLOB"),
+        TypTxInt: get("TYPTXINT"),
+        IndRef: get("INDREF"),
+        Sprd: get("SPRD"),
+        DatDeb: getD("DATDEB"),
+        DatFin: getD("DATFIN"),
+        Periodicite: get("PERIODICITE"),
+        UnitDur: get("UNITDUR"),
+        Duree: get("DUREE"),
+        Maturite: get("MATURITE"),
+        DatPreEchCap: getD("DATPREECHCAP"),
+        NbrEch: get("NBRECH"),
+        MntEch: get("MNTECH"),
+        TypEch: get("TYECH"),
+        TypAmo: get("TYAMO"),
+        TotInt: get("TOTINT"),
+        fraDos: get("FRADOS"),
+        fraAnnexe: get("FRAANNEXE"),
+        DatEve: getD("DATEVE"),
+    };
+};
+
 const rowToControlLine = (row, type) => {
     const get = (k) =>
         row[k] === undefined || row[k] === null ? "" : String(row[k]).trim();
     const getD = (k) => normalizeDate(get(k));
     if (type === "engagement") {
         return {
-            Engagement: {
-                RefContCmpt: get("REFCONTCMPT"),
-                CodAge: get("CODAGE"),
-                Statut: get("STATUT"),
-                NatConso: get("NATCONSO"),
-                TypConso: get("TYPCONSO"),
-                Motif: get("MOTIF"),
-                TypEng: get("TYPENG"),
-                NatEng: get("NATENG"),
-                CodDev: get("CODDEV"),
-                MntEng: get("MNTENG"),
-                MntCrCedee: get("MNTCRCEDEE"),
-                MntEpargne: get("MNTEPARGNE"),
-                ModRembEpargne: get("MODREMBEPARGNE"),
-                TauxRenum: get("TAUXRENUM"),
-                DatMep: getD("DATMEP"),
-                TxInt: get("TXINT"),
-                TxComm: get("TXCOMM"),
-                TxEffGlob: get("TXEFFGLOB"),
-                TypTxInt: get("TYPTXINT"),
-                IndRef: get("INDREF"),
-                Sprd: get("SPRD"),
-                DatDeb: getD("DATDEB"),
-                DatFin: getD("DATFIN"),
-                Periodicite: get("PERIODICITE"),
-                UnitDur: get("UNITDUR"),
-                Duree: get("DUREE"),
-                Maturite: get("MATURITE"),
-                DatPreEchCap: getD("DATPREECHCAP"),
-                NbrEch: get("NBRECH"),
-                MntEch: get("MNTECH"),
-                TypEch: get("TYECH"),
-                TypAmo: get("TYAMO"),
-                TotInt: get("TOTINT"),
-                fraDos: get("FRADOS"),
-                fraAnnexe: get("FRAANNEXE"),
-                DatEve: getD("DATEVE"),
-            },
+            Engagement: engagementBlockFromRow(row, null),
         };
     }
+
+    const matchedEng = findEngagementForEncours(row);
+
     return {
+        Engagement: engagementBlockFromRow(row, matchedEng),
         Encours: {
             RefContCmpt: get("REFCONTCMPT"),
             DatEch: getD("DVA"),
@@ -831,6 +872,12 @@ const anomalies = computed(() => {
         });
     };
     console.log("[Anomalies] engagements:", zones.engagements.data.length, "encours:", zones.encours.data.length, "encoursAjust:", zones.encoursAjust.data.length);
+    if (zones.engagements.data.length) {
+        console.log("[Anomalies] sample engagement:", zones.engagements.data[0]);
+    }
+    if (zones.encours.data.length) {
+        console.log("[Anomalies] sample encours:", zones.encours.data[0]);
+    }
     zones.engagements.data.forEach((r) => addRow(r, "engagement"));
     zones.encours.data.forEach((r) => addRow(r, "encours"));
     zones.encoursAjust.data.forEach((r) => addRow(r, "encours"));

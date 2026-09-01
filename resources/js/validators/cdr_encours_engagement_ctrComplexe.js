@@ -304,13 +304,25 @@ export async function runComplexValidationFromApi(
     encoursData,
     url = CTR_ENGAGEMENTS_URL,
 ) {
+    console.log("[CtrlComplexe] appel API:", url);
+    console.log("[CtrlComplexe] encours count:", encoursData.length);
+    if (encoursData.length) {
+        console.log("[CtrlComplexe] sample encours:", encoursData[0]);
+    }
     const res = await fetch(url, { headers: { Accept: "application/json" } });
+    console.log("[CtrlComplexe] HTTP status:", res.status);
     if (!res.ok) {
+        const text = await res.text();
+        console.log("[CtrlComplexe] response body:", text);
         throw new Error(
             `Échec de récupération du flux cdr_ctrEngagements (HTTP ${res.status})`,
         );
     }
     const engagementsCtrData = await res.json();
+    console.log("[CtrlComplexe] engagements count:", engagementsCtrData.length);
+    if (engagementsCtrData.length) {
+        console.log("[CtrlComplexe] sample engagement:", engagementsCtrData[0]);
+    }
     return runComplexValidation(encoursData, engagementsCtrData);
 }
 
