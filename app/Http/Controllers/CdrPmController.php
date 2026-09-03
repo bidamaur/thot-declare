@@ -60,72 +60,7 @@ class CdrPmController extends Controller
             $bindings = array_merge($bindings, [$like, $like, $like, $like]);
         }
 
-        $sql = "WITH
-          FUNCTION cdr_parseutf8(p_str IN VARCHAR2) RETURN VARCHAR2 IS
-            l_result VARCHAR2(4000);
-          BEGIN
-            IF p_str IS NULL THEN
-              RETURN NULL;
-            END IF;
-            l_result := TRIM(p_str);
-            l_result := REPLACE(l_result, 'à', 'a');
-            l_result := REPLACE(l_result, 'á', 'a');
-            l_result := REPLACE(l_result, 'â', 'a');
-            l_result := REPLACE(l_result, 'ä', 'a');
-            l_result := REPLACE(l_result, 'ã', 'a');
-            l_result := REPLACE(l_result, 'å', 'a');
-            l_result := REPLACE(l_result, 'ç', 'c');
-            l_result := REPLACE(l_result, 'é', 'e');
-            l_result := REPLACE(l_result, 'è', 'e');
-            l_result := REPLACE(l_result, 'ê', 'e');
-            l_result := REPLACE(l_result, 'ë', 'e');
-            l_result := REPLACE(l_result, 'í', 'i');
-            l_result := REPLACE(l_result, 'ì', 'i');
-            l_result := REPLACE(l_result, 'î', 'i');
-            l_result := REPLACE(l_result, 'ï', 'i');
-            l_result := REPLACE(l_result, 'ñ', 'n');
-            l_result := REPLACE(l_result, 'ó', 'o');
-            l_result := REPLACE(l_result, 'ò', 'o');
-            l_result := REPLACE(l_result, 'ô', 'o');
-            l_result := REPLACE(l_result, 'ö', 'o');
-            l_result := REPLACE(l_result, 'õ', 'o');
-            l_result := REPLACE(l_result, 'ú', 'u');
-            l_result := REPLACE(l_result, 'ù', 'u');
-            l_result := REPLACE(l_result, 'û', 'u');
-            l_result := REPLACE(l_result, 'ü', 'u');
-            l_result := REPLACE(l_result, 'ý', 'y');
-            l_result := REPLACE(l_result, 'ÿ', 'y');
-            l_result := REPLACE(l_result, '!', '');
-            l_result := REPLACE(l_result, '@', '');
-            l_result := REPLACE(l_result, '#', '');
-            l_result := REPLACE(l_result, '$', '');
-            l_result := REPLACE(l_result, '%', '');
-            l_result := REPLACE(l_result, '^', '');
-            l_result := REPLACE(l_result, '&', '');
-            l_result := REPLACE(l_result, '*', '');
-            l_result := REPLACE(l_result, '(', '');
-            l_result := REPLACE(l_result, ')', '');
-            l_result := REPLACE(l_result, '_', '');
-            l_result := REPLACE(l_result, '+', '');
-            l_result := REPLACE(l_result, '{', '');
-            l_result := REPLACE(l_result, '}', '');
-            l_result := REPLACE(l_result, '[', '');
-            l_result := REPLACE(l_result, ']', '');
-            l_result := REPLACE(l_result, '|', '');
-            l_result := REPLACE(l_result, ';', '');
-            l_result := REPLACE(l_result, ':', '');
-            l_result := REPLACE(l_result, '\"', '');
-            l_result := REPLACE(l_result, '-', '');
-            l_result := REPLACE(l_result, '<', '');
-            l_result := REPLACE(l_result, '>', '');
-            l_result := REPLACE(l_result, ',', '');
-            l_result := REPLACE(l_result, '.', '');
-            l_result := REPLACE(l_result, '?', '');
-            l_result := REPLACE(l_result, '/', '');
-            l_result := REPLACE(l_result, ' ', '');
-            RETURN UPPER(l_result);
-          END;
-SELECT 
+        $sql = "SELECT 
         TRIM(c.cli) AS IDINTCLI,
         TRIM(c.nidf) AS NIF_NIU,
        REPLACE(TRIM(c.rso),'&',' et ') AS RAISOC,
@@ -133,7 +68,7 @@ SELECT
         TRIM(c.sig) AS SIGLE,
         '01' AS RESIDENT,
         'CM' AS PAYSSIEGE,
-        ad.ville,
+        TRIM(ad.ville) AS ADRESSE_VILLE,
         TRIM(c.nrc) AS RCCM,
         CASE
             WHEN c.fju='01' THEN '00'
@@ -152,16 +87,33 @@ SELECT
         END AS SECACT,
         (
             CASE
-                WHEN c.catn IN(1302,1201) AND tcli IN(2,3)
-                THEN 1210
-                WHEN c.catn= (2202) AND tcli IN(2,3)
-                THEN 1062
-                WHEN c.catn=1401 AND tcli IN(2,3)
-                THEN 1130
-                WHEN c.catn=2203 AND tcli IN(2,3)
-                THEN 1061
-                ELSE TO_NUMBER(c.catn)
-            END 
+    -- 1. Entreprises Individuelles / TPE (catn = 2203 ou tcli = 2)
+    WHEN c.catn = 2203 OR tcli = 2 THEN 1061
+
+    -- 2. Autres sociétés non financières privées (catn = 2202 avec tcli = 3)
+    WHEN c.catn = 2202 AND tcli = 3 THEN 1062
+
+    -- 3. Sociétés non financières publiques (catn = 2201)
+    WHEN c.catn = 2201 THEN 1010
+
+    -- 4. Assurances (catn = 1401, 1402)
+    WHEN c.catn IN (1401, 1402) THEN 1130
+
+    -- 5. Banques & Établissements financiers (catn = 1101, 1102, 1201, 1202, 1301, 1302, 1501, 1502, 1601, 1602, 1603, 1701)
+    WHEN c.catn IN (1101, 1102, 1201, 1202, 1301, 1302, 1501, 1502, 1601, 1602, 1603, 1701) THEN 1210
+
+    -- 6. Administrations centrales & locales (catn = 2101, 2102, 2103)
+    WHEN c.catn IN (2101, 2102, 2103) THEN 1010
+
+    -- 7. Institutions sans but lucratif / ONG (catn = 2301)
+    WHEN c.catn = 2301 THEN 1070
+
+    -- 8. Personnes physiques / Particuliers (catn = 2401 ou tcli = 1)
+    WHEN c.catn = 2401 OR tcli = 1 THEN 1100
+
+    -- Valeur de repli sécurisée pour sociétés morales privées par défaut (1062 = PME/Société)
+    ELSE 1062
+        END
         ) AS AGEECO,
         '01' AS STALEG, -- EN ACTIVITE A CONTROLLER AVANT DECLARATION
         TO_CHAR(c.dou, 'DDMMYYYY') AS DATENTRELPAR,
@@ -169,17 +121,53 @@ SELECT
         '' AS TOTBILAN,
         '' AS EFFECTIF,
         TRIM(em.email) AS EMAIL,
-        TRIM(REPLACE((CASE WHEN SUBSTR(t.num, 1, 3)='237'  or
-          SUBSTR((SELECT MAX(TRIM(t2.tel)) FROM bkcntcli t2 WHERE t2.cli = c.cli), 1, 3)='237'   THEN '00'
-          WHEN  SUBSTR(t.num, 1, 3)='002' or
-          SUBSTR((SELECT MAX(TRIM(t2.tel)) FROM bkcntcli t2 WHERE t2.cli = c.cli), 1, 3)='002' THEN ''
-        ELSE '00237'  END ) || 
-            CASE 
-                WHEN tcli = 1 THEN 
-                    t.num
-                ELSE 
-                    (SELECT MAX(TRIM(t2.tel)) FROM bkcntcli t2 WHERE t2.cli = c.cli)
-            END, ' ', '')) AS TEL,
+        TRIM(
+    REPLACE(
+        CASE
+            WHEN SUBSTR(
+                COALESCE(
+                    NULLIF(TRIM(t.num), ''),
+                    (
+                        SELECT MAX(TRIM(t2.tel))
+                        FROM bkcntcli t2
+                        WHERE t2.cli = c.cli
+                          AND TRIM(t2.tel) IS NOT NULL
+                    )
+                ),
+                1, 3
+            ) = '237'
+            THEN '00'
+
+            WHEN SUBSTR(
+                COALESCE(
+                    NULLIF(TRIM(t.num), ''),
+                    (
+                        SELECT MAX(TRIM(t2.tel))
+                        FROM bkcntcli t2
+                        WHERE t2.cli = c.cli
+                          AND TRIM(t2.tel) IS NOT NULL
+                    )
+                ),
+                1, 3
+            ) = '002'
+            THEN ''
+
+            ELSE '00237'
+        END
+        ||
+        COALESCE(
+            NULLIF(TRIM(t.num), ''),
+            (
+                SELECT MAX(TRIM(t2.tel))
+                FROM bkcntcli t2
+                WHERE t2.cli = c.cli
+                  AND TRIM(t2.tel) IS NOT NULL
+            )
+        ),
+        ' ',
+        ''
+    )
+) AS TEL,
         0 AS SITJUD,
         TO_CHAR('', 'DDMMYYYY') AS DATDEBINT,
         TO_CHAR('', 'DDMMYYYY') AS DATFININT,
@@ -187,28 +175,8 @@ SELECT
         '03' AS TYPADR,
         TRIM(ad.adr1) AS ADRESSE,
         'CM' AS PAYS,
-        CASE
-      WHEN cdr_parseutf8(ad.ville) IN
-        (SELECT cdr_parseutf8(nom_ville) FROM cdr_ville_region
-        )
-      THEN
-        (SELECT code_region
-        FROM cdr_ville_region
-        WHERE cdr_parseutf8(nom_ville) = cdr_parseutf8(ad.ville)
-        )
-      ELSE 0
-    END AS  REGION,
-    CASE
-      WHEN cdr_parseutf8(ad.ville) IN
-        (SELECT cdr_parseutf8(nom_ville) FROM cdr_ville_region
-        )
-      THEN
-        (SELECT code_ville
-        FROM cdr_ville_region
-        WHERE cdr_parseutf8(nom_ville) = cdr_parseutf8(ad.ville)
-        )
-      ELSE 0
-    END AS ville,
+        '0' AS REGION,
+        '0' AS VILLE,
         '' AS CODPOST,
         '' AS IDINTMAND,
         '' AS TYPMAND,
@@ -242,19 +210,16 @@ SELECT
         ORDER BY 1
         ";
 
-         try {
+        try {
             $results = DB::select($sql, $bindings);
         } catch (\Exception $e) {
             $msg = $e->getMessage();
             if (stripos($msg, 'ORA-00942') !== false || stripos($msg, 'table or view does not exist') !== false) {
                 $simpleSql = preg_replace(
-                    ['/WITH\s+FUNCTION\s+cdr_parseutf8.*?END;\s*/s',
-                     '/CASE\s+WHEN\s+cdr_parseutf8.*?\bELSE\s+0\s+END\s+AS\s+REGION/s',
-                     '/CASE\s+WHEN\s+cdr_parseutf8.*?\bELSE\s+0\s+END\s+AS\s+ville/s',
-                     '/CASE\s+WHEN\s+c\.sec\s+IN\s*\(SELECT\s+sect\s+FROM\s+cdr_naema\).*?\bELSE\s+c\.sec\s+END\s+AS\s+SECACT/s',
+                    ['/CASE\s+WHEN\s+c\.sec\s+IN\s*\(SELECT\s+sect\s+FROM\s+cdr_naema\).*?\bELSE\s+c\.sec\s+END\s+AS\s+SECACT/s',
                      '/\(SELECT\s+MAX\(TRIM\(em\.email\)\)\s+FROM\s+bkemacli.*?\)\s+AS\s+EMAIL/s',
                      '/TRIM\(REPLACE\(.*?bkcntcli.*?END.*?\)\)\s+AS\s+TEL/s'],
-                    ['', '0 AS REGION', '0 AS ville', 'c.sec AS SECACT', "'' AS EMAIL", "'' AS TEL"],
+                    ['c.sec AS SECACT', "'' AS EMAIL", "'' AS TEL"],
                     $sql
                 );
                 $results = DB::select($simpleSql, $bindings);
@@ -265,9 +230,30 @@ SELECT
             }
         }
 
-        $results = array_map(function ($row) {
-            return array_change_key_case((array) $row, CASE_UPPER);
+        try {
+            $villeRegionRows = DB::select("SELECT nom_ville, code_region, code_ville FROM dbprod.cdr_ville_region");
+            $villeMap = [];
+            foreach ($villeRegionRows as $row) {
+                $key = parseUtf8($row->nom_ville);
+                $villeMap[$key] = [
+                    'REGION' => $row->code_region,
+                    'VILLE' => $row->code_ville
+                ];
+            }
+        } catch (\Exception $e) {
+            $villeMap = [];
+        }
+
+        $results = array_map(function ($row) use ($villeMap) {
+            $row = array_change_key_case((array) $row, CASE_UPPER);
+            $villeKey = parseUtf8($row['ADRESSE_VILLE'] ?? '');
+            if (isset($villeMap[$villeKey])) {
+                $row['REGION'] = $villeMap[$villeKey]['REGION'];
+                $row['VILLE'] = $villeMap[$villeKey]['VILLE'];
+            }
+            return $row;
         }, $results);
+
         return response()->json($results);
     }
 
@@ -303,5 +289,3 @@ SELECT
         //
     }
 }
-
-

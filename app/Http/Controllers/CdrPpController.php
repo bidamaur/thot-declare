@@ -63,139 +63,7 @@ class CdrPpController extends Controller
             $bindings = array_merge($bindings, [$like, $like, $like, $like, $like]);
         }
 
-        function parseUtf8($input_string)
-        {
-            // Liste des caractères accentués et leurs remplacements
-            $trans = [
-                'á' => 'a',
-                'à' => 'a',
-                'â' => 'a',
-                'ä' => 'a',
-                'ã' => 'a',
-                'å' => 'a',
-                'ç' => 'c',
-                'é' => 'e',
-                'è' => 'e',
-                'ê' => 'e',
-                'ë' => 'e',
-                'í' => 'i',
-                'ì' => 'i',
-                'î' => 'i',
-                'ï' => 'i',
-                'ñ' => 'n',
-                'ó' => 'o',
-                'ò' => 'o',
-                'ô' => 'o',
-                'ö' => 'o',
-                'õ' => 'o',
-                'ú' => 'u',
-                'ù' => 'u',
-                'û' => 'u',
-                'ü' => 'u',
-                'ý' => 'y',
-                'ÿ' => 'y',
-                '!' => '',
-                '@' => '',
-                '#' => '',
-                '$' => '',
-                '%' => '',
-                '^' => '',
-                '&' => '',
-                '*' => '',
-                '(' => '',
-                ')' => '',
-                '_' => '',
-                '+' => '',
-                '{' => '',
-                '}' => '',
-                '[' => '',
-                ']' => '',
-                '|' => '',
-                ';' => '',
-                ':' => '',
-                '"' => '',
-                '-' => '',
-                '<' => '',
-                '>' => '',
-                ',' => '',
-                '.' => '',
-                '?' => '',
-                '/' => ''
-            ];
-
-            // Remplace les caractères accentués et autres caractères spéciaux
-            $output_string = strtr($input_string, $trans);
-
-            // Supprime les espaces et met tout en majuscules
-            return strtoupper(trim(str_replace(' ', '', $output_string)));
-        }
-
-        $sql = "WITH
-          FUNCTION cdr_parseutf8(p_str IN VARCHAR2) RETURN VARCHAR2 IS
-            l_result VARCHAR2(4000);
-          BEGIN
-            IF p_str IS NULL THEN
-              RETURN NULL;
-            END IF;
-            l_result := TRIM(p_str);
-            l_result := REPLACE(l_result, 'à', 'a');
-            l_result := REPLACE(l_result, 'á', 'a');
-            l_result := REPLACE(l_result, 'â', 'a');
-            l_result := REPLACE(l_result, 'ä', 'a');
-            l_result := REPLACE(l_result, 'ã', 'a');
-            l_result := REPLACE(l_result, 'å', 'a');
-            l_result := REPLACE(l_result, 'ç', 'c');
-            l_result := REPLACE(l_result, 'é', 'e');
-            l_result := REPLACE(l_result, 'è', 'e');
-            l_result := REPLACE(l_result, 'ê', 'e');
-            l_result := REPLACE(l_result, 'ë', 'e');
-            l_result := REPLACE(l_result, 'í', 'i');
-            l_result := REPLACE(l_result, 'ì', 'i');
-            l_result := REPLACE(l_result, 'î', 'i');
-            l_result := REPLACE(l_result, 'ï', 'i');
-            l_result := REPLACE(l_result, 'ñ', 'n');
-            l_result := REPLACE(l_result, 'ó', 'o');
-            l_result := REPLACE(l_result, 'ò', 'o');
-            l_result := REPLACE(l_result, 'ô', 'o');
-            l_result := REPLACE(l_result, 'ö', 'o');
-            l_result := REPLACE(l_result, 'õ', 'o');
-            l_result := REPLACE(l_result, 'ú', 'u');
-            l_result := REPLACE(l_result, 'ù', 'u');
-            l_result := REPLACE(l_result, 'û', 'u');
-            l_result := REPLACE(l_result, 'ü', 'u');
-            l_result := REPLACE(l_result, 'ý', 'y');
-            l_result := REPLACE(l_result, 'ÿ', 'y');
-            l_result := REPLACE(l_result, '!', '');
-            l_result := REPLACE(l_result, '@', '');
-            l_result := REPLACE(l_result, '#', '');
-            l_result := REPLACE(l_result, '$', '');
-            l_result := REPLACE(l_result, '%', '');
-            l_result := REPLACE(l_result, '^', '');
-            l_result := REPLACE(l_result, '&', '');
-            l_result := REPLACE(l_result, '*', '');
-            l_result := REPLACE(l_result, '(', '');
-            l_result := REPLACE(l_result, ')', '');
-            l_result := REPLACE(l_result, '_', '');
-            l_result := REPLACE(l_result, '+', '');
-            l_result := REPLACE(l_result, '{', '');
-            l_result := REPLACE(l_result, '}', '');
-            l_result := REPLACE(l_result, '[', '');
-            l_result := REPLACE(l_result, ']', '');
-            l_result := REPLACE(l_result, '|', '');
-            l_result := REPLACE(l_result, ';', '');
-            l_result := REPLACE(l_result, ':', '');
-            l_result := REPLACE(l_result, '\"', '');
-            l_result := REPLACE(l_result, '-', '');
-            l_result := REPLACE(l_result, '<', '');
-            l_result := REPLACE(l_result, '>', '');
-            l_result := REPLACE(l_result, ',', '');
-            l_result := REPLACE(l_result, '.', '');
-            l_result := REPLACE(l_result, '?', '');
-            l_result := REPLACE(l_result, '/', '');
-            l_result := REPLACE(l_result, ' ', '');
-            RETURN UPPER(l_result);
-          END;
-SELECT 
+        $sql = "SELECT 
         TRIM(c.cli) AS IDINTCLI,
         (CASE
             WHEN  trim(nidf) IS not  NULL  THEN replace(trim(nidf),'						','')
@@ -267,8 +135,9 @@ SELECT
         '01' AS TYPADR,
         TRIM(ai.adr1) AS ADRESSE,
         'CM' AS PAYS,
-        vr.region AS REGION,
-        TRIM(vr.ville_code) AS VILLE,
+        TRIM(ai.ville) AS ADRESSE_VILLE,
+        '0' AS REGION,
+        '0' AS VILLE,
         '' AS CODPOST,
         '' AS IDINTREL,
         '' AS NOMREL,
@@ -296,10 +165,6 @@ SELECT
          FROM bktelcli t 
          WHERE t.typ = (SELECT MAX(t1.typ) FROM bktelcli t1 WHERE t1.cli = t.cli)) t 
         ON t.cli = c.cli
-    LEFT JOIN 
-         (SELECT cdr_parseUtf8(nom_ville) AS ville, code_region AS region, code_ville AS ville_code
-          FROM cdr_ville_region) vr
-        ON vr.ville = cdr_parseUtf8(ai.ville)
     WHERE 
         c.tcli IN (1)
         " . $customerFilter . "
@@ -309,20 +174,17 @@ SELECT
         -- AND c.cli > 100914
      ORDER BY 1
         ";
+
          try {
             $results = DB::select($sql, $bindings);
         } catch (\Exception $e) {
             $msg = $e->getMessage();
             if (stripos($msg, 'ORA-00942') !== false || stripos($msg, 'table or view does not exist') !== false) {
                 $simpleSql = preg_replace(
-                    ['/WITH\s+FUNCTION\s+cdr_parseutf8.*?END;\s*/s',
-                     '/\s+LEFT JOIN\s+\(SELECT\s+cdr_parseUtf8\(nom_ville\).*?ON\s+vr\.ville\s*=\s*cdr_parseUtf8\(ai\.ville\)/s',
-                     '/vr\.region\s+AS\s+REGION/',
-                     '/TRIM\(vr\.ville_code\)\s+AS\s+VILLE/',
-                     '/CASE\s+WHEN\s+c\.sec\s+IN\s*\(SELECT\s+sect\s+FROM\s+cdr_naema\).*?\bELSE\s+c\.sec\s+END\s+AS\s+SECTACT/s',
+                    ['/CASE\s+WHEN\s+c\.sec\s+IN\s*\(SELECT\s+sect\s+FROM\s+cdr_naema\).*?\bELSE\s+c\.sec\s+END\s+AS\s+SECTACT/s',
                      '/NVL\(\s*\(select\s+trim\(vala\)\s+from\s+BKICLI.*?,\s*\'PND\'\s*\)/s',
                      '/\(SELECT\s+MAX\(TRIM\(em\.email\)\)\s+FROM\s+bkemacli\s+em\s+WHERE\s+c\.cli\s+=\s*em\.cli\)\s+AS\s+EMAIL/s'],
-                    ['', '', '0 AS REGION', '0 AS VILLE', 'c.sec AS SECTACT', "'PND'", "'' AS EMAIL"],
+                    ['c.sec AS SECTACT', "'PND'", "'' AS EMAIL"],
                     $sql
                 );
                 $simpleSql = preg_replace(
@@ -338,6 +200,20 @@ SELECT
             }
         }
 
+        try {
+            $villeRegionRows = DB::select("SELECT nom_ville, code_region, code_ville FROM dbprod.cdr_ville_region");
+            $villeMap = [];
+            foreach ($villeRegionRows as $row) {
+                $key = parseUtf8($row->nom_ville);
+                $villeMap[$key] = [
+                    'REGION' => $row->code_region,
+                    'VILLE' => $row->code_ville
+                ];
+            }
+        } catch (\Exception $e) {
+            $villeMap = [];
+        }
+
         if (!$results) {
             echo "[{
                 'type':'Erreur',
@@ -346,9 +222,16 @@ SELECT
             return false;
         }
 
-        $results = array_map(function ($row) {
-            return array_change_key_case((array) $row, CASE_UPPER);
+        $results = array_map(function ($row) use ($villeMap) {
+            $row = array_change_key_case((array) $row, CASE_UPPER);
+            $villeKey = parseUtf8($row['ADRESSE_VILLE'] ?? '');
+            if (isset($villeMap[$villeKey])) {
+                $row['REGION'] = $villeMap[$villeKey]['REGION'];
+                $row['VILLE'] = $villeMap[$villeKey]['VILLE'];
+            }
+            return $row;
         }, $results);
+
         return response()->json($results);
     }
 
@@ -384,5 +267,3 @@ SELECT
         //
     }
 }
-
-

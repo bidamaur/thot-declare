@@ -574,7 +574,7 @@ public function GetEncours($MyDateArr)
         INNER JOIN Last_Ech_Reelle last_e ON last_e.eve = d.eve AND last_e.ave = d.ave AND last_e.rn = 1
         WHERE d.eta IN ('VA', 'DE')
           AND d.tau_int != 0
-          AND d.eve NOT IN ('002259')
+          AND d.eve NOT IN ('002259','002253')
           
           -- 1. Date de déchéance/fin supérieure à la date d'arrêt (dossier en cours)
           AND TO_DATE(d.ddec, 'DD/MM/RR') > TO_DATE('$DateArr', 'DD/MM/RR')
