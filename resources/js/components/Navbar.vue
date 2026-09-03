@@ -40,7 +40,7 @@
                 >
                     <div class="hidden text-right sm:block">
                         <p class="text-sm font-semibold text-slate-800">
-                            Admin
+                            config
                         </p>
                     </div>
                     <div
