@@ -58,7 +58,7 @@ public function GetEngagements($MyDateArr)
 
     $connection = $this->dbConnection->getConnection();
     $dateArret = Carbon::create((int) $GetPosition[1], (int) $GetPosition[0], 1)->endOfMonth();
-    $DateArr = $dateArret->format('d/m/y');
+    $DateArr = $dateArret->format('d/m/Y');
     $DateArrYear = $dateArret->year;
     $DateArrMonth = ($dateArret->month<10?'0'.$dateArret->month:$dateArret->month);
     $DateArrDay = $dateArret->day;
@@ -135,9 +135,6 @@ public function GetEngagements($MyDateArr)
            WHEN d.typ IN ('200','201')
            AND c.tcli  ='1'
            THEN '09'
-           WHEN (d.typ IN('200','201')
-           AND c.tcli  <>1)
-           THEN '03'
            WHEN d.typ IN('099','106','107')
            THEN '02'
            WHEN (d.typ IN('105','104','103','105')
@@ -335,7 +332,7 @@ public function ctrEngagements()
         }
 
         $dateArret = Carbon::create((int) $GetPosition[1], (int) $GetPosition[0], 1)->endOfMonth();
-        $DateArr = $dateArret->format('d/m/y');
+    $DateArr = $dateArret->format('d/m/Y');
         $DateArrYear = $dateArret->year;
         $DateArrMonth = ($dateArret->month < 10 ? '0'.$dateArret->month : $dateArret->month);
         $DateMonthYear = '/'.$DateArrMonth.'/'.$DateArrYear;
@@ -441,7 +438,7 @@ public function ctrEngagements()
         // 3. Indexer les engagements de contrôle par (CLI|EVE|AVE)
         $ctrIndex = [];
         foreach ($ctrResults as $ctr) {
-            $key = strtoupper(trim($ctr['cli'] ?? '')).'|'.strtoupper(trim($ctr['eve'] ?? '')).'|'.strtoupper(trim($ctr['ave'] ?? ''));
+            $key = strtoupper(trim($ctr['CLI'] ?? '')).'|'.strtoupper(trim($ctr['EVE'] ?? '')).'|'.strtoupper(trim($ctr['AVE'] ?? ''));
             $ctrIndex[$key] = $ctr;
         }
 
@@ -450,8 +447,17 @@ public function ctrEngagements()
         $total = count($engResults);
         $processed = 0;
 
-        // Champs à exclure de la comparaison (Statut et Motif)
-        $excludedFields = ['STATUT', 'MOTIF'];
+        // Mapping des champs entre ctrEngagements et GetEngagements
+        $fieldMapping = [
+            'MNTENG' => 'MntEng',
+            'DMEP'   => 'DatMep',
+            'DUREE'  => 'Duree',
+            'DATDEB' => 'DatDeb',
+            'DATFIN' => 'DatFin',
+        ];
+
+        // Champs à exclure de la comparaison (Statut et Motif + clés de jointure)
+        $excludedFields = ['STATUT', 'MOTIF', 'CLI', 'EVE', 'AVE', 'NCP_ORI'];
 
         foreach ($engResults as $idx => $eng) {
             $processed = $idx + 1;
@@ -479,44 +485,34 @@ public function ctrEngagements()
 
             $ctr = $ctrIndex[$key];
 
-            // Champs à exclure de la comparaison (Statut et Motif + clés de jointure)
-        $excludedFields = ['STATUT', 'MOTIF', 'CLI', 'EVE', 'AVE'];
+            // Comparer uniquement les champs qui existent dans ctrResults via le mapping
+            foreach ($fieldMapping as $ctrField => $engField) {
+                // Ignorer si le champ est exclu
+                if (in_array($ctrField, $excludedFields) || in_array($engField, $excludedFields)) {
+                    continue;
+                }
 
-        // Collecter toutes les clés uniques des deux jeux de données
-        $allFields = array_unique(
-            array_merge(
-                array_keys($eng),
-                array_keys($ctr)
-            )
-        );
+                $engVal = isset($eng[$engField]) ? trim((string) $eng[$engField]) : '';
+                $ctrVal = isset($ctr[$ctrField]) ? trim((string) $ctr[$ctrField]) : '';
 
-        foreach ($allFields as $field) {
-            if (in_array($field, $excludedFields)) {
-                continue;
+                // Normaliser les valeurs pour comparaison
+                $engValNorm = str_replace([' ', ',', '.'], '', $engVal);
+                $ctrValNorm = str_replace([' ', ',', '.'], '', $ctrVal);
+
+                if ($engValNorm !== $ctrValNorm && $engValNorm !== '' && $ctrValNorm !== '') {
+                    $anomalies[] = [
+                        'type' => 'erreur',
+                        'cli' => $cli,
+                        'eve' => $eve,
+                        'ave' => $ave,
+                        'field' => $engField,
+                        'code' => 'CMP_DIFF',
+                        'message' => "Différence sur le champ $engField : engagement=$engVal, contrôle=$ctrVal.",
+                        'value' => "$engVal vs $ctrVal",
+                        'progress' => $progress,
+                    ];
+                }
             }
-
-            $engVal = isset($eng[$field]) ? trim((string) $eng[$field]) : '';
-            $ctrVal = isset($ctr[$field]) ? trim((string) $ctr[$field]) : '';
-
-            // Normaliser les valeurs pour comparaison
-            $engValNorm = str_replace([' ', ',', '.'], '', $engVal);
-            $ctrValNorm = str_replace([' ', ',', '.'], '', $ctrVal);
-
-            if ($engValNorm !== $ctrValNorm && $engValNorm !== '' && $ctrValNorm !== '') {
-                $label = $field;
-                $anomalies[] = [
-                    'type' => 'erreur',
-                    'cli' => $cli,
-                    'eve' => $eve,
-                    'ave' => $ave,
-                    'field' => $field,
-                    'code' => 'CMP_DIFF',
-                    'message' => "Différence sur le champ $label : engagement=$engVal, contrôle=$ctrVal.",
-                    'value' => "$engVal vs $ctrVal",
-                    'progress' => $progress,
-                ];
-            }
-        }
         }
 
         return response()->json([

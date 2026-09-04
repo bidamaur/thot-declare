@@ -689,24 +689,11 @@ const normalizeDate = (val) => {
 };
 
 // --- Mapping des lignes plates vers la structure attendue par le validateur CDR ---
-const findEngagementForEncours = (row) => {
-    if (!zones.engagements.data.length) return null;
-    const cli = String(row.CLI ?? "").trim();
-    const eve = String(row.EVE ?? "").trim();
-    const ave = String(row.AVE ?? "").trim();
-    return zones.engagements.data.find(
-        (eng) =>
-            String(eng.CLI ?? "").trim() === cli &&
-            String(eng.EVE ?? "").trim() === eve &&
-            String(eng.AVE ?? "").trim() === ave
-    );
-};
 
-const engagementBlockFromRow = (row, fallbackEng) => {
+const engagementBlockFromRow = (row) => {
     const get = (k) =>
         row[k] === undefined || row[k] === null ? "" : String(row[k]).trim();
     const getD = (k) => normalizeDate(get(k));
-    const src = fallbackEng || {};
     return {
         RefContCmpt: get("REFCONTCMPT"),
         CodAge: get("CODAGE"),
@@ -714,8 +701,8 @@ const engagementBlockFromRow = (row, fallbackEng) => {
         NatConso: get("NATCONSO"),
         TypConso: get("TYPCONSO"),
         Motif: get("MOTIF"),
-        TypEng: get("TYPENG") || String(src.TYPENG ?? src.TypEng ?? "").trim(),
-        NatEng: get("NATENG") || String(src.NATENG ?? src.NatEng ?? "").trim(),
+        TypEng: get("TYPENG"),
+        NatEng: get("NATENG"),
         CodDev: get("CODDEV"),
         MntEng: get("MNTENG"),
         MntCrCedee: get("MNTCRCEDEE"),
@@ -753,14 +740,11 @@ const rowToControlLine = (row, type) => {
     const getD = (k) => normalizeDate(get(k));
     if (type === "engagement") {
         return {
-            Engagement: engagementBlockFromRow(row, null),
+            Engagement: engagementBlockFromRow(row),
         };
     }
 
-    const matchedEng = findEngagementForEncours(row);
-
     return {
-        Engagement: engagementBlockFromRow(row, matchedEng),
         Encours: {
             RefContCmpt: get("REFCONTCMPT"),
             DatEch: getD("DVA"),
