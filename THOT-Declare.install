@@ -1,0 +1,151 @@
+THOT Declare - CDR Manager
+Guide d'installation et de configuration
+========================================
+
+1. PRE-REQUIS
+-------------
+- Windows avec PowerShell.
+- PHP 8.2 ou superieur.
+- Composer.
+- Node.js et npm.
+- Extension PHP PDO SQLite activee.
+- Extension PHP OCI8 activee et compatible avec Oracle Instant Client.
+- Acces reseau au serveur Oracle.
+
+Verifier PHP :
+    php -v
+    php -m | findstr /I "pdo_sqlite oci8 mbstring openssl xml curl"
+
+2. INSTALLATION DU CODE
+-----------------------
+Depuis la racine du projet :
+
+    composer install
+    npm install
+    copy .env.example .env
+    php artisan key:generate
+
+Si .env existe deja, ne pas l'ecraser.
+Le fichier " - Copy.env" est uniquement une copie de travail et n'est pas lu par Laravel.
+
+3. CONFIGURATION SQLITE
+-----------------------
+SQLite est utilise pour l'authentification et les statistiques. Dans le fichier .env racine :
+
+    DB_CONNECTION=sqlite
+    SQLITE_DATABASE="D:/APPLIS/thot-declare/database/database.sqlite"
+
+Creer le fichier SQLite si necessaire :
+
+    New-Item -ItemType File -Force database/database.sqlite
+
+Ne pas utiliser DB_DATABASE pour SQLite lorsque DB_DATABASE contient le nom du service Oracle.
+
+4. CONFIGURATION ORACLE
+-----------------------
+Oracle est utilise en lecture seule pour les personnes physiques, personnes morales,
+engagements, encours, garanties et statistiques du dashboard.
+
+Dans .env, conserver la separation suivante :
+
+    DB_CONNECTION=sqlite
+    DB_HOST="192.168.2.241"
+    DB_PORT="1521"
+    DB_DATABASE="propme"
+    DB_USERNAME="VOTRE_UTILISATEUR_ORACLE_LECTURE_SEULE"
+    DB_PASSWORD="VOTRE_MOT_DE_PASSE_ORACLE"
+    ORACLE_TNS="192.168.2.241:1521/propme"
+    SQLITE_DATABASE="D:/APPLIS/thot-declare/database/database.sqlite"
+
+Remplacer les valeurs Oracle par celles fournies par l'administrateur de la base.
+Ne pas mettre le mot de passe Oracle dans Git, README, logs ou captures d'ecran.
+La configuration enregistree depuis la page /admin/database peut aussi etre stockee
+dans storage/app/admin-config.json sous forme chiffree.
+
+5. BASES ET MIGRATIONS
+----------------------
+Executer les migrations sans utiliser migrate:fresh ni db:wipe :
+
+    php artisan migrate --force
+
+Ces migrations creent ou completent les tables SQLite :
+- users : comptes et authentification
+- monthly_statistics : snapshots mensuels du dashboard
+
+Important : ne jamais executer en production :
+    php artisan migrate:fresh
+    php artisan db:wipe
+
+Ces commandes peuvent supprimer les utilisateurs et les statistiques.
+
+6. COMPTE ADMINISTRATEUR
+------------------------
+Creer ou verifier le compte administrateur :
+
+    php artisan db:seed --class=AdminUserSeeder
+
+Compte initial :
+- E-mail : admin@thot-declare.local
+- Mot de passe temporaire : admin123
+- Role : admin
+
+Se connecter sur /login puis modifier immediatement le mot de passe.
+Le middleware EnsureAdminAccount recree le compte de secours uniquement si aucun
+administrateur n'existe. Il ne remplace pas le mot de passe d'un administrateur existant.
+
+7. CACHE ET CONFIGURATION
+-------------------------
+Apres toute modification de .env ou de la configuration admin :
+
+    php artisan optimize:clear
+
+Verifier les connexions :
+
+    php artisan tinker --execute="echo config('database.default') . PHP_EOL; echo config('database.connections.sqlite.database') . PHP_EOL; echo config('database.connections.oracle.database') . PHP_EOL;"
+
+Le resultat attendu est :
+- default : sqlite
+- sqlite : chemin absolu vers database/database.sqlite
+- oracle : propme ou le service Oracle configure
+
+8. LANCEMENT
+------------
+Terminal 1 :
+    php artisan serve --host=127.0.0.1 --port=8000
+
+Terminal 2 :
+    npm run dev
+
+Acces :
+    http://127.0.0.1:8000/login
+    http://127.0.0.1:8000/
+
+Pour une version frontend de production :
+    npm run build
+
+9. VERIFICATION DU DASHBOARD
+----------------------------
+Ouvrir le dashboard apres connexion. Le service lit Oracle puis enregistre dans
+SQLite un snapshot par mois. Une nouvelle extraction identique ne modifie pas la
+ligne existante; une difference met a jour les valeurs et extracted_at.
+
+Tester les suites :
+    php artisan test tests/Feature/AuthTest.php
+    npm run build
+
+10. DEPANNAGE RAPIDE
+--------------------
+- "Database file at path [propme] does not exist" : SQLITE_DATABASE manque ou
+  config/database.php utilise encore DB_DATABASE pour SQLite.
+- "Missing or null username" : verifier DB_USERNAME ou la configuration /admin/database.
+- Erreur Oracle de date : verifier le format reel des colonnes Oracle et la conversion
+  utilisee par MonthlyStatisticsService.
+- Compte admin absent : executer AdminUserSeeder, puis verifier users dans SQLite.
+- Apres toute correction de configuration : php artisan optimize:clear.
+
+11. SECURITE
+------------
+- Utiliser un mot de passe Oracle dedie, lecture seule et different du mot de passe admin.
+- Ajouter .env et storage/app/admin-config.json aux fichiers non versionnes.
+- Changer admin123 apres la premiere connexion.
+- Ne pas afficher ni transmettre de mot de passe en clair dans les tickets ou logs.

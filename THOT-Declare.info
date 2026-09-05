@@ -1,0 +1,40 @@
+name = THOT Declare - CDR Manager
+version = 1.0.0
+project_type = Laravel / Vue 3 / Vite
+php = ^8.2
+laravel = ^13.0
+frontend = Vue 3 + Vite
+authentication_database = SQLite
+business_database = Oracle (OCI8, lecture seule)
+statistics_database = SQLite
+web_url = http://127.0.0.1:8000
+
+[required_extensions]
+pdo_sqlite = required for authentication and statistics
+oci8 = required for Oracle business data
+mbstring = required
+openssl = required
+xml = required
+curl = required
+
+[database_separation]
+DB_CONNECTION = sqlite
+SQLITE_DATABASE = D:/APPLIS/thot-declare/database/database.sqlite
+ORACLE_TNS = host:1521/service
+DB_HOST = Oracle host
+DB_PORT = 1521
+DB_DATABASE = Oracle service or database name
+DB_USERNAME = Oracle read-only username
+DB_PASSWORD = Oracle password, stored only in local .env or admin-config.json
+
+[default_admin]
+email = admin@thot-declare.local
+password = admin123
+role = admin
+change_password_after_installation = yes
+
+[important]
+The root .env file is authoritative. The file named " - Copy.env" is not loaded by Laravel.
+Never commit real Oracle passwords, encrypted credentials, or production secrets.
+The users table and monthly_statistics table are stored in SQLite.
+Oracle is used only for reading business data and calculating dashboard statistics.
