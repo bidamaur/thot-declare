@@ -9,11 +9,48 @@ import Engagements from "../views/Engagements.vue";
 import Garanties from "../views/Garanties.vue";
 import CreditConsolidation from "../views/CreditConsolidation.vue";
 import Admin from "../views/Admin.vue";
+import Login from "../views/Login.vue";
+import UserProfile from "../views/UserProfile.vue";
+import axios from "axios";
+
+const checkAuth = async () => {
+    try {
+        const response = await axios.get("/auth/user");
+        return !!response.data.user;
+    } catch {
+        return false;
+    }
+};
+
+const authenticatedUser = async () => {
+    try {
+        const response = await axios.get("/auth/user");
+        return response.data.user || null;
+    } catch {
+        return null;
+    }
+};
 
 const routes = [
     {
+        path: "/login",
+        name: "Login",
+        component: Login,
+        beforeEnter: async () => {
+            const authenticated = await checkAuth();
+            return authenticated ? "/" : true;
+        },
+    },
+    {
         path: "/",
         component: AppLayout,
+        beforeEnter: async (to) => {
+            const user = await authenticatedUser();
+            if (!user) return "/login";
+            return user.must_change_password && to.path !== "/profil"
+                ? "/profil"
+                : true;
+        },
         children: [
             { path: "", component: Dashboard, name: "Dashboard" },
             {
@@ -43,7 +80,26 @@ const routes = [
                 name: "CreditConsolidation",
             },
             { path: "garanties", component: Garanties, name: "Garanties" },
-            { path: "admin", component: Admin, name: "Admin" },
+            {
+                path: "admin",
+                component: Admin,
+                name: "Admin",
+                beforeEnter: async () => {
+                    const authenticated = await checkAuth();
+                    if (!authenticated) return "/login";
+                    try {
+                        const res = await axios.get("/auth/user");
+                        return res.data.user.role === "admin" ? true : "/";
+                    } catch {
+                        return "/login";
+                    }
+                },
+            },
+            {
+                path: "profil",
+                component: UserProfile,
+                name: "UserProfile",
+            },
         ],
     },
 ];

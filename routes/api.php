@@ -11,17 +11,17 @@ use App\Http\Controllers\CdrPpController;
 use App\Http\Controllers\CdrPmController;
 use App\Http\Controllers\AdminConfigController;
 
-
 /*
 |--------------------------------------------------------------------------
 | API Routes
 |--------------------------------------------------------------------------
 |
 | Here is where you can register API routes for your application. These
-| routes are loaded by the RouteServiceProvider and all of them will
-| be assigned to the "api" middleware group. Make something great!
+| routes are loaded by the RouteServiceProvider and all of them will be
+| assigned to the "api" middleware group. Make something great!
 |
 */
+
 Route::get('/cdr_pp/{DateArr?}/{clientId?}', [CdrPpController::class, 'index']);
 Route::get('/cdr_pm/{DateArr?}/{clientId?}', [CdrPmController::class, 'index']);
 Route::get('/cdr_engagements/{DateArr}', [CdrEngagementsController::class, 'GetEngagements']);
@@ -30,7 +30,6 @@ Route::get('/cdr_ctrEngagements/compare/{DateArr}/{DateDeb}', [CdrEngagementsCon
 Route::get('/cdr_encours/{DateArr}', [CdrEncoursController::class, 'GetEncours']);
 Route::get('/cdr_encours_ajust/{DateArr}', [CdrEncoursController::class, 'GetEncoursAjust']);
 Route::get('/cdr_garanties/{DateArr}', [GarantiesController::class, 'getGaranties']);
-//route mise en application apres 
 Route::get('/cdr_encours', [CdrEncoursController::class, 'index']);
 Route::get('/cdr_engagements_echus/{DateArr}/{DateDeb}', [CdrEngagementsController::class, 'GetEngagementsEchus']);
 Route::get('/admin/config', [AdminConfigController::class, 'show']);

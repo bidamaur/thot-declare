@@ -1,15 +1,20 @@
 <template>
     <div class="space-y-2">
-         <!-- Header Section -->
-            <div
-                class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"
-            >
-                <div>
-                    <h1 class="text-lg font-semibold" style="color: rgb(var(--foreground));">
-                        {{ title }}
-                    </h1>
-                    <p class="text-xs" style="color: rgb(var(--muted));">{{ subtitle }}</p>
-                </div>
+        <!-- Header Section -->
+        <div
+            class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"
+        >
+            <div>
+                <h1
+                    class="text-lg font-semibold"
+                    style="color: rgb(var(--foreground))"
+                >
+                    {{ title }}
+                </h1>
+                <p class="text-xs" style="color: rgb(var(--muted))">
+                    {{ subtitle }}
+                </p>
+            </div>
 
             <div
                 v-if="enableFilters && filterColumn"
@@ -38,111 +43,115 @@
                     />
                 </div>
                 <button
-                     v-if="filterDate || filterQuery"
-                     @click="clearFilter"
-                     class="action-btn"
-                     >
-                     Effacer
-                 </button>
-                 <button
-                     @click="fetchData"
-                     class="action-btn-primary"
-                     >
-                     Rechercher
-                 </button>
-                 <button
-                     @click="showAll"
-                     class="action-btn-primary"
-                     >
-                     Afficher tout
-                 </button>
-                 <button
-                     @click="exportToExcel"
-                     :disabled="data.length === 0"
-                     class="action-btn-success"
-                     :class="
-                         data.length === 0 ? 'opacity-50 cursor-not-allowed' : ''
-                     "
-                     >
-                     Excel
-                 </button>
+                    v-if="filterDate || filterQuery"
+                    @click="clearFilter"
+                    class="action-btn"
+                >
+                    Effacer
+                </button>
+                <button @click="fetchData" class="action-btn-primary">
+                    Rechercher
+                </button>
+                <button @click="showAll" class="action-btn-primary">
+                    Afficher tout
+                </button>
+                <button
+                    @click="exportToExcel"
+                    :disabled="data.length === 0"
+                    class="action-btn-success"
+                    :class="
+                        data.length === 0 ? 'opacity-50 cursor-not-allowed' : ''
+                    "
+                >
+                    Excel
+                </button>
             </div>
         </div>
 
-         <!-- Table Card -->
-            <div class="premium-card" style="overflow: visible;">
-                <div v-if="loading" class="flex justify-center items-center py-8">
-                    <div class="flex flex-col items-center gap-2">
-                        <div
-                            class="animate-spin rounded-full h-6 w-6 border-2 border-blue-600 border-t-transparent"
-                        ></div>
-                        <p class="text-xs" style="color: rgb(var(--muted));">Chargement...</p>
-                    </div>
+        <!-- Table Card -->
+        <div class="premium-card" style="overflow: visible">
+            <div v-if="loading" class="flex justify-center items-center py-8">
+                <div class="flex flex-col items-center gap-2">
+                    <div
+                        class="animate-spin rounded-full h-6 w-6 border-2 border-blue-600 border-t-transparent"
+                    ></div>
+                    <p class="text-xs" style="color: rgb(var(--muted))">
+                        Chargement...
+                    </p>
                 </div>
+            </div>
 
-                <div v-else-if="error" class="p-4">
-                    <div class="flex items-center gap-2 p-2 bg-red-50 rounded">
-                        <span class="material-icons text-red-600 text-sm"
-                            >error</span>
-                        >
-                        <p class="text-red-700 text-xs">{{ error }}</p>
-                    </div>
-                </div>
-
-                <div v-else-if="data.length === 0" class="p-8 text-center">
-                    <span class="material-icons text-2xl mb-1"
-                        >inbox</span>
+            <div v-else-if="error" class="p-4">
+                <div class="flex items-center gap-2 p-2 bg-red-50 rounded">
+                    <span class="material-icons text-red-600 text-sm"
+                        >error</span
                     >
-                    <p class="text-xs" style="color: rgb(var(--muted));">Aucune donnée.</p>
+                    >
+                    <p class="text-red-700 text-xs">{{ error }}</p>
                 </div>
+            </div>
 
-                <div v-show="data.length > 0" class="overflow-x-auto">
-                    <table class="premium-table">
-                        <thead class="table-header">
-                            <tr>
-                                <th
-                                    class="px-2 py-1 text-left font-semibold w-8"
-                                    style="color: rgb(var(--muted));"
-                                >
-                                    #
-                                </th>
-                                <th class="px-2 py-1 text-left">
-                                    <input
-                                        type="checkbox"
-                                        @change="toggleAll"
-                                        :checked="isAllSelected"
-                                        class="w-3 h-3"
-                                    />
-                                </th>
-                                <th
-                                    v-for="col in columns"
-                                    :key="col.key"
-                                    class="table-header px-2 py-1 cursor-pointer select-none"
-                                    @click="sortBy(col.key)"
-                                >
-                                    <div class="flex items-center gap-1">
-                                        <span>{{ col.label }}</span>
-                                        <span
-                                            v-if="sortKey === col.key"
-                                            class="material-icons text-xs"
-                                        >
-                                            {{
-                                                sortOrder === "asc"
-                                                    ? "arrow_upward"
-                                                    : "arrow_downward"
-                                            }}
-                                        </span>
-                                    </div>
-                                </th>
-                            </tr>
-                        </thead>
-                    <tbody class="divide-y" style="border-color: rgb(var(--border));">
+            <div v-else-if="data.length === 0" class="p-8 text-center">
+                <span class="material-icons text-2xl mb-1">inbox</span>
+                >
+                <p class="text-xs" style="color: rgb(var(--muted))">
+                    Aucune donnée.
+                </p>
+            </div>
+
+            <div v-show="data.length > 0" class="overflow-x-auto">
+                <table class="premium-table">
+                    <thead class="table-header">
+                        <tr>
+                            <th
+                                class="px-2 py-1 text-left font-semibold w-8"
+                                style="color: rgb(var(--muted))"
+                            >
+                                #
+                            </th>
+                            <th class="px-2 py-1 text-left">
+                                <input
+                                    type="checkbox"
+                                    @change="toggleAll"
+                                    :checked="isAllSelected"
+                                    class="w-3 h-3"
+                                />
+                            </th>
+                            <th
+                                v-for="col in columns"
+                                :key="col.key"
+                                class="table-header px-2 py-1 cursor-pointer select-none"
+                                @click="sortBy(col.key)"
+                            >
+                                <div class="flex items-center gap-1">
+                                    <span>{{ col.label }}</span>
+                                    <span
+                                        v-if="sortKey === col.key"
+                                        class="material-icons text-xs"
+                                    >
+                                        {{
+                                            sortOrder === "asc"
+                                                ? "arrow_upward"
+                                                : "arrow_downward"
+                                        }}
+                                    </span>
+                                </div>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody
+                        class="divide-y"
+                        style="border-color: rgb(var(--border))"
+                    >
                         <tr
                             v-for="(row, index) in paginatedData"
                             :key="index"
                             class="table-row"
                         >
-                            <td class="px-2 py-1" style="color: rgb(var(--muted));">
+                            <td
+                                class="px-2 py-1"
+                                style="color: rgb(var(--muted))"
+                            >
                                 {{
                                     (currentPage - 1) * itemsPerPage + index + 1
                                 }}
@@ -183,16 +192,20 @@
                                 <span
                                     v-else-if="col.format === 'number'"
                                     class="font-medium"
-                                    style="color: rgb(var(--foreground));"
+                                    style="color: rgb(var(--foreground))"
                                     >{{ formatNumber(row[col.key]) }}</span
                                 >
                                 <span
                                     v-else-if="col.format === 'currency'"
                                     class="font-semibold"
-                                    style="color: rgb(var(--foreground));"
+                                    style="color: rgb(var(--foreground))"
                                     >{{ formatCurrency(row[col.key]) }}</span
                                 >
-                                <span v-else style="color: rgb(var(--foreground));">{{ row[col.key] ?? "-" }}</span>
+                                <span
+                                    v-else
+                                    style="color: rgb(var(--foreground))"
+                                    >{{ row[col.key] ?? "-" }}</span
+                                >
                             </td>
                         </tr>
                     </tbody>
@@ -201,24 +214,24 @@
         </div>
 
         <!-- Pagination -->
-            <div
-                v-if="data.length > 0"
-                class="flex items-center justify-between px-3 py-2 rounded border text-xs"
-                style="background: rgb(var(--surface-secondary)), border-color: rgb(var(--border));"
-            >
-                <div class="flex items-center gap-2">
-                    <p style="color: rgb(var(--muted));">
-                        {{ data.length }} résultats - Page {{ currentPage }}/{{
-                            totalPages
-                        }}
-                    </p>
-                </div>
-                <div class="flex items-center gap-1">
-                    <select
-                        v-model="internalItemsPerPage"
-                        class="text-xs border rounded px-1 py-0.5"
-                        style="background: rgb(var(--surface)), border-color: rgb(var(--border)), color: rgb(var(--foreground));"
-                    >
+        <div
+            v-if="data.length > 0"
+            class="flex items-center justify-between px-3 py-2 rounded border text-xs"
+            style="background: rgb(var(--surface-secondary)), border-color: rgb(var(--border));"
+        >
+            <div class="flex items-center gap-2">
+                <p style="color: rgb(var(--muted))">
+                    {{ data.length }} résultats - Page {{ currentPage }}/{{
+                        totalPages
+                    }}
+                </p>
+            </div>
+            <div class="flex items-center gap-1">
+                <select
+                    v-model="internalItemsPerPage"
+                    class="text-xs border rounded px-1 py-0.5"
+                    style="background: rgb(var(--surface)), border-color: rgb(var(--border)), color: rgb(var(--foreground));"
+                >
                     <option :value="5">5</option>
                     <option :value="10">10</option>
                     <option :value="20">20</option>
@@ -227,39 +240,40 @@
                     <option :value="-1">100%</option>
                 </select>
                 <button
-                     @click="prevPage"
-                     :disabled="currentPage === 1 || internalItemsPerPage === -1"
-                     class="action-btn"
-                     :class="
-                         currentPage === 1 || internalItemsPerPage === -1
-                             ? 'opacity-50 cursor-not-allowed'
-                             : ''
-                     "
-                     >
-                     Préc.
-                 </button>
-                 <button
-                     @click="nextPage"
-                     :disabled="
-                         currentPage === totalPages ||
-                         internalItemsPerPage === -1
-                     "
-                     class="action-btn"
-                     :class="
-                         currentPage === totalPages ||
-                         internalItemsPerPage === -1
-                             ? 'opacity-50 cursor-not-allowed'
-                             : ''
-                     "
-                     >
-                     Suiv.
-                 </button>
+                    @click="prevPage"
+                    :disabled="currentPage === 1 || internalItemsPerPage === -1"
+                    class="action-btn"
+                    :class="
+                        currentPage === 1 || internalItemsPerPage === -1
+                            ? 'opacity-50 cursor-not-allowed'
+                            : ''
+                    "
+                >
+                    Préc.
+                </button>
+                <button
+                    @click="nextPage"
+                    :disabled="
+                        currentPage === totalPages ||
+                        internalItemsPerPage === -1
+                    "
+                    class="action-btn"
+                    :class="
+                        currentPage === totalPages ||
+                        internalItemsPerPage === -1
+                            ? 'opacity-50 cursor-not-allowed'
+                            : ''
+                    "
+                >
+                    Suiv.
+                </button>
             </div>
         </div>
     </div>
 </template>
 
 <script setup>
+import * as XLSX from "xlsx";
 import { ref, onMounted, computed, watch } from "vue";
 import axios from "axios";
 
@@ -425,12 +439,11 @@ const showAll = () => {
 
 const exportToExcel = () => {
     if (!data.value.length) return;
-    const XLSX = window.XLSX;
     const exportData = sortedData.value.map((row, idx) => {
         const obj = {
             "#": (currentPage.value - 1) * internalItemsPerPage.value + idx + 1,
         };
-        columns.value.forEach((col) => {
+        props.columns.forEach((col) => {
             obj[col.label] = row[col.key] ?? "-";
         });
         return obj;
@@ -443,7 +456,7 @@ const exportToExcel = () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `${title.replace(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    link.download = `${props.title.replace(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}.xlsx`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

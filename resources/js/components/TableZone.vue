@@ -1,16 +1,21 @@
 <template>
-    <div
-        class="premium-card overflow-hidden"
-    >
+    <div class="premium-card overflow-hidden">
         <div
             class="px-4 py-3 border-b flex items-center justify-between"
-            style="border-color: rgb(var(--border));"
+            style="border-color: rgb(var(--border))"
         >
             <div>
-                <h2 class="text-sm font-semibold" style="color: rgb(var(--foreground));">
+                <h2
+                    class="text-sm font-semibold"
+                    style="color: rgb(var(--foreground))"
+                >
                     {{ title }}
                 </h2>
-                <p v-if="subtitle" class="text-xs mt-0.5" style="color: rgb(var(--muted));">
+                <p
+                    v-if="subtitle"
+                    class="text-xs mt-0.5"
+                    style="color: rgb(var(--muted))"
+                >
                     {{ subtitle }}
                 </p>
             </div>
@@ -25,11 +30,11 @@
                     />
                     <span
                         class="absolute left-2 top-1/2 -translate-y-1/2 text-sm pointer-events-none"
-                        style="color: rgb(var(--muted));"
+                        style="color: rgb(var(--muted))"
                         >search</span
                     >
                 </div>
-                <span class="text-xs" style="color: rgb(var(--muted));">
+                <span class="text-xs" style="color: rgb(var(--muted))">
                     {{ filteredData.length }} ligne(s)</span
                 >
                 <button
@@ -55,7 +60,9 @@
                 <div
                     class="animate-spin rounded-full h-6 w-6 border-2 border-blue-600 border-t-transparent"
                 ></div>
-                <p class="text-xs" style="color: rgb(var(--muted));">Chargement...</p>
+                <p class="text-xs" style="color: rgb(var(--muted))">
+                    Chargement...
+                </p>
             </div>
         </div>
 
@@ -67,20 +74,20 @@
         </div>
 
         <div v-else-if="data.length === 0" class="p-8 text-center">
-            <span class="material-icons text-2xl mb-1"
-                >inbox</span
-            >
-            <p class="text-xs" style="color: rgb(var(--muted));">Aucune donnée.</p>
+            <span class="material-icons text-2xl mb-1">inbox</span>
+            <p class="text-xs" style="color: rgb(var(--muted))">
+                Aucune donnée.
+            </p>
         </div>
 
         <div v-else class="overflow-x-auto">
             <table class="w-full text-xs">
                 <thead class="table-header">
-                    <tr style="border-bottom-color: rgb(var(--border));">
+                    <tr style="border-bottom-color: rgb(var(--border))">
                         <th
                             v-if="selectable"
                             class="px-2 py-1 text-center font-semibold w-8"
-                            style="color: rgb(var(--muted));"
+                            style="color: rgb(var(--muted))"
                         >
                             <input
                                 type="checkbox"
@@ -91,7 +98,7 @@
                         </th>
                         <th
                             class="px-2 py-1 text-left font-semibold w-8"
-                            style="color: rgb(var(--muted));"
+                            style="color: rgb(var(--muted))"
                         >
                             #
                         </th>
@@ -117,7 +124,10 @@
                         </th>
                     </tr>
                 </thead>
-                <tbody class="divide-y" style="division-color: rgb(var(--border));">
+                <tbody
+                    class="divide-y"
+                    style="division-color: rgb(var(--border))"
+                >
                     <tr
                         v-for="(row, index) in paginatedData"
                         :key="index"
@@ -132,8 +142,15 @@
                                 "
                             />
                         </td>
-                        <td class="px-2 py-1" style="color: rgb(var(--muted));">
-                            {{ row.__globalIdx !== undefined ? row.__globalIdx + 1 : ((props.startIndex || 0) + (currentPage - 1) * itemsPerPage + index + 1) }}
+                        <td class="px-2 py-1" style="color: rgb(var(--muted))">
+                            {{
+                                row.__globalIdx !== undefined
+                                    ? row.__globalIdx + 1
+                                    : (props.startIndex || 0) +
+                                      (currentPage - 1) * itemsPerPage +
+                                      index +
+                                      1
+                            }}
                         </td>
                         <td
                             v-for="col in columns"
@@ -163,16 +180,20 @@
                             <span
                                 v-else-if="col.format === 'number'"
                                 class="font-medium"
-                                style="color: rgb(var(--foreground));"
+                                style="color: rgb(var(--foreground))"
                                 >{{ formatNumber(row[col.key]) }}</span
                             >
                             <span
                                 v-else-if="col.format === 'currency'"
                                 class="font-semibold"
-                                style="color: rgb(var(--foreground));"
+                                style="color: rgb(var(--foreground))"
                                 >{{ formatCurrency(row[col.key]) }}</span
                             >
-                            <span v-else style="color: rgb(var(--foreground));">{{ row[col.key] ?? "-" }}</span>
+                            <span
+                                v-else
+                                style="color: rgb(var(--foreground))"
+                                >{{ row[col.key] ?? "-" }}</span
+                            >
                         </td>
                     </tr>
                 </tbody>
@@ -182,9 +203,9 @@
         <div
             v-if="data.length > 0"
             class="flex items-center justify-between px-3 py-2 border-t text-xs"
-            style="border-color: rgb(var(--border));"
+            style="border-color: rgb(var(--border))"
         >
-            <p style="color: rgb(var(--muted));">
+            <p style="color: rgb(var(--muted))">
                 {{ data.length }} résultats - Page {{ currentPage }}/{{
                     totalPages
                 }}
@@ -236,6 +257,7 @@
 </template>
 
 <script setup>
+import * as XLSX from "xlsx";
 import { ref, computed, watch } from "vue";
 
 const props = defineProps({
@@ -367,8 +389,6 @@ watch(
 
 const exportToExcel = () => {
     if (!props.data.length) return;
-    const XLSX = window.XLSX;
-    if (!XLSX) return;
     const exportData = props.data.map((row) => {
         const obj = {};
         props.columns.forEach((col) => {

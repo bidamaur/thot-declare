@@ -176,7 +176,7 @@ class CdrPpController extends Controller
         ";
 
          try {
-            $results = DB::select($sql, $bindings);
+            $results = DB::connection('oracle')->select($sql, $bindings);
         } catch (\Exception $e) {
             $msg = $e->getMessage();
             if (stripos($msg, 'ORA-00942') !== false || stripos($msg, 'table or view does not exist') !== false) {
@@ -192,7 +192,7 @@ class CdrPpController extends Controller
                     ["'PND'"],
                     $simpleSql
                 );
-                $results = DB::select($simpleSql, $bindings);
+                $results = DB::connection('oracle')->select($simpleSql, $bindings);
             } elseif (stripos($msg, 'ORA-00904') !== false || stripos($msg, 'invalid identifier') !== false) {
                 return response()->json([]);
             } else {
@@ -201,7 +201,7 @@ class CdrPpController extends Controller
         }
 
         try {
-            $villeRegionRows = DB::select("SELECT nom_ville, code_region, code_ville FROM dbprod.cdr_ville_region");
+            $villeRegionRows = DB::connection('oracle')->select("SELECT nom_ville, code_region, code_ville FROM dbprod.cdr_ville_region");
             $villeMap = [];
             foreach ($villeRegionRows as $row) {
                 $key = parseUtf8($row->nom_ville);

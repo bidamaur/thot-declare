@@ -466,6 +466,7 @@
 </template>
 
 <script setup>
+import * as XLSX from "xlsx";
 import { ref, computed, watch } from "vue";
 import DataTable from "../components/DataTable.vue";
 import { validateAllPersonnesPhysiques } from "../validators/cdrPp.js";
@@ -734,7 +735,6 @@ const onDataLoaded = (dataArray) => {
 
 const exportAnomaliesToExcel = () => {
     if (!anomalyClients.value.length) return;
-    const XLSX = window.XLSX;
     const exportData = anomalyRows.value.map((item) => ({
         "Nom Client": item.data.NOM,
         "N° Client": item.data.IDINTCLI,

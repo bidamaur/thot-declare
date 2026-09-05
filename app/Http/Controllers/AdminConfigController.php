@@ -47,8 +47,10 @@ class AdminConfigController extends Controller
     public function show()
     {
         $config = $this->readConfig();
+        $dbConnection = env('DB_CONNECTION', 'sqlite');
+        $isOracleDefault = ($dbConnection === 'oracle') || (!empty(env('ORACLE_TNS')) && $dbConnection !== 'sqlite');
         $database = array_merge([
-            'driver' => env('DB_CONNECTION', 'oracle') === 'oracle' ? 'oci8' : env('DB_CONNECTION', 'mysql'),
+            'driver' => $isOracleDefault ? 'oci8' : ($dbConnection === 'sqlite' ? 'sqlite' : 'mysql'),
             'host' => env('DB_HOST', 'localhost'),
             'port' => (int) env('DB_PORT', 1521),
             'database' => env('DB_DATABASE', 'XEPDB1'),
@@ -251,7 +253,7 @@ class AdminConfigController extends Controller
         $sql = preg_replace('/\?/', 'NULL', $sql);
 
         try {
-            $rows = DB::select($sql);
+            $rows = DB::connection('oracle')->select($sql);
             return response()->json(['ok' => true, 'message' => 'Requête exécutée avec succès.', 'rows' => count($rows), 'preview' => array_slice($rows, 0, 5)]);
         } catch (\Throwable $exception) {
             return response()->json(['ok' => false, 'message' => $this->safeMessage($exception)], 422);
@@ -316,7 +318,7 @@ class AdminConfigController extends Controller
 
         $driver = ($database['driver'] ?? 'oci8') === 'oci8' ? 'oracle' : ($database['driver'] ?? 'mysql');
         $values = [
-            'DB_CONNECTION' => $driver,
+            'DB_CONNECTION' => 'sqlite',
             'DB_HOST' => $database['host'] ?? '',
             'DB_PORT' => $database['port'] ?? '',
             'DB_DATABASE' => $database['database'] ?? '',

@@ -15,8 +15,8 @@ class ApplyConfiguredDatabase
             $config = json_decode((string) file_get_contents($path), true) ?: [];
             $database = $config['database'] ?? [];
             if (!empty($database['driver'])) {
-                config(['database.default' => 'configured_target']);
-                config(['database.connections.configured_target' => $this->connectionConfig($database)]);
+                config(['database.connections.oracle' => $this->connectionConfig($database)]);
+                config(['database.default' => 'sqlite']);
             }
         }
 

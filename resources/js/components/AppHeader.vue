@@ -49,21 +49,46 @@
 
                 <!-- User Profile -->
                 <router-link
-                    to="/admin"
+                    to="/profil"
                     class="flex items-center gap-2 rounded-full border px-2 py-1.5 transition-opacity hover:opacity-80"
                     :style="{
                         borderColor: 'rgb(var(--border))',
                         color: 'rgb(var(--muted))'
                     }"
-                    title="Configuration"
+                    title="Profil"
                 >
                     <div
                         class="flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold text-white"
                         style="background: linear-gradient(135deg, rgb(var(--primary)) 0%, rgb(var(--primary-hover)) 100%);"
                     >
-                        Admin
+                        {{ userInitials }}
                     </div>
                 </router-link>
+
+                <button
+                    v-if="isAdmin"
+                    @click="goToAdmin"
+                    class="flex items-center gap-2 rounded-full border px-2 py-1.5 transition-opacity hover:opacity-80"
+                    :style="{
+                        borderColor: 'rgb(var(--border))',
+                        color: 'rgb(var(--muted))'
+                    }"
+                    title="Administration"
+                >
+                    <span class="material-icons text-sm">admin_panel_settings</span>
+                </button>
+
+                <button
+                    @click="logout"
+                    class="flex items-center justify-center rounded-full border p-2 text-slate-600 shadow-sm transition-opacity hover:opacity-80"
+                    :style="{
+                        borderColor: 'rgb(var(--border))',
+                        color: 'rgb(var(--muted))'
+                    }"
+                    title="Déconnexion"
+                >
+                    <span class="material-icons text-sm">logout</span>
+                </button>
             </div>
         </div>
     </header>
@@ -87,7 +112,39 @@ const routeLabels = {
     "/credit-consolidation": "Consolidation Crédit",
     "/garanties": "Garanties",
     "/admin": "Administration",
+    "/profil": "Mon Profil",
 };
+
+const currentUser = ref(null);
+const isAdmin = ref(false);
+
+const loadUser = async () => {
+    try {
+        const response = await axios.get("/auth/user");
+        currentUser.value = response.data.user;
+        isAdmin.value = currentUser.value.role === "admin";
+    } catch (error) {
+        currentUser.value = null;
+        isAdmin.value = false;
+    }
+};
+
+const userInitials = computed(() => {
+    if (!currentUser.value) return "";
+    const parts = currentUser.value.name.split(" ");
+    return parts.map((p) => p[0]).join("").toUpperCase().slice(0, 2);
+});
+
+const goToAdmin = () => {
+    window.location.href = "/admin";
+};
+
+const logout = async () => {
+    await axios.post("/auth/logout");
+    window.location.href = "/login";
+};
+
+loadUser();
 
 const currentPageLabel = computed(() => {
     return routeLabels[route.path] || "THOT Declare";
