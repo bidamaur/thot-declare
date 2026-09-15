@@ -67,7 +67,6 @@ const infoRoutes = [
     "/",
     "/personnes-physiques",
     "/personnes-morales",
-    "/encours",
     "/encours-ajust",
     "/engagements",
     "/credit-consolidation",

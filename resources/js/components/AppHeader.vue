@@ -106,7 +106,6 @@ const routeLabels = {
     "/": "Tableau de bord",
     "/personnes-physiques": "Personnes Physiques",
     "/personnes-morales": "Clients Entreprises",
-    "/encours": "Encours",
     "/encours-ajust": "Ajustements",
     "/engagements": "Engagements",
     "/credit-consolidation": "Consolidation Crédit",

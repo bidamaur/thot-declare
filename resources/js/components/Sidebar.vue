@@ -41,14 +41,6 @@
                     Clients Entreprises
                 </router-link>
                 <router-link
-                    to="/encours"
-                    class="premium-sidebar-item"
-                    :class="{ 'premium-sidebar-item-active': $route.path === '/encours' }"
-                >
-                    <span class="material-icons premium-sidebar-icon">account_balance_wallet</span>
-                    Encours
-                </router-link>
-                <router-link
                     to="/engagements"
                     class="premium-sidebar-item"
                     :class="{ 'premium-sidebar-item-active': $route.path === '/engagements' }"
