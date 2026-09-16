@@ -714,7 +714,7 @@ watch(anomalyClients, () => {
 
 const onDataLoaded = (dataArray) => {
     try {
-        const results = validateAllPersonnesPhysiques(dataArray).map(
+        const results = validateAllPersonnesPhysiques(dataArray, "CM", xmlConfig.value.NatDec).map(
             (result) => ({
                 ...result,
                 errors: result.errors.map((err) => ({

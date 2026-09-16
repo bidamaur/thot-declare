@@ -190,9 +190,10 @@ function getCleanAlphanumericLength(value) {
  * @param {String} currentCountry - Code ISO du pays déclarant ('CM', 'GA', etc.)
  * @returns {Object} { isValid: boolean, errors: Array }
  */
-export function validatePersonnePhysique(data, currentCountry = "CM") {
+export function validatePersonnePhysique(data, currentCountry = "CM", natDec = null) {
     const errors = [];
     const dateDeclaration = new Date(); // Équivalent à la date de session courante
+    const natDecValue = natDec ?? data.NATDEC;
 
     const pushErr = (code, type, field, msg) =>
         errors.push({ code, type, field, message: msg });
@@ -227,16 +228,18 @@ export function validatePersonnePhysique(data, currentCountry = "CM") {
         }
     });
 
-    // Filiation Obligatoire (OBL002 / LOG005)
-    ["PREPERE", "PREMERE"].forEach((f) => {
-        if (
-            data[f] === null ||
-            data[f] === undefined ||
-            data[f].toString().trim() === ""
-        ) {
-            pushErr("OBL002", "Erreur", f, "Champ obligatoire non fourni");
-        }
-    });
+    // Filiation Obligatoire (OBL002 / LOG005) - Ignoré si NATDEC='00'
+    if (!natDecValue || natDecValue.toString() !== "00") {
+        ["PREPERE", "PREMERE"].forEach((f) => {
+            if (
+                data[f] === null ||
+                data[f] === undefined ||
+                data[f].toString().trim() === ""
+            ) {
+                pushErr("OBL002", "Erreur", f, "Champ obligatoire non fourni");
+            }
+        });
+    }
 
     // LOG069 / OBL002 : Exclusion mutuelle et conditionnalité du Nom complet
     if (data.NOMCOMPLET) {
@@ -446,6 +449,15 @@ export function validatePersonnePhysique(data, currentCountry = "CM") {
     ];
 
     identityFields.forEach((f) => {
+        // Ignorer NOMPERE, PREPERE, NOMMERE, PREMERE si NATDEC='00'
+        if (
+            natDecValue &&
+            natDecValue.toString() === "00" &&
+            ["NOMPERE", "PREPERE", "NOMMERE", "PREMERE"].includes(f)
+        ) {
+            return;
+        }
+
         if (data[f]) {
             const valStr = data[f].toString().trim();
             const upperStr = valStr.toUpperCase();
@@ -453,7 +465,7 @@ export function validatePersonnePhysique(data, currentCountry = "CM") {
 
             // SYN008 / SYN0008 : Contient uniquement une valeur exclue
             // Exception : si NATDEC (Nature de déclaration) = "00", ignorer le contrôle SYN008
-            if (data.NATDEC && data.NATDEC.toString() === "00") {
+            if (natDecValue && natDecValue.toString() === "00") {
                 // NATDEC=00 : les contrôles SYN008/SYN0008 sont désactivés
             } else if (FORBIDDEN_WORDS.has(upperStr)) {
                 pushErr(
@@ -824,9 +836,10 @@ export function validatePersonnePhysique(data, currentCountry = "CM") {
 export function validateAllPersonnesPhysiques(
     dataArray,
     currentCountry = "CM",
+    natDec = null,
 ) {
     return dataArray.map((item) => ({
         data: item,
-        ...validatePersonnePhysique(item, currentCountry),
+        ...validatePersonnePhysique(item, currentCountry, natDec),
     }));
 }
