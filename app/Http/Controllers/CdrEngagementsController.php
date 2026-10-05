@@ -716,6 +716,7 @@ $mont_dtx="ABS(NVL((
                     WHERE eve = d.eve 
                       AND ctr = 3 
                       AND eta = 'VA' 
+                      and ave=d.ave
                       AND TO_DATE(dva, 'DD/MM/RR') <= TO_DATE('$DateArr', 'DD/MM/RR')
                 ) THEN '02'
                 
@@ -733,8 +734,8 @@ $mont_dtx="ABS(NVL((
 
                 /* FALLBACKS PREEXISTANTS */
                 WHEN e.ctr = 3 THEN '02'
-                WHEN (SELECT DVA FROM bkechprt WHERE res = 0 AND eve = d.eve AND ave = (SELECT MAX(ave) FROM bkechprt WHERE eve = d.eve) AND (TO_DATE(dva, 'DD/MM/RR') BETWEEN TO_DATE('01$DateMonthYear', 'DD/MM/RR') AND add_months(TO_DATE('01$DateMonthYear', 'DD/MM/RR'), 1))) = d.ddec THEN '02'
-                WHEN (SELECT MAX(ctr) FROM bkechprt WHERE eve = d.eve AND ave = (SELECT MAX(ave) FROM bkechprt WHERE eve = d.eve) AND (TO_DATE(dva, 'DD/MM/RR') BETWEEN TO_DATE('$DateArr', 'DD/MM/RR') AND add_months(TO_DATE('$DateArr', 'DD/MM/RR'), 1))) = 3 THEN '02'
+                WHEN (SELECT DVA FROM bkechprt WHERE res = 0 AND eve = d.eve AND ave = d.ave AND (TO_DATE(dva, 'DD/MM/RR') BETWEEN TO_DATE('01$DateMonthYear', 'DD/MM/RR') AND add_months(TO_DATE('01$DateMonthYear', 'DD/MM/RR'), 1))) = d.ddec THEN '02'
+                WHEN (SELECT MAX(ctr) FROM bkechprt WHERE eve = d.eve AND ave = d.ave AND (TO_DATE(dva, 'DD/MM/RR') BETWEEN TO_DATE('$DateArr', 'DD/MM/RR') AND add_months(TO_DATE('$DateArr', 'DD/MM/RR'), 1))) = 3 THEN '02'
                 
                 ELSE '00'
             END) Statut,
@@ -752,6 +753,7 @@ $mont_dtx="ABS(NVL((
                       AND eta = 'VA' 
                       AND TO_DATE(dva, 'DD/MM/RR') <= TO_DATE('$DateArr', 'DD/MM/RR')
                       AND $mont_dtx=0 
+                      and ave=d.ave
                 ) THEN '02'
                 
                 /* BLOC 2 : Fin a terme */
@@ -796,9 +798,9 @@ $mont_dtx="ABS(NVL((
             '' IndRef,
             '' Sprd,
             (CASE
-                WHEN (SELECT COUNT(dva) FROM bkechprt WHERE eve = d.eve AND ave = (SELECT MAX(ave) FROM bkechprt WHERE eve = d.eve)) IN (1, 2) 
+                WHEN (SELECT COUNT(dva) FROM bkechprt WHERE eve = d.eve AND ave = d.ave) IN (1, 2) 
                 THEN TO_CHAR(d.dmep, 'ddmmyyyy')
-                ELSE (SELECT TO_CHAR(MAX(dva), 'ddmmyyyy') FROM bkechprt WHERE num = 01 AND eve = d.eve)
+                ELSE (SELECT TO_CHAR(MAX(dva), 'ddmmyyyy') FROM bkechprt WHERE num = 01 AND eve = d.eve and ave=d.ave)
              END) DatDeb,
             TO_CHAR(d.ddec, 'ddmmyyyy') DatFin,
             (CASE
@@ -840,8 +842,8 @@ $mont_dtx="ABS(NVL((
         JOIN bkechprt e ON e.eve = d.eve
         JOIN bkcli c ON c.cli = d.cli
         WHERE d.eta IN ('VA', 'DE')
-AND d.ave=(SELECT MAX(bb.ave) FROM bkdosprt bb WHERE bb.eve = d.eve)
           AND d.tau_int != 0
+         -- and d.ave=(SELECT MAX(bb.ave) FROM bkdosprt bb WHERE bb.eve=d.eve)
           /* Date de déclaration = DateArr, Date de début = DateDeb */
           $selectionFilterSql
           ";

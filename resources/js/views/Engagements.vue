@@ -36,64 +36,94 @@
                     />
                 </div>
                 <div class="w-full">
-                    <div
-                        class="mb-1 flex items-center justify-between"
-                    >
-                        <label class="block text-xs font-medium text-slate-600"
-                            >Numéros de dossier (EVE)</label
-                        >
-                        <button
-                            type="button"
-                            @click="addEveInput"
-                            class="px-2 py-1 text-xs bg-slate-100 text-slate-700 rounded hover:bg-slate-200"
-                        >
-                            Ajouter un dossier
-                        </button>
+                    <label class="block text-xs font-medium text-slate-600 mb-2">
+                        Numéros de dossier (EVE)
+                    </label>
+                    <div class="mb-3 flex flex-wrap gap-4 text-xs text-slate-700">
+                        <label class="flex items-center gap-2">
+                            <input
+                                v-model="eveInputMethod"
+                                type="radio"
+                                value="table"
+                            />
+                            Méthode 1 : saisir dans le tableau
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input
+                                v-model="eveInputMethod"
+                                type="radio"
+                                value="bulk"
+                            />
+                            Méthode 2 : coller une liste
+                        </label>
                     </div>
-                    <table
-                        class="w-full max-w-xl border-collapse border border-slate-200 text-xs"
-                    >
-                        <thead class="bg-slate-50 text-left text-slate-600">
-                            <tr>
-                                <th class="border border-slate-200 px-2 py-1">
-                                    Numéro de dossier (EVE)
-                                </th>
-                                <th
-                                    class="w-24 border border-slate-200 px-2 py-1 text-center"
-                                >
-                                    Action
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr
-                                v-for="(eve, index) in selectedEves"
-                                :key="index"
+                    <template v-if="eveInputMethod === 'table'">
+                        <div class="mb-1 flex max-w-xl justify-end">
+                            <button
+                                type="button"
+                                @click="addEveInput"
+                                class="px-2 py-1 text-xs bg-slate-100 text-slate-700 rounded hover:bg-slate-200"
                             >
-                                <td class="border border-slate-200 p-1">
-                                    <input
-                                        v-model="selectedEves[index]"
-                                        type="text"
-                                        placeholder="Saisir un numéro EVE"
-                                        class="w-full rounded border border-slate-300 px-2 py-1"
-                                    />
-                                </td>
-                                <td
-                                    class="border border-slate-200 p-1 text-center"
-                                >
-                                    <button
-                                        type="button"
-                                        @click="removeEveInput(index)"
-                                        :disabled="selectedEves.length === 1"
-                                        class="px-2 py-1 text-red-600 hover:bg-red-50 disabled:opacity-40"
-                                        aria-label="Supprimer ce numéro de dossier"
+                                Ajouter un dossier
+                            </button>
+                        </div>
+                        <table
+                            class="w-full max-w-xl border-collapse border border-slate-200 text-xs"
+                        >
+                            <thead
+                                class="bg-slate-50 text-left text-slate-600"
+                            >
+                                <tr>
+                                    <th
+                                        class="border border-slate-200 px-2 py-1"
                                     >
-                                        Supprimer
-                                    </button>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+                                        Numéro de dossier (EVE)
+                                    </th>
+                                    <th
+                                        class="w-24 border border-slate-200 px-2 py-1 text-center"
+                                    >
+                                        Action
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr
+                                    v-for="(eve, index) in selectedEves"
+                                    :key="index"
+                                >
+                                    <td class="border border-slate-200 p-1">
+                                        <input
+                                            v-model="selectedEves[index]"
+                                            type="text"
+                                            placeholder="Saisir un numéro EVE"
+                                            class="w-full rounded border border-slate-300 px-2 py-1"
+                                        />
+                                    </td>
+                                    <td
+                                        class="border border-slate-200 p-1 text-center"
+                                    >
+                                        <button
+                                            type="button"
+                                            @click="removeEveInput(index)"
+                                            :disabled="selectedEves.length === 1"
+                                            class="px-2 py-1 text-red-600 hover:bg-red-50 disabled:opacity-40"
+                                            aria-label="Supprimer ce numéro de dossier"
+                                        >
+                                            Supprimer
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </template>
+                    <div v-else class="max-w-xl">
+                        <textarea
+                            v-model="bulkEves"
+                            rows="4"
+                            placeholder="Coller les numéros EVE séparés par des virgules"
+                            class="w-full rounded border border-slate-300 px-2 py-1 text-xs"
+                        ></textarea>
+                    </div>
                 </div>
                 <button
                     @click="fetchEngagements"
@@ -522,6 +552,56 @@
                 </div>
             </div>
         </div>
+
+        <div
+            v-if="showExportDateModal"
+            class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+            @click="showExportDateModal = false"
+        >
+            <form
+                class="bg-white rounded-lg shadow-xl max-w-sm w-full mx-4 p-4"
+                @submit.prevent="confirmBulkExport"
+                @click.stop
+            >
+                <h3 class="text-sm font-semibold text-slate-800 mb-3">
+                    Date d'arrêté pour l'export
+                </h3>
+                <label
+                    for="bulk-export-date"
+                    class="block text-xs font-medium text-slate-600 mb-1"
+                >
+                    Date d'arrêté (MM-YYYY)
+                </label>
+                <input
+                    id="bulk-export-date"
+                    v-model="exportDateArr"
+                    type="month"
+                    required
+                    class="w-full text-xs border border-slate-300 rounded px-2 py-1"
+                />
+                <p
+                    v-if="exportDateError"
+                    class="mt-2 text-xs text-red-600"
+                >
+                    {{ exportDateError }}
+                </p>
+                <div class="mt-4 flex justify-end gap-2">
+                    <button
+                        type="button"
+                        @click="showExportDateModal = false"
+                        class="px-3 py-1.5 text-xs bg-slate-200 text-slate-700 rounded hover:bg-slate-300"
+                    >
+                        Annuler
+                    </button>
+                    <button
+                        type="submit"
+                        class="px-3 py-1.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                    >
+                        Générer XML
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 </template>
 
@@ -548,9 +628,14 @@ const error = ref(null);
 const searched = ref(false);
 const showErrorModal = ref(false);
 const errorModalMessage = ref("");
+const showExportDateModal = ref(false);
+const exportDateArr = ref("");
+const exportDateError = ref("");
 const selectedDateArr = ref("");
 const selectedDateDeb = ref("");
+const eveInputMethod = ref("table");
 const selectedEves = ref([""]);
+const bulkEves = ref("");
 const itemsPerPage = ref(5);
 const rawData = ref([]);
 const corrections = ref({});
@@ -599,7 +684,7 @@ const onSelectionChange = (ids) => {
     selectedRows.value = new Set(ids);
 };
 
-const exportXml = () => {
+const generateXml = (dateArr) => {
     if (!rawData.value.length) {
         errorModalMessage.value =
             "Aucune donnée disponible. Veuillez d'abord charger les engagements.";
@@ -615,11 +700,36 @@ const exportXml = () => {
         encours: [],
         encoursAjust: [],
         xmlConfig: xmlConfig.value,
-        selectedDate: selectedDateArr.value,
+        selectedDate: dateArr,
         includeGaranties: false,
         includeCompteDebiteur: false,
     });
     downloadCdr51Xml(result.xml, result.filename);
+};
+
+const exportXml = () => {
+    if (!rawData.value.length) {
+        errorModalMessage.value =
+            "Aucune donnée disponible. Veuillez d'abord charger les engagements.";
+        showErrorModal.value = true;
+        return;
+    }
+    if (eveInputMethod.value === "bulk") {
+        exportDateArr.value = "";
+        exportDateError.value = "";
+        showExportDateModal.value = true;
+        return;
+    }
+    generateXml(selectedDateArr.value);
+};
+
+const confirmBulkExport = () => {
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(exportDateArr.value)) {
+        exportDateError.value = "Veuillez saisir une date d'arrêté valide.";
+        return;
+    }
+    showExportDateModal.value = false;
+    generateXml(exportDateArr.value);
 };
 
 const simpleErrors = ref([]);
@@ -917,7 +1027,9 @@ const fetchEngagements = async () => {
     const dateArr = formatMonthForApi(selectedDateArr.value);
     const dateDeb = formatMonthForApi(selectedDateDeb.value);
     const eves = [...new Set(
-        selectedEves.value
+        (eveInputMethod.value === "table"
+            ? selectedEves.value
+            : bulkEves.value.split(/[,\n;]+/))
             .map((eve) => eve.trim())
             .filter(Boolean),
     )];
