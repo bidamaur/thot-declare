@@ -35,6 +35,66 @@
                         class="text-xs border border-slate-300 rounded px-2 py-1"
                     />
                 </div>
+                <div class="w-full">
+                    <div
+                        class="mb-1 flex items-center justify-between"
+                    >
+                        <label class="block text-xs font-medium text-slate-600"
+                            >Numéros de dossier (EVE)</label
+                        >
+                        <button
+                            type="button"
+                            @click="addEveInput"
+                            class="px-2 py-1 text-xs bg-slate-100 text-slate-700 rounded hover:bg-slate-200"
+                        >
+                            Ajouter un dossier
+                        </button>
+                    </div>
+                    <table
+                        class="w-full max-w-xl border-collapse border border-slate-200 text-xs"
+                    >
+                        <thead class="bg-slate-50 text-left text-slate-600">
+                            <tr>
+                                <th class="border border-slate-200 px-2 py-1">
+                                    Numéro de dossier (EVE)
+                                </th>
+                                <th
+                                    class="w-24 border border-slate-200 px-2 py-1 text-center"
+                                >
+                                    Action
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr
+                                v-for="(eve, index) in selectedEves"
+                                :key="index"
+                            >
+                                <td class="border border-slate-200 p-1">
+                                    <input
+                                        v-model="selectedEves[index]"
+                                        type="text"
+                                        placeholder="Saisir un numéro EVE"
+                                        class="w-full rounded border border-slate-300 px-2 py-1"
+                                    />
+                                </td>
+                                <td
+                                    class="border border-slate-200 p-1 text-center"
+                                >
+                                    <button
+                                        type="button"
+                                        @click="removeEveInput(index)"
+                                        :disabled="selectedEves.length === 1"
+                                        class="px-2 py-1 text-red-600 hover:bg-red-50 disabled:opacity-40"
+                                        aria-label="Supprimer ce numéro de dossier"
+                                    >
+                                        Supprimer
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
                 <button
                     @click="fetchEngagements"
                     :disabled="loading"
@@ -389,6 +449,49 @@
             Contrôle terminé : aucune anomalie détectée.
         </div>
 
+        <div
+            class="border border-slate-200 rounded-lg bg-white shadow-sm overflow-hidden"
+        >
+            <div class="px-4 py-3 border-b border-slate-200 bg-slate-50">
+                <h2 class="text-sm font-semibold text-slate-800">
+                    Légende des statuts et motifs
+                </h2>
+            </div>
+            <div class="grid gap-4 p-4 md:grid-cols-2">
+                <section>
+                    <h3 class="mb-1 text-xs font-semibold text-slate-800">
+                        Motif
+                    </h3>
+                    <p class="mb-2 text-xs text-slate-600">
+                        Motif de clôture du contrat.
+                    </p>
+                    <ul class="space-y-1 text-xs text-slate-700">
+                        <li>✓ « 01 » Fin à terme.</li>
+                        <li>✓ « 02 » Remboursement anticipé total.</li>
+                        <li>✓ « 03 » Consolidation.</li>
+                        <li>✓ « 04 » Cession de créance.</li>
+                        <li>✓ « 05 » Passage en perte.</li>
+                        <li>✓ « 06 » Transfert (Leasing).</li>
+                        <li>✓ « 07 » Autre</li>
+                    </ul>
+                    <p class="mt-2 text-xs text-slate-600">
+                        Champ obligatoire si le statut du contrat est «02 :
+                        clôturé ».
+                    </p>
+                </section>
+                <section>
+                    <h3 class="mb-1 text-xs font-semibold text-slate-800">
+                        Statut
+                    </h3>
+                    <ul class="space-y-1 text-xs text-slate-700">
+                        <li>✓ « 00 » : Actif.</li>
+                        <li>✓ « 01 » : Consolidé.</li>
+                        <li>✓ « 02 » : Clôturé.</li>
+                    </ul>
+                </section>
+            </div>
+        </div>
+
         <!-- Modal d'erreur -->
         <div
             v-if="showErrorModal"
@@ -447,6 +550,7 @@ const showErrorModal = ref(false);
 const errorModalMessage = ref("");
 const selectedDateArr = ref("");
 const selectedDateDeb = ref("");
+const selectedEves = ref([""]);
 const itemsPerPage = ref(5);
 const rawData = ref([]);
 const corrections = ref({});
@@ -528,6 +632,7 @@ const columns = [
     { key: "REFINT", label: "Réf. Interne" },
     { key: "CODAGE", label: "Code Agence" },
     { key: "STATUT", label: "Statut" },
+    { key: "MOTIF", label: "Motif" },
     { key: "TYPENG", label: "Type Eng." },
     { key: "NATENG", label: "Nature Eng." },
     { key: "MNTENG", label: "Montant Eng.", format: "number" },
@@ -798,13 +903,28 @@ const formatMonthForApi = (value) => {
     return `${month}-${year}`;
 };
 
+const addEveInput = () => {
+    selectedEves.value.push("");
+};
+
+const removeEveInput = (index) => {
+    if (selectedEves.value.length > 1) {
+        selectedEves.value.splice(index, 1);
+    }
+};
+
 const fetchEngagements = async () => {
     const dateArr = formatMonthForApi(selectedDateArr.value);
     const dateDeb = formatMonthForApi(selectedDateDeb.value);
-    if (!dateArr || !dateDeb) {
+    const eves = [...new Set(
+        selectedEves.value
+            .map((eve) => eve.trim())
+            .filter(Boolean),
+    )];
+    if (!dateArr && !dateDeb && !eves.length) {
         searched.value = true;
         rawData.value = [];
-        error.value = "Veuillez choisir les deux dates.";
+        error.value = "Veuillez choisir au moins une date ou saisir un numéro de dossier.";
         return;
     }
     error.value = null;
@@ -814,9 +934,9 @@ const fetchEngagements = async () => {
     complexAnomalies.value = [];
     progress.value = 0;
     try {
-        const res = await axios.get(
-            `/api/cdr_engagements_echus/${dateArr}/${dateDeb}`,
-        );
+        const res = await axios.get("/api/cdr_engagements_echus", {
+            params: { dateArr, dateDeb, eves },
+        });
         const payload = Array.isArray(res.data) ? res.data : [];
         const first = payload[0] || {};
 

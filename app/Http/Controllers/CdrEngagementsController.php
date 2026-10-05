@@ -554,58 +554,105 @@ public function ctrEngagements()
     //
   }
 
-public function GetEngagementsEchus($MyDateArr, $MyDateDeb = '12/2023')
+public function GetEngagementsEchus(Request $request, $MyDateArr = null, $MyDateDeb = null)
 {
-    // 1. Validation de la date d'arrêt ($MyDateArr)
-    $GetPositionArr = explode('-', $MyDateArr);
+    $MyDateArr = $MyDateArr ?? $request->query('dateArr');
+    $MyDateDeb = $MyDateDeb ?? $request->query('dateDeb');
+    $rawEves = $request->query('eves', []);
+    $eves = is_array($rawEves) ? $rawEves : preg_split('/[\s,;]+/', $rawEves, -1, PREG_SPLIT_NO_EMPTY);
+    $eves = array_values(array_unique(array_filter(array_map(
+        static fn ($eve) => trim((string) $eve),
+        $eves
+    ), static fn ($eve) => $eve !== '')));
+
+    if (!empty($eves)) {
+        $MyDateArr = null;
+        $MyDateDeb = null;
+    }
+
     if (
-        count($GetPositionArr) !== 2 ||
-        strlen($GetPositionArr[0]) !== 2 ||
-        (int) $GetPositionArr[0] < 1 ||
-        (int) $GetPositionArr[0] > 12 ||
-        strlen($GetPositionArr[1]) !== 4
+        ($MyDateArr === null || $MyDateArr === '') &&
+        ($MyDateDeb === null || $MyDateDeb === '') &&
+        empty($eves)
     ) {
         return response()->json([
             [
                 'Erreur' => [
-                    'type' => 'Date',
-                    'Description' => "Format date d'arrêt erroné, format attendu MM-AAAA",
+                    'type' => 'Filtres',
+                    'Description' => 'Veuillez saisir au moins une date ou un numéro de dossier.',
                 ],
             ],
         ]);
     }
 
-    // 2. Validation de la date de début ($MyDateDeb)
-    $GetPositionDeb = explode('-', $MyDateDeb);
-    if (
-        count($GetPositionDeb) !== 2 ||
-        strlen($GetPositionDeb[0]) !== 2 ||
-        (int) $GetPositionDeb[0] < 1 ||
-        (int) $GetPositionDeb[0] > 12 ||
-        strlen($GetPositionDeb[1]) !== 4
-    ) {
-        return response()->json([
-            [
-                'Erreur' => [
-                    'type' => 'Date',
-                    'Description' => "Format date de début erroné, format attendu MM-AAAA",
+    foreach ([
+        'arrêté' => $MyDateArr,
+        'début' => $MyDateDeb,
+    ] as $label => $date) {
+        if ($date === null || $date === '') {
+            continue;
+        }
+
+        $parts = explode('-', $date);
+        if (
+            count($parts) !== 2 ||
+            strlen($parts[0]) !== 2 ||
+            (int) $parts[0] < 1 ||
+            (int) $parts[0] > 12 ||
+            strlen($parts[1]) !== 4
+        ) {
+            return response()->json([
+                [
+                    'Erreur' => [
+                        'type' => 'Date',
+                        'Description' => "Format date de $label erroné, format attendu MM-AAAA",
+                    ],
                 ],
-            ],
-        ]);
+            ]);
+        }
+    }
+
+    foreach ($eves as $eve) {
+        if (!preg_match('/^[A-Za-z0-9_-]+$/', $eve)) {
+            return response()->json([
+                [
+                    'Erreur' => [
+                        'type' => 'Dossier',
+                        'Description' => 'Les numéros de dossier ne peuvent contenir que des lettres, chiffres, tirets et tirets bas.',
+                    ],
+                ],
+            ]);
+        }
     }
 
     $connection = $this->dbConnection->getConnection();
 
-    // Construction de la Date de Fin (Arret) -> Dernier jour du mois
-    $dateArret = Carbon::create((int) $GetPositionArr[1], (int) $GetPositionArr[0], 1)->endOfMonth();
+    // La date d'arrêté reste utile au calcul des statuts si la recherche se fait uniquement par dossier.
+    $GetPositionArr = $MyDateArr ? explode('-', $MyDateArr) : null;
+    $dateArret = $GetPositionArr
+        ? Carbon::create((int) $GetPositionArr[1], (int) $GetPositionArr[0], 1)->endOfMonth()
+        : Carbon::now()->endOfMonth();
     $DateArr = $dateArret->format('d/m/Y');
     $DateArrYear = $dateArret->year;
     $DateArrMonth = ($dateArret->month < 10 ? '0' . $dateArret->month : $dateArret->month);
     $DateMonthYear = '/' . $DateArrMonth . '/' . $DateArrYear;
 
-    // Construction de la Date de Début -> Premier jour du mois
-    $dateDebut = Carbon::create((int) $GetPositionDeb[1], (int) $GetPositionDeb[0], 1)->startOfMonth();
+    $GetPositionDeb = $MyDateDeb ? explode('-', $MyDateDeb) : null;
+    $dateDebut = $GetPositionDeb
+        ? Carbon::create((int) $GetPositionDeb[1], (int) $GetPositionDeb[0], 1)->startOfMonth()
+        : Carbon::create(1900, 1, 1)->startOfMonth();
     $DateDeb = $dateDebut->format('d/m/Y');
+    $eveBindValues = [];
+    $selectionFilterSql = '';
+    if (!empty($eves)) {
+        $evePlaceholders = [];
+        foreach ($eves as $index => $eve) {
+            $placeholder = ':eve' . $index;
+            $evePlaceholders[] = $placeholder;
+            $eveBindValues[$placeholder] = $eve;
+        }
+        $selectionFilterSql = ' AND d.eve IN (' . implode(', ', $evePlaceholders) . ')';
+    }
     $clientsDtx="SELECT distinct cli
                     FROM bksld 
                     WHERE
@@ -624,6 +671,20 @@ $mont_dtx="ABS(NVL((
                       
                 ), 0))";
     $DossierReglement_anticipe="SELECT eve FROM bkechprt WHERE (TO_DATE(dva, 'DD/MM/RR') BETWEEN TO_DATE('$DateDeb', 'DD/MM/RR') AND TO_DATE('$DateArr', 'DD/MM/RR')) AND ctr=3";  
+    if (empty($eves)) {
+        $dateFilterSql = '';
+        if ($MyDateArr) {
+            $dateFilterSql .= " AND TO_DATE(d.dmep, 'DD/MM/RR') <= TO_DATE('$DateArr', 'DD/MM/RR')";
+        }
+        if ($MyDateDeb) {
+            $dateFilterSql .= " AND TO_DATE(d.dmep, 'DD/MM/RR') > TO_DATE('$DateDeb', 'DD/MM/RR')";
+        }
+        $selectionFilterSql = $dateFilterSql . "
+          AND (
+              d.cli in($clientsDtx)
+              or d.eve in ($DossierReglement_anticipe)
+          )";
+    }
     $query = "SELECT DISTINCT 
             TRIM(c.cli) AS cli,
             TRIM(c.tcli) AS tcli,
@@ -782,16 +843,16 @@ $mont_dtx="ABS(NVL((
 AND d.ave=(SELECT MAX(bb.ave) FROM bkdosprt bb WHERE bb.eve = d.eve)
           AND d.tau_int != 0
           /* Date de déclaration = DateArr, Date de début = DateDeb */
-          AND TO_DATE(d.dmep, 'DD/MM/RR') <= TO_DATE('$DateArr', 'DD/MM/RR')
-          AND TO_DATE(d.dmep, 'DD/MM/RR') > TO_DATE('$DateDeb', 'DD/MM/RR')
-          AND (
-              d.cli in($clientsDtx)
-              or d.eve in ($DossierReglement_anticipe)
-          )";
+          $selectionFilterSql
+          ";
 
     try {
         $stid = oci_parse($connection, $query);
         if (!$stid) { $e = oci_error($connection); oci_close($connection); return response()->json([[ 'type' => 'Erreur OCI', 'Description' => $e['message'] ]]); }
+        foreach ($eveBindValues as $placeholder => &$eveValue) {
+            oci_bind_by_name($stid, $placeholder, $eveValue);
+        }
+        unset($eveValue);
         if (!oci_execute($stid)) { $e = oci_error($stid); oci_free_statement($stid); oci_close($connection); return response()->json([[ 'type' => 'Erreur OCI', 'Description' => $e['message'] ]]); }
 
         $results = [];
@@ -808,7 +869,9 @@ AND d.ave=(SELECT MAX(bb.ave) FROM bkdosprt bb WHERE bb.eve = d.eve)
                 [
                     'Erreur' => [
                         'type' => '404',
-                        'Description' => 'Aucune donn&eacute;e trouv&eacute;e pour la p&eacute;riode du ' . $DateDeb . ' au ' . $DateArr,
+                        'Description' => !empty($eves)
+                            ? 'Aucun engagement trouvé pour le(s) numéro(s) de dossier saisi(s).'
+                            : 'Aucune donn&eacute;e trouv&eacute;e pour la p&eacute;riode du ' . $DateDeb . ' au ' . $DateArr,
                     ],
                 ],
             ]);
@@ -832,5 +895,3 @@ AND d.ave=(SELECT MAX(bb.ave) FROM bkdosprt bb WHERE bb.eve = d.eve)
     }
 }
 }
-
-
