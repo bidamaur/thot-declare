@@ -19,6 +19,54 @@ class CdrEncoursController extends Controller
   {
     $this->dbConnection = $dbConnection;
   }
+  private function eveFilterForQuery(Request $request): array
+  {
+      $rawEves = $request->query('eves', []);
+      $eves = is_array($rawEves)
+          ? $rawEves
+          : preg_split('/[\s,;]+/', (string) $rawEves, -1, PREG_SPLIT_NO_EMPTY);
+      $eves = array_values(array_unique(array_filter(array_map(
+          static fn ($eve) => trim((string) $eve),
+          $eves
+      ), static fn ($eve) => $eve !== '')));
+
+      $placeholders = [];
+      $bindValues = [];
+      foreach ($eves as $index => $eve) {
+          $placeholder = ':eve' . $index;
+          $placeholders[] = $placeholder;
+          $bindValues[$placeholder] = $eve;
+      }
+
+      return [
+          $placeholders ? ' AND d.eve IN (' . implode(', ', $placeholders) . ')' : '',
+          $bindValues,
+      ];
+  }
+  private function extractionFilterForQuery(Request $request): string
+  {
+      $filters = [];
+      $statuses = [];
+
+      if ($request->boolean('excludeExpired', true)) {
+          $filters[] = 'd.ctr != 9';
+      }
+      if ($request->boolean('excludeZeroRate', true)) {
+          $filters[] = 'd.tau_int != 0';
+      }
+      if ($request->boolean('includeValidated', true)) {
+          $statuses[] = "'VA'";
+      }
+      if ($request->boolean('includeDoubtful', true)) {
+          $statuses[] = "'DE'";
+      }
+
+      if ($statuses) {
+          $filters[] = 'd.eta IN (' . implode(', ', $statuses) . ')';
+      }
+
+      return $filters ? ' AND ' . implode(' AND ', $filters) : '';
+  }
     public function index()
     {
         return '[{"Erreur": {
@@ -27,7 +75,7 @@ class CdrEncoursController extends Controller
     }}]';
     }
 /** fonction des encours */
-public function GetEncours($MyDateArr)
+public function GetEncours(Request $request, $MyDateArr)
 {
     try {
         $connection = $this->dbConnection->getConnection();
@@ -69,6 +117,8 @@ public function GetEncours($MyDateArr)
 
     $DateArr       = $dateArret->format('d/m/Y');
     $DateDebMois   = $dateDebutMois->format('d/m/Y');
+    [$eveFilterSql, $eveBindValues] = $this->eveFilterForQuery($request);
+    $extractionFilterSql = $this->extractionFilterForQuery($request);
 
     // --- BLOCS SQL DYNAMIQUES POUR LES CALCULS D'ÉCHÉANCES ---
     
@@ -272,18 +322,22 @@ public function GetEncours($MyDateArr)
 
         FROM bkdosprt d
         INNER JOIN bkechprt e ON e.eve = d.eve AND e.ave = d.ave
-        WHERE d.eta IN ('VA', 'DE')
+        WHERE 1 = 1
           AND e.dva BETWEEN TO_DATE('$DateDebMois', 'DD/MM/RR') AND TO_DATE('$DateArr', 'DD/MM/RR')
           AND TO_DATE(e.dva, 'DD/MM/RR') <= TO_DATE('$DateArr', 'DD/MM/RR')
-          AND d.ctr != 9
-          AND d.tau_int != 0
+          $extractionFilterSql
           AND d.eve NOT IN ('002259')
+          $eveFilterSql
          ";
 
     $stid = null;
     try {
         $stid = oci_parse($connection, $MyRequest);
         if (!$stid) { $e = oci_error($connection); return response()->json([[ 'type' => 'Erreur OCI', 'Description' => $e['message'] ]]); }
+        foreach ($eveBindValues as $placeholder => &$eveValue) {
+            oci_bind_by_name($stid, $placeholder, $eveValue);
+        }
+        unset($eveValue);
         if (!oci_execute($stid)) { $e = oci_error($stid); oci_free_statement($stid); oci_close($connection); return response()->json([[ 'type' => 'Erreur OCI', 'Description' => $e['message'] ]]); }
 
         $results = [];
@@ -318,7 +372,7 @@ public function GetEncours($MyDateArr)
 /*  *
      * ceci est  la fonction des encours d'ajustement
      */
-    public function GetEncoursAjust($MyDateArr)
+    public function GetEncoursAjust(Request $request, $MyDateArr)
 {
     try {
         $connection = $this->dbConnection->getConnection();
@@ -360,6 +414,8 @@ public function GetEncours($MyDateArr)
 
     $DateArr       = $dateArret->format('d/m/Y');
     $DateDebMois   = $dateDebutMois->format('d/m/Y');
+    [$eveFilterSql, $eveBindValues] = $this->eveFilterForQuery($request);
+    $extractionFilterSql = $this->extractionFilterForQuery($request);
     $MoisAnneeStr  = $dateArret->format('m/Y'); // Format MM/YYYY
 
     // --- BLOCS SQL DYNAMIQUES POUR LES CALCULS D'ÉCHÉANCES ---
@@ -572,9 +628,9 @@ public function GetEncours($MyDateArr)
 
         FROM bkdosprt d
         INNER JOIN Last_Ech_Reelle last_e ON last_e.eve = d.eve AND last_e.ave = d.ave AND last_e.rn = 1
-        WHERE d.eta IN ('VA', 'DE')
-          AND d.tau_int != 0
-          AND d.eve NOT IN ('002259','002253')
+        WHERE 1 = 1
+          $extractionFilterSql
+          --AND d.eve NOT IN ('002259','002253')
           
           -- 1. Date de déchéance/fin supérieure à la date d'arrêt (dossier en cours)
           AND TO_DATE(d.ddec, 'DD/MM/RR') > TO_DATE('$DateArr', 'DD/MM/RR')
@@ -593,13 +649,17 @@ public function GetEncours($MyDateArr)
                 AND ex.ave = d.ave
                 AND TO_CHAR(TO_DATE(ex.dva, 'DD/MM/RR'), 'MM/YYYY') = '$MoisAnneeStr'
           )
-          AND d.ctr!=9
+          $eveFilterSql
         ORDER BY d.eve DESC";
 
     $stid = null;
     try {
         $stid = oci_parse($connection, $MyRequest);
         if (!$stid) { $e = oci_error($connection); return response()->json([[ 'type' => 'Erreur OCI', 'Description' => $e['message'] ]]); }
+        foreach ($eveBindValues as $placeholder => &$eveValue) {
+            oci_bind_by_name($stid, $placeholder, $eveValue);
+        }
+        unset($eveValue);
         if (!oci_execute($stid)) { $e = oci_error($stid); oci_free_statement($stid); oci_close($connection); return response()->json([[ 'type' => 'Erreur OCI', 'Description' => $e['message'] ]]); }
 
         $results = [];
@@ -662,7 +722,3 @@ public function GetEncours($MyDateArr)
         //
     }
 }
-
-
-
-

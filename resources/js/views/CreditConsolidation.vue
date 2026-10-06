@@ -25,8 +25,140 @@
                         class="text-xs border border-slate-300 rounded px-2 py-1"
                     />
                 </div>
+                <details class="w-full max-w-xl rounded border border-slate-200 bg-slate-50">
+                    <summary
+                        class="cursor-pointer px-3 py-2 text-xs font-medium text-slate-700"
+                    >
+                        Paramètres d'extraction des encours
+                    </summary>
+                    <div class="grid gap-2 px-3 pb-3 text-xs text-slate-700 sm:grid-cols-2">
+                        <p class="text-slate-500 sm:col-span-2">
+                            Si aucun statut n'est coché, aucun filtre de statut n'est appliqué.
+                        </p>
+                        <label class="flex items-center gap-2">
+                            <input
+                                v-model="extractionOptions.excludeExpired"
+                                type="checkbox"
+                            />
+                            Exclure les dossiers avec ctr=9 (condition ctr ≠ 9)
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input
+                                v-model="extractionOptions.excludeZeroRate"
+                                type="checkbox"
+                            />
+                            Retirer les crédits à taux zéro
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input
+                                v-model="extractionOptions.includeValidated"
+                                type="checkbox"
+                            />
+                            Inclure les dossiers validés (VA)
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input
+                                v-model="extractionOptions.includeDoubtful"
+                                type="checkbox"
+                            />
+                            Inclure les dossiers douteux (DE)
+                        </label>
+                    </div>
+                </details>
+                <div class="w-full">
+                    <label class="block text-xs font-medium text-slate-600 mb-2">
+                        Numéros de crédit (EVE)
+                    </label>
+                    <div class="mb-3 flex flex-wrap gap-4 text-xs text-slate-700">
+                        <label class="flex items-center gap-2">
+                            <input
+                                v-model="creditInputMethod"
+                                type="radio"
+                                value="table"
+                            />
+                            Méthode 1 : saisir dans le tableau
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input
+                                v-model="creditInputMethod"
+                                type="radio"
+                                value="bulk"
+                            />
+                            Méthode 2 : coller une liste
+                        </label>
+                    </div>
+                    <template v-if="creditInputMethod === 'table'">
+                        <div class="mb-1 flex max-w-xl justify-end">
+                            <button
+                                type="button"
+                                @click="addCreditInput"
+                                class="px-2 py-1 text-xs bg-slate-100 text-slate-700 rounded hover:bg-slate-200"
+                            >
+                                Ajouter un crédit
+                            </button>
+                        </div>
+                        <table
+                            class="w-full max-w-xl border-collapse border border-slate-200 text-xs"
+                        >
+                            <thead
+                                class="bg-slate-50 text-left text-slate-600"
+                            >
+                                <tr>
+                                    <th class="border border-slate-200 px-2 py-1">
+                                        Numéro de crédit (EVE)
+                                    </th>
+                                    <th
+                                        class="w-24 border border-slate-200 px-2 py-1 text-center"
+                                    >
+                                        Action
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr
+                                    v-for="(credit, index) in selectedCredits"
+                                    :key="index"
+                                >
+                                    <td class="border border-slate-200 p-1">
+                                        <input
+                                            v-model="selectedCredits[index]"
+                                            type="text"
+                                            placeholder="Saisir un numéro EVE"
+                                            class="w-full rounded border border-slate-300 px-2 py-1"
+                                        />
+                                    </td>
+                                    <td
+                                        class="border border-slate-200 p-1 text-center"
+                                    >
+                                        <button
+                                            type="button"
+                                            @click="removeCreditInput(index)"
+                                            :disabled="selectedCredits.length === 1"
+                                            class="px-2 py-1 text-red-600 hover:bg-red-50 disabled:opacity-40"
+                                            aria-label="Supprimer ce numéro de crédit"
+                                        >
+                                            Supprimer
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </template>
+                    <div v-else class="max-w-xl">
+                        <textarea
+                            v-model="bulkCredits"
+                            rows="4"
+                            placeholder="Coller les numéros EVE séparés par des virgules"
+                            class="w-full rounded border border-slate-300 px-2 py-1 text-xs"
+                        ></textarea>
+                    </div>
+                </div>
+                <p v-if="globalError" class="w-full text-xs text-red-600">
+                    {{ globalError }}
+                </p>
                 <button
                     @click="fetchAll"
+                    :disabled="fetching"
                     class="px-3 py-1.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
                 >
                     Lancer le reporting
@@ -341,6 +473,15 @@ const now = new Date();
 const selectedDate = ref(
     `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`,
 );
+const creditInputMethod = ref("table");
+const selectedCredits = ref([""]);
+const bulkCredits = ref("");
+const extractionOptions = reactive({
+    excludeExpired: true,
+    excludeZeroRate: true,
+    includeValidated: true,
+    includeDoubtful: true,
+});
 const globalError = ref(null);
 const loadingProgress = ref(0);
 const completedRoutes = ref(0);
@@ -544,6 +685,27 @@ const toBackendDate = (yyyymm) => {
     return `${m}-${y}`;
 };
 
+const getSelectedCredits = () => [
+    ...new Set(
+        (creditInputMethod.value === "table"
+            ? selectedCredits.value
+            : bulkCredits.value.split(/[,\n;]+/)
+        )
+            .map((credit) => credit.trim())
+            .filter(Boolean),
+    ),
+];
+
+const addCreditInput = () => {
+    selectedCredits.value.push("");
+};
+
+const removeCreditInput = (index) => {
+    if (selectedCredits.value.length > 1) {
+        selectedCredits.value.splice(index, 1);
+    }
+};
+
 const normalize = (arr) => {
     if (!Array.isArray(arr)) return [];
     if (arr.length && arr[0] && arr[0].Erreur) return [];
@@ -555,6 +717,12 @@ const fetchAll = async () => {
         globalError.value = "Veuillez choisir une date d'arrêté.";
         return;
     }
+    const credits = getSelectedCredits();
+    if (credits.some((credit) => !/^[A-Za-z0-9_-]+$/.test(credit))) {
+        globalError.value =
+            "Les numéros de crédit ne peuvent contenir que des lettres, chiffres, tirets et tirets bas.";
+        return;
+    }
     if (fetching.value) {
         console.log("[fetchAll] déjà en cours, ignoré");
         return;
@@ -564,16 +732,24 @@ const fetchAll = async () => {
     completedRoutes.value = 0;
     loadingProgress.value = 0;
     const bd = toBackendDate(selectedDate.value);
+    const params = credits.length ? { eves: credits } : {};
+    const encoursParams = {
+        ...params,
+        excludeExpired: extractionOptions.excludeExpired,
+        excludeZeroRate: extractionOptions.excludeZeroRate,
+        includeValidated: extractionOptions.includeValidated,
+        includeDoubtful: extractionOptions.includeDoubtful,
+    };
     const calls = [
-        { key: "engagements", url: `/api/cdr_engagements/${bd}` },
-        { key: "encours", url: `/api/cdr_encours/${bd}` },
-        { key: "encoursAjust", url: `/api/cdr_encours_ajust/${bd}` },
+        { key: "engagements", url: `/api/cdr_engagements/${bd}`, params },
+        { key: "encours", url: `/api/cdr_encours/${bd}`, params: encoursParams },
+        { key: "encoursAjust", url: `/api/cdr_encours_ajust/${bd}`, params: encoursParams },
     ];
 
     const runCall = async (c) => {
         zones[c.key].loading = true;
         try {
-            const res = await axios.get(c.url);
+            const res = await axios.get(c.url, { params: c.params });
             const raw = normalize(res.data);
             zones[c.key].raw = raw.map((r) => ({ ...r }));
             zones[c.key].data = applyCorrections(raw, c.key);

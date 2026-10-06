@@ -38,7 +38,7 @@ class CdrEngagementsController extends Controller
   /**
    * Display a listing of the resource.
    */
-public function GetEngagements($MyDateArr)
+public function GetEngagements(Request $request, $MyDateArr)
 {
     // Vérification du format de date (mm-yyyy)
     $GetPosition = explode('-', $MyDateArr);
@@ -63,6 +63,23 @@ public function GetEngagements($MyDateArr)
     $DateArrMonth = ($dateArret->month<10?'0'.$dateArret->month:$dateArret->month);
     $DateArrDay = $dateArret->day;
     $DateMonthYear = '/' . $DateArrMonth . '/' . $DateArrYear;
+    $eves = array_values(array_unique(array_filter(array_map(
+        static fn ($eve) => trim((string) $eve),
+        (array) $request->query('eves', [])
+    ), static fn ($eve) => $eve !== '')));
+    $eveBindValues = [];
+    if ($eves) {
+        $evePlaceholders = [];
+        foreach ($eves as $index => $eve) {
+            $placeholder = ':eve' . $index;
+            $evePlaceholders[] = $placeholder;
+            $eveBindValues[$placeholder] = $eve;
+        }
+        $engagementPeriodFilter = 'AND d.eve IN (' . implode(', ', $evePlaceholders) . ')';
+    } else {
+        $engagementPeriodFilter = "AND (EXTRACT(MONTH FROM d.dmep)='$DateArrMonth' and EXTRACT(YEAR FROM TO_DATE(d.dmep, 'DD/MM/RR'))='$DateArrYear' )
+    AND TO_DATE(d.dmep, 'DD/MM/RR')<ADD_MONTHS(TO_DATE('01$DateMonthYear', 'DD/MM/RR'), 1)";
+    }
 
     $notFound = '[{"Erreur": {
         "type": "404",
@@ -243,13 +260,16 @@ public function GetEngagements($MyDateArr)
     and e.ctr not in(3)
     --  and (TO_DATE(e.dva, 'DD/MM/RR') between TO_DATE('01/07/2023', 'DD/MM/RR') and TO_DATE('31/07/2023', 'DD/MM/RR'))
     --AND (TO_DATE(d.dmep, 'DD/MM/RR') between TO_DATE('01$DateMonthYear', 'DD/MM/RR') and TO_DATE('$DateArr', 'DD/MM/RR'))
-    AND (EXTRACT(MONTH FROM d.dmep)='$DateArrMonth' and EXTRACT(YEAR FROM TO_DATE(d.dmep, 'DD/MM/RR'))='$DateArrYear' )
-    AND TO_DATE(d.dmep, 'DD/MM/RR')<ADD_MONTHS(TO_DATE('01$DateMonthYear', 'DD/MM/RR'), 1)
+    $engagementPeriodFilter
     --AND e.ave=(SELECT max(ave) from bkechprt where eve=d.eve)
     AND d.tau_int!=0 ";
     
      $stid = oci_parse($connection, $query);
      if (!$stid) { $e = oci_error($connection); return response()->json([[ 'type' => 'Erreur OCI', 'Description' => $e['message'] ]]); }
+     foreach ($eveBindValues as $placeholder => &$eveValue) {
+         oci_bind_by_name($stid, $placeholder, $eveValue);
+     }
+     unset($eveValue);
      if (!oci_execute($stid)) { $e = oci_error($stid); oci_free_statement($stid); oci_close($connection); return response()->json([[ 'type' => 'Erreur OCI', 'Description' => $e['message'] ]]); }
      
      $results = [];
