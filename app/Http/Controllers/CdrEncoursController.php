@@ -169,7 +169,12 @@ public function GetEncours(Request $request, $MyDateArr)
                  AND TO_DATE(dco, 'DD/MM/RR') <= TO_DATE('$DateArr', 'DD/MM/RR'))";
 
    
-
+    $montant_rattach="ABS(NVL((
+        SELECT SUM(sde) 
+        FROM bkcom 
+        WHERE cli = d.cli 
+          AND cha = '3840000'
+    ), 0))";
     $montant_provision_imp = "ABS(NVL((
         SELECT SUM(mon) 
         FROM bksld 
@@ -177,6 +182,12 @@ public function GetEncours(Request $request, $MyDateArr)
           AND cha = '3911000'
           AND TO_CHAR(TO_DATE(dco, 'DD/MM/RR'), 'MM/YYYY') = TO_CHAR(TO_DATE('$DateArr', 'DD/MM/RR'), 'MM/YYYY') 
           AND $NbrJrsImp != 0
+    ), 0))";
+    $montant_agio = "ABS(NVL((
+        SELECT SUM(sde) 
+        FROM bkcom 
+        WHERE cli = d.cli 
+          AND cha = '9851100'
     ), 0))";
 
     $montant_provision_dtx = "ABS(NVL((
@@ -239,7 +250,7 @@ public function GetEncours(Request $request, $MyDateArr)
            )
         ) AS MNTPAY,
 
-        $mon_douteux AS MNTAGI,
+        $montant_agio AS MNTAGI,-- a modifier avec $montant_agio
 
         (CASE 
             WHEN e.num = $last_num_echeance THEN 0
@@ -263,18 +274,21 @@ public function GetEncours(Request $request, $MyDateArr)
 
         (CASE 
             WHEN $mon_douteux = 0 THEN $mon_impaye 
-            ELSE $mon_douteux 
+            ELSE $mon_douteux + $montant_agio
         END) AS MNTCRESOUF,
 
         (CASE
-            WHEN $NbrJrsImp != 0 AND e.amo_imp = 0 THEN e.tot_ech
+        WHEN $mon_douteux != 0 THEN $mon_douteux
+        WHEN $NbrJrsImp != 0 AND e.amo_imp = 0 AND $mon_douteux =0  THEN e.tot_ech
             ELSE ROUND(e.amo_imp)
         END) AS MNTCAPSOUF,
 
         (CASE
-            WHEN $NbrJrsImp != 0 AND e.inte = 0 THEN (SELECT MIN(inte) FROM bkechprt WHERE eve = e.eve AND ave = e.ave)
+        WHEN $mon_douteux != 0 THEN $montant_agio
+            WHEN $NbrJrsImp != 0 AND e.inte = 0 AND $mon_douteux = 0
+             THEN NVL((e.inte + e.ini), 0)
             WHEN $NbrJrsImp = 0 THEN 0
-            ELSE (e.inte + NVL(e.ini, 0))
+            ELSE 0
         END) AS MNTINTSOUF,
 
         e.inte interet,
@@ -291,8 +305,8 @@ public function GetEncours(Request $request, $MyDateArr)
             ELSE e.tin
         END) AS MNTTAXSOUF,
 
-        $mon_douteux AS MNTAGIOSSOUF,
-        e.inte MNTERAT,
+        $montant_agio AS MNTAGIOSSOUF,
+        $montant_rattach MNTERAT,
         (CASE
             WHEN $mon_douteux != 0 THEN $montant_provision_dtx
             WHEN $mon_impaye != 0 THEN $montant_provision_imp
