@@ -67,6 +67,39 @@ class CdrEncoursController extends Controller
 
       return $filters ? ' AND ' . implode(' AND ', $filters) : '';
   }
+  private function referenceContractExpression(Request $request): string
+  {
+      $mode = $request->query('referenceMode');
+      $mode = is_string($mode) ? $mode : 'account_with_key';
+
+      if ($mode === 'eve') {
+          return 'd.eve';
+      }
+
+      $accountNumber = "CASE
+          WHEN TRIM(p.ncp) LIKE '313%' THEN '311' || SUBSTR(TRIM(p.ncp), 4)
+          WHEN TRIM(p.ncp) LIKE '322%' OR TRIM(p.ncp) LIKE '326%' OR TRIM(p.ncp) LIKE '323%' THEN '321' || SUBSTR(TRIM(p.ncp), 4)
+          ELSE TRIM(p.ncp)
+      END";
+      $accountQuery = "SELECT $accountNumber
+          FROM bkcptprt p
+          WHERE p.eve = d.eve
+            AND p.ave = d.ave
+            AND p.nat = '004'";
+
+      if ($mode === 'account_without_key') {
+          return "($accountQuery)";
+      }
+
+      return "(SELECT CASE WHEN TRIM(p.ncp) LIKE '313%' THEN '311' || SUBSTR(TRIM(p.ncp), 4) WHEN TRIM(p.ncp) LIKE '322%' OR TRIM(p.ncp) LIKE '326%' OR TRIM(p.ncp) LIKE '323%' THEN '321' || SUBSTR(TRIM(p.ncp), 4) ELSE TRIM(p.ncp) END
+          || (CASE
+              WHEN TO_DATE(d.dmep, 'DD/MM/RR') > TO_DATE('30/11/2023', 'DD/MM/RR') THEN (SELECT MAX(clc) FROM bkcom WHERE ncp = p.ncp)
+          END)
+          FROM bkcptprt p
+          WHERE p.eve = d.eve
+            AND p.ave = d.ave
+            AND p.nat = '004')";
+  }
     public function index()
     {
         return '[{"Erreur": {
@@ -119,6 +152,7 @@ public function GetEncours(Request $request, $MyDateArr)
     $DateDebMois   = $dateDebutMois->format('d/m/Y');
     [$eveFilterSql, $eveBindValues] = $this->eveFilterForQuery($request);
     $extractionFilterSql = $this->extractionFilterForQuery($request);
+    $referenceContractSql = $this->referenceContractExpression($request);
 
     // --- BLOCS SQL DYNAMIQUES POUR LES CALCULS D'ÉCHÉANCES ---
     
@@ -217,15 +251,7 @@ public function GetEncours(Request $request, $MyDateArr)
         d.ave,
         e.dva,
         d.cli, 
-        (SELECT CASE WHEN TRIM(p.ncp) LIKE '313%' THEN '311' || SUBSTR(TRIM(p.ncp), 4) WHEN TRIM(p.ncp) LIKE '322%' OR TRIM(p.ncp) LIKE '326%' OR TRIM(p.ncp) LIKE '323%' THEN '321' || SUBSTR(TRIM(p.ncp), 4) ELSE TRIM(p.ncp) END
-            || (CASE
-                WHEN TO_DATE(d.dmep, 'DD/MM/RR') > TO_DATE('30/11/2023', 'DD/MM/RR') THEN (SELECT MAX(clc) FROM bkcom WHERE ncp = p.ncp)
-            END)
-         FROM bkcptprt p
-         WHERE p.eve = d.eve
-           AND p.ave = d.ave
-           AND p.nat = '004'
-        ) RefContCmpt,
+        $referenceContractSql RefContCmpt,
 
         (SELECT MAX(aa.dco)
          FROM bkauxprt aa
@@ -250,7 +276,7 @@ public function GetEncours(Request $request, $MyDateArr)
            )
         ) AS MNTPAY,
 
-        $montant_agio AS MNTAGI,-- a modifier avec $montant_agio
+        $montant_agio AS MNTAGI,
 
         (CASE 
             WHEN e.num = $last_num_echeance THEN 0
@@ -352,7 +378,10 @@ public function GetEncours(Request $request, $MyDateArr)
             oci_bind_by_name($stid, $placeholder, $eveValue);
         }
         unset($eveValue);
-        if (!oci_execute($stid)) { $e = oci_error($stid); oci_free_statement($stid); oci_close($connection); return response()->json([[ 'type' => 'Erreur OCI', 'Description' => $e['message'] ]]); }
+        if (!oci_execute($stid)) {
+            $e = oci_error($stid);
+            return response()->json([[ 'type' => 'Erreur OCI', 'Description' => $e['message'] ]]);
+        }
 
         $results = [];
 
@@ -430,6 +459,7 @@ public function GetEncours(Request $request, $MyDateArr)
     $DateDebMois   = $dateDebutMois->format('d/m/Y');
     [$eveFilterSql, $eveBindValues] = $this->eveFilterForQuery($request);
     $extractionFilterSql = $this->extractionFilterForQuery($request);
+    $referenceContractSql = $this->referenceContractExpression($request);
     $MoisAnneeStr  = $dateArret->format('m/Y'); // Format MM/YYYY
 
     // --- BLOCS SQL DYNAMIQUES POUR LES CALCULS D'ÉCHÉANCES ---
@@ -524,15 +554,7 @@ public function GetEncours(Request $request, $MyDateArr)
         d.ave,
         TO_CHAR(TO_DATE(last_e.dva, 'DD/MM/RR'), 'DD') || '/$MoisAnneeStr' AS DVA,
         d.cli, 
-        (SELECT CASE WHEN TRIM(p.ncp) LIKE '313%' THEN '311' || SUBSTR(TRIM(p.ncp), 4) WHEN TRIM(p.ncp) LIKE '322%' OR TRIM(p.ncp) LIKE '326%' OR TRIM(p.ncp) LIKE '323%' THEN '321' || SUBSTR(TRIM(p.ncp), 4) ELSE TRIM(p.ncp) END
-            || (CASE
-                WHEN TO_DATE(d.dmep, 'DD/MM/RR') > TO_DATE('30/11/2023', 'DD/MM/RR') THEN (SELECT MAX(clc) FROM bkcom WHERE ncp = p.ncp)
-            END)
-         FROM bkcptprt p
-         WHERE p.eve = d.eve
-           AND p.ave = d.ave
-           AND p.nat = '004'
-        ) RefContCmpt,
+        $referenceContractSql RefContCmpt,
 
         -- Récupération du dernier paiement réel
         (SELECT MAX(aa.dco)

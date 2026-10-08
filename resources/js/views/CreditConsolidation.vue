@@ -63,6 +63,40 @@
                             />
                             Inclure les dossiers douteux (DE)
                         </label>
+                        <div class="sm:col-span-2">
+                            <p class="mb-1 font-medium text-slate-600">
+                                Référence du contrat
+                            </p>
+                            <div class="grid gap-2">
+                                <label class="flex items-center gap-2">
+                                    <input
+                                        v-model="extractionOptions.referenceMode"
+                                        type="radio"
+                                        name="referenceMode"
+                                        value="eve"
+                                    />
+                                    Utiliser le numéro d'événement (EVE)
+                                </label>
+                                <label class="flex items-center gap-2">
+                                    <input
+                                        v-model="extractionOptions.referenceMode"
+                                        type="radio"
+                                        name="referenceMode"
+                                        value="account_without_key"
+                                    />
+                                    Numéro de compte sans ajouter la clé (CLC)
+                                </label>
+                                <label class="flex items-center gap-2">
+                                    <input
+                                        v-model="extractionOptions.referenceMode"
+                                        type="radio"
+                                        name="referenceMode"
+                                        value="account_with_key"
+                                    />
+                                    Numéro de compte avec la clé (comportement actuel)
+                                </label>
+                            </div>
+                        </div>
                     </div>
                 </details>
                 <div class="w-full">
@@ -481,6 +515,7 @@ const extractionOptions = reactive({
     excludeZeroRate: true,
     includeValidated: true,
     includeDoubtful: true,
+    referenceMode: "account_with_key",
 });
 const globalError = ref(null);
 const loadingProgress = ref(0);
@@ -733,15 +768,24 @@ const fetchAll = async () => {
     loadingProgress.value = 0;
     const bd = toBackendDate(selectedDate.value);
     const params = credits.length ? { eves: credits } : {};
+    const engagementParams = {
+        ...params,
+        referenceMode: extractionOptions.referenceMode,
+    };
     const encoursParams = {
         ...params,
         excludeExpired: extractionOptions.excludeExpired,
         excludeZeroRate: extractionOptions.excludeZeroRate,
         includeValidated: extractionOptions.includeValidated,
         includeDoubtful: extractionOptions.includeDoubtful,
+        referenceMode: extractionOptions.referenceMode,
     };
     const calls = [
-        { key: "engagements", url: `/api/cdr_engagements/${bd}`, params },
+        {
+            key: "engagements",
+            url: `/api/cdr_engagements/${bd}`,
+            params: engagementParams,
+        },
         { key: "encours", url: `/api/cdr_encours/${bd}`, params: encoursParams },
         { key: "encoursAjust", url: `/api/cdr_encours_ajust/${bd}`, params: encoursParams },
     ];
@@ -758,12 +802,19 @@ const fetchAll = async () => {
             console.log(`[fetchAll] ${c.key} chargé:`, raw.length, "lignes");
         } catch (e) {
             console.error(`[fetchAll] erreur ${c.key}:`, e);
+            const responseData = e?.response?.data;
+            const serverMessage = Array.isArray(responseData)
+                ? responseData.find((item) => item?.Erreur)?.Erreur?.Description
+                : responseData?.message;
             if (!dataLoaded[c.key]) {
                 zones[c.key].data = [];
                 zones[c.key].raw = [];
-                zones[c.key].error = "Erreur lors du chargement des données.";
+                zones[c.key].error =
+                    serverMessage || "Erreur lors du chargement des données.";
             } else {
-                zones[c.key].error = "Erreur lors du rechargement. Données conservées.";
+                zones[c.key].error = serverMessage
+                    ? `${serverMessage} Données conservées.`
+                    : "Erreur lors du rechargement. Données conservées.";
             }
         } finally {
             zones[c.key].loading = false;
@@ -782,6 +833,7 @@ const fetchAll = async () => {
 const engagementsColumns = [
     { key: "CLI", label: "Client" },
     { key: "EVE", label: "Événement" },
+    { key: "REFCONTCMPT", label: "Réf Contrat" },
     { key: "REFINT", label: "Réf. Interne" },
     { key: "CODAGE", label: "Code Agence" },
     { key: "STATUT", label: "Statut" },

@@ -574,7 +574,8 @@ const testDatabase = async () => {
             ...database.value,
         });
         databaseOk.value = true;
-        databaseMessage.value = response.data.message;
+        databaseMessage.value =
+            `${response.data.message} Cliquez sur « Enregistrer la base » pour appliquer ces identifiants aux extractions.`;
     } catch (error) {
         databaseOk.value = false;
         databaseMessage.value =

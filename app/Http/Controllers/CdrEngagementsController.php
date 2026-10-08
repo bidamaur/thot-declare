@@ -35,6 +35,40 @@ class CdrEngagementsController extends Controller
   {
     $this->dbConnection = $dbConnection;
   }
+
+  private function referenceContractExpression(Request $request): string
+  {
+    $mode = $request->query('referenceMode');
+
+    if ($mode === 'eve') {
+        return 'd.eve';
+    }
+
+    $accountNumber = "CASE
+        WHEN TRIM(p.ncp) LIKE '313%' THEN '311' || SUBSTR(TRIM(p.ncp), 4)
+        WHEN TRIM(p.ncp) LIKE '322%' OR TRIM(p.ncp) LIKE '326%' OR TRIM(p.ncp) LIKE '323%' THEN '321' || SUBSTR(TRIM(p.ncp), 4)
+        ELSE TRIM(p.ncp)
+    END";
+    $accountQuery = "SELECT $accountNumber
+        FROM bkcptprt p
+        WHERE p.eve = d.eve
+          AND p.nat = '004'
+          AND p.ave = (SELECT MAX(ave) FROM bkcptprt WHERE eve = p.eve)";
+
+    if ($mode === 'account_without_key') {
+        return "($accountQuery)";
+    }
+
+    return "(SELECT $accountNumber
+        || (CASE
+            WHEN TO_DATE(d.dmep, 'DD/MM/RR') > TO_DATE('30/11/2023', 'DD/MM/RR') THEN (SELECT MAX(clc) FROM bkcom WHERE ncp = p.ncp)
+        END)
+        FROM bkcptprt p
+        WHERE p.eve = d.eve
+          AND p.nat = '004'
+          AND p.ave = (SELECT MAX(ave) FROM bkcptprt WHERE eve = p.eve))";
+  }
+
   /**
    * Display a listing of the resource.
    */
@@ -59,15 +93,15 @@ public function GetEngagements(Request $request, $MyDateArr)
     $connection = $this->dbConnection->getConnection();
     $dateArret = Carbon::create((int) $GetPosition[1], (int) $GetPosition[0], 1)->endOfMonth();
     $DateArr = $dateArret->format('d/m/Y');
-    $DateArrYear = $dateArret->year;
-    $DateArrMonth = ($dateArret->month<10?'0'.$dateArret->month:$dateArret->month);
-    $DateArrDay = $dateArret->day;
-    $DateMonthYear = '/' . $DateArrMonth . '/' . $DateArrYear;
+    $DateMonthYear = '/' . $dateArret->format('m/Y');
     $eves = array_values(array_unique(array_filter(array_map(
         static fn ($eve) => trim((string) $eve),
         (array) $request->query('eves', [])
     ), static fn ($eve) => $eve !== '')));
     $eveBindValues = [];
+    $dateArrMonthYear = $dateArret->format('m/Y');
+    $engagementPeriodFilter = "AND TO_CHAR(d.dmep, 'MM/YYYY') = '$dateArrMonthYear'";
+    $referenceContractSql = $this->referenceContractExpression($request);
     if ($eves) {
         $evePlaceholders = [];
         foreach ($eves as $index => $eve) {
@@ -75,10 +109,7 @@ public function GetEngagements(Request $request, $MyDateArr)
             $evePlaceholders[] = $placeholder;
             $eveBindValues[$placeholder] = $eve;
         }
-        $engagementPeriodFilter = 'AND d.eve IN (' . implode(', ', $evePlaceholders) . ')';
-    } else {
-        $engagementPeriodFilter = "AND (EXTRACT(MONTH FROM d.dmep)='$DateArrMonth' and EXTRACT(YEAR FROM TO_DATE(d.dmep, 'DD/MM/RR'))='$DateArrYear' )
-    AND TO_DATE(d.dmep, 'DD/MM/RR')<ADD_MONTHS(TO_DATE('01$DateMonthYear', 'DD/MM/RR'), 1)";
+        $engagementPeriodFilter .= ' AND d.eve IN (' . implode(', ', $evePlaceholders) . ')';
     }
 
     $notFound = '[{"Erreur": {
@@ -92,18 +123,7 @@ public function GetEngagements(Request $request, $MyDateArr)
          trim(c.tcli) as tcli,
          d.eve,
          d.ave,
-         (SELECT CASE WHEN TRIM(p.ncp) LIKE '313%' THEN '311' || SUBSTR(TRIM(p.ncp), 4) WHEN TRIM(p.ncp) LIKE '322%' OR TRIM(p.ncp) LIKE '326%' OR TRIM(p.ncp) LIKE '323%' THEN '321' || SUBSTR(TRIM(p.ncp), 4) ELSE TRIM(p.ncp) END
-         ||(
-        CASE
-        WHEN TO_DATE(d.dmep, 'DD/MM/RR')>TO_DATE('30/11/2023', 'DD/MM/RR') THEN (SELECT max(clc) from bkcom where ncp=p.ncp)
-        END)
-         FROM bkcptprt p
-         WHERE p.eve=d.eve
-         AND p.nat  ='004'
-         AND p.ave  =
-           (SELECT MAX(ave) FROM bkcptprt WHERE eve=p.eve
-           )
-         ) RefContCmpt
+         $referenceContractSql RefContCmpt
 
         ,
              (SELECT p.ncp
@@ -255,14 +275,12 @@ public function GetEngagements(Request $request, $MyDateArr)
      
        AND d.eta      in ('VA','DE')
      AND (EXTRACT(YEAR FROM d.ddec)>2022)
-     
     AND d.ave=(SELECT MAX(bb.ave) FROM bkdosprt bb WHERE bb.eve=d.eve)
     and e.ctr not in(3)
-    --  and (TO_DATE(e.dva, 'DD/MM/RR') between TO_DATE('01/07/2023', 'DD/MM/RR') and TO_DATE('31/07/2023', 'DD/MM/RR'))
-    --AND (TO_DATE(d.dmep, 'DD/MM/RR') between TO_DATE('01$DateMonthYear', 'DD/MM/RR') and TO_DATE('$DateArr', 'DD/MM/RR'))
     $engagementPeriodFilter
+    AND d.tau_int!=0
     --AND e.ave=(SELECT max(ave) from bkechprt where eve=d.eve)
-    AND d.tau_int!=0 ";
+    ";
     
      $stid = oci_parse($connection, $query);
      if (!$stid) { $e = oci_error($connection); return response()->json([[ 'type' => 'Erreur OCI', 'Description' => $e['message'] ]]); }

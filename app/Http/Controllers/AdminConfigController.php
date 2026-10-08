@@ -107,7 +107,10 @@ class AdminConfigController extends Controller
         }
         $this->writeConfig($config);
         if (array_key_exists('database', $payload)) {
-            $this->writeDatabaseEnv($config['database']);
+            $this->writeDatabaseEnv(
+                $config['database'],
+                $payload['database']['password'] ?? null
+            );
         }
 
         return $this->show()->setStatusCode(200);
@@ -311,7 +314,7 @@ class AdminConfigController extends Controller
         File::put(base_path(self::CONFIG_PATH), json_encode($config, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
     }
 
-    private function writeDatabaseEnv(array $database): void
+    private function writeDatabaseEnv(array $database, ?string $plainPassword = null): void
     {
         $path = base_path('.env');
         if (!File::exists($path)) return;
@@ -325,8 +328,8 @@ class AdminConfigController extends Controller
             'DB_USERNAME' => $database['username'] ?? '',
             'ORACLE_TNS' => $driver === 'oracle' ? ($database['service'] ?? '') : '',
         ];
-        if (!empty($database['password'])) {
-            $values['DB_PASSWORD'] = $database['password'];
+        if ($plainPassword !== null && $plainPassword !== '') {
+            $values['DB_PASSWORD'] = $plainPassword;
         }
 
         $contents = File::get($path);
@@ -451,4 +454,3 @@ class AdminConfigController extends Controller
         return $sql;
     }
 }
-
