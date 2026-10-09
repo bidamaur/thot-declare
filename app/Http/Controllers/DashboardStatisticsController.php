@@ -19,7 +19,7 @@ class DashboardStatisticsController extends Controller
             report($exception);
 
             return response()->json([
-                'message' => 'Impossible de calculer les statistiques depuis Oracle.',
+                'message' => 'Impossible de charger les statistiques SQLite.',
             ], 503);
         }
     }

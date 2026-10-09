@@ -39,7 +39,9 @@ class CdrEncoursController extends Controller
       }
 
       return [
-          $placeholders ? ' AND d.eve IN (' . implode(', ', $placeholders) . ')' : '',
+          $placeholders
+              ? ' AND d.eve ' . ($request->boolean('excludeEves') ? 'NOT IN' : 'IN') . ' (' . implode(', ', $placeholders) . ')'
+              : '',
           $bindValues,
       ];
   }
@@ -178,18 +180,20 @@ public function GetEncours(Request $request, $MyDateArr)
       AND mon != 0 
       AND to_char(dco,'MM/YYYY') = to_char(TO_DATE('$DateArr', 'DD/MM/RR'),'MM/YYYY')
     ), 0))";
+    // nombre reel des echeances
+        $nbr_jour_reel_impaye = "(
+            SELECT COUNT(dva) FROM bkechprt
+            WHERE ctr = 8 AND eve = d.eve AND ave = d.ave
+          AND TO_DATE(dva, 'DD/MM/RR') <= TO_DATE('$DateArr', 'DD/MM/RR')
+        )";
     // 3. Nombre d'échéances impayées
      $NbrEchImp = "(CASE 
     WHEN $mon_douteux = 0 THEN LEAST((
-        SELECT COUNT(dva) FROM bkechprt 
-        WHERE ctr = 8 AND eve = d.eve AND ave = d.ave 
+        SELECT COUNT(dva) FROM bkechprt
+        WHERE ctr = 8 AND eve = d.eve AND ave = d.ave
           AND TO_DATE(dva, 'DD/MM/RR') <= TO_DATE('$DateArr', 'DD/MM/RR')
     ), 2)
-    ELSE (
-        SELECT COUNT(dva) FROM bkechprt 
-        WHERE ctr = 8 AND eve = d.eve AND ave = d.ave 
-          AND TO_DATE(dva, 'DD/MM/RR') <= TO_DATE('$DateArr', 'DD/MM/RR')
-    )
+    ELSE $nbr_jour_reel_impaye
     END)";
 
     // 4. Calculs dérivés
@@ -233,14 +237,19 @@ public function GetEncours(Request $request, $MyDateArr)
           AND $NbrJrsImp != 0
     ), 0))";
 
-    $mon_impaye = "ABS(NVL((
-        SELECT SUM(mon) 
-        FROM bksld 
-        WHERE cli = d.cli 
-          AND cha = '3411000'
-          AND TO_CHAR(TO_DATE(dco, 'DD/MM/RR'), 'MM/YYYY') = TO_CHAR(TO_DATE('$DateArr', 'DD/MM/RR'), 'MM/YYYY') 
-          AND $NbrJrsImp != 0
-    ), 0))";
+$mon_impaye = "
+    ABS(
+        NVL(
+            (SELECT SUM(tot_ech + pen + inte + tini)
+             FROM bkechprt
+             WHERE ctr = 8
+               AND eve = d.eve
+               AND ave = d.ave
+               AND dva <= TO_DATE('$DateArr', 'DD/MM/YYYY')),
+            0
+        )
+    )
+";
 
     // Numéro de la dernière échéance du dossier pour cet avenant précis
     $last_num_echeance = "(SELECT MAX(num) FROM bkechprt WHERE eve = d.eve AND ave = d.ave)";
@@ -276,10 +285,10 @@ public function GetEncours(Request $request, $MyDateArr)
            )
         ) AS MNTPAY,
 
-        $montant_agio AS MNTAGI,
-
+         $montant_agio AS MNTAGI,
         (CASE 
-            WHEN e.num = $last_num_echeance THEN 0
+            WHEN $nbr_jour_reel_impaye>=90 and $mon_douteux!=0 THEN (select res from bkechprt where eve=d.eve and ave=d.ave and to_date(dva,'dd/mm/rr')<=to_date('$DateArr','dd/mm/rr') and res!=0 and ctr=8 and rownum=1)
+            WHEN e.num = $last_num_echeance AND $nbr_jour_reel_impaye=0 THEN 0
             WHEN e.num IN (0, 1, 2, 3) AND e.res = 0 THEN d.mon
             WHEN (e.num >= 4 AND e.num <= $last_num_echeance) AND e.res = 0 THEN 
                 NVL((SELECT res FROM bkechprt 
@@ -311,8 +320,19 @@ public function GetEncours(Request $request, $MyDateArr)
 
         (CASE
         WHEN $mon_douteux != 0 THEN $montant_agio
-            WHEN $NbrJrsImp != 0 AND e.inte = 0 AND $mon_douteux = 0
-             THEN NVL((e.inte + e.ini), 0)
+            WHEN $NbrJrsImp != 0 AND $mon_douteux = 0
+             THEN     ABS(
+        NVL(
+            (SELECT SUM( inte)
+             FROM bkechprt
+             WHERE ctr = 8
+               AND eve = d.eve
+               AND ave = d.ave
+               AND dva <= TO_DATE('$DateArr', 'DD/MM/YYYY')),
+            0
+        )
+    )
+
             WHEN $NbrJrsImp = 0 THEN 0
             ELSE 0
         END) AS MNTINTSOUF,
@@ -479,7 +499,11 @@ public function GetEncours(Request $request, $MyDateArr)
         ELSE 
             (SELECT COUNT(dva) FROM bkechprt WHERE eve = d.eve AND ave = d.ave AND ctr = 9 AND eta = 'VA' AND TO_DATE(dva, 'DD/MM/RR') <= TO_DATE('$DateArr', 'DD/MM/RR'))
         END)";
-
+$nbr_jour_reel_impaye = "(
+    SELECT COUNT(dva) FROM bkechprt
+    WHERE ctr = 8 AND eve = d.eve AND ave = d.ave
+          AND TO_DATE(dva, 'DD/MM/RR') <= TO_DATE('$DateArr', 'DD/MM/RR')
+)";
     // 3. Solde douteux (Correction de la date en dur '30/06/2026' -> '$DateArr')
     $mon_douteux = "ABS(NVL((
         SELECT SUM(mon) FROM bksld 
@@ -496,11 +520,7 @@ public function GetEncours(Request $request, $MyDateArr)
         WHERE ctr = 8 AND eve = d.eve AND ave = d.ave 
           AND TO_DATE(dva, 'DD/MM/RR') <= TO_DATE('$DateArr', 'DD/MM/RR')
     ), 2)
-    ELSE (
-        SELECT COUNT(dva) FROM bkechprt 
-        WHERE ctr = 8 AND eve = d.eve AND ave = d.ave 
-          AND TO_DATE(dva, 'DD/MM/RR') <= TO_DATE('$DateArr', 'DD/MM/RR')
-        )
+    ELSE $nbr_jour_reel_impaye
     END)";
 
     // 5. Calculs dérivés
@@ -516,6 +536,20 @@ public function GetEncours(Request $request, $MyDateArr)
           AND $NbrJrsImp != 0
     ), 0))";
 
+    $montant_rattach = "ABS(NVL((
+        SELECT SUM(sde)
+        FROM bkcom
+        WHERE cli = d.cli
+          AND cha = '3840000'
+    ), 0))";
+
+    $montant_agio = "ABS(NVL((
+        SELECT SUM(sde)
+        FROM bkcom
+        WHERE cli = d.cli
+          AND cha = '9851100'
+    ), 0))";
+
     $montant_provision_dtx = "ABS(NVL((
         SELECT SUM(mon) 
         FROM bksld 
@@ -525,14 +559,28 @@ public function GetEncours(Request $request, $MyDateArr)
           AND $NbrJrsImp != 0
     ), 0))";
 
-    $mon_impaye = "ABS(NVL((
-        SELECT SUM(mon) 
-        FROM bksld 
-        WHERE cli = d.cli 
-          AND cha = '3411000'
-          AND TO_CHAR(TO_DATE(dco, 'DD/MM/RR'), 'MM/YYYY') = TO_CHAR(TO_DATE('$DateArr', 'DD/MM/RR'), 'MM/YYYY') 
-          AND $NbrJrsImp != 0
-    ), 0))";
+    // $mon_impaye = "ABS(NVL((
+    //     SELECT SUM(mon)
+    //     FROM bksld
+    //     WHERE cli = d.cli
+    //       AND cha = '3411000'
+    //       AND TO_CHAR(TO_DATE(dco, 'DD/MM/RR'), 'MM/YYYY') = TO_CHAR(TO_DATE('$DateArr', 'DD/MM/RR'), 'MM/YYYY')
+    //       AND $NbrJrsImp != 0
+    // ), 0))";
+
+$mon_impaye = "
+    ABS(
+        NVL(
+            (SELECT SUM(tot_ech + pen + inte + tini)
+             FROM bkechprt
+             WHERE ctr = 8
+               AND eve = d.eve
+               AND ave = d.ave
+               AND dva <= TO_DATE('$DateArr', 'DD/MM/YYYY')),
+            0
+        )
+    )
+";
 
     $last_num_echeance = "(SELECT MAX(num) FROM bkechprt WHERE eve = d.eve AND ave = d.ave)";
 
@@ -581,18 +629,39 @@ public function GetEncours(Request $request, $MyDateArr)
            )
         ) AS MNTPAY,
 
-        $mon_douteux AS MNTAGI,
+        $montant_agio AS MNTAGI,
 
                 -- Encours restant
       
-     NVL(
-     (
-     select ee.res from bkechprt ee 
-                where ee.eve=d.eve and ee.ave=d.ave and 
-                ee.dva=(select max(dva) from bkechprt where eve=ee.eve and ave=ee.ave
-                and to_date(dva,'dd/mm/rr')<=to_date('$DateArr','dd/mm/rr') and res!=0
-                )),d.mon
-    ) AS MNTCRD,
+        NVL(
+            CASE
+                WHEN $nbr_jour_reel_impaye >= 90 AND $mon_douteux != 0 THEN (
+                    SELECT ee.res
+                    FROM bkechprt ee
+                    WHERE ee.eve = d.eve
+                      AND ee.ave = d.ave
+                      AND TO_DATE(ee.dva, 'DD/MM/RR') <= TO_DATE('$DateArr', 'DD/MM/RR')
+                      AND ee.res != 0
+                      AND ee.ctr = 8
+                      AND ROWNUM = 1
+                )
+                ELSE (
+                    SELECT ee.res
+                    FROM bkechprt ee
+                    WHERE ee.eve = d.eve
+                      AND ee.ave = d.ave
+                      AND ee.dva = (
+                          SELECT MAX(e2.dva)
+                          FROM bkechprt e2
+                          WHERE e2.eve = ee.eve
+                            AND e2.ave = ee.ave
+                            AND TO_DATE(e2.dva, 'DD/MM/RR') <= TO_DATE('$DateArr', 'DD/MM/RR')
+                            AND e2.res != 0
+                      )
+                )
+            END,
+            d.mon
+        ) AS MNTCRD,
 
         '0' AS ESTSENSIBLE,
         d.mon AS MNTTOTUTIL,
@@ -604,18 +673,20 @@ public function GetEncours(Request $request, $MyDateArr)
 
         (CASE 
             WHEN $mon_douteux = 0 THEN $mon_impaye 
-            ELSE $mon_douteux 
+            ELSE $mon_douteux + $montant_agio
         END) AS MNTCRESOUF,
 
         (CASE
-            WHEN $NbrJrsImp != 0 AND last_e.amo_imp = 0 THEN last_e.tot_ech
+            WHEN $mon_douteux != 0 THEN $mon_douteux
+            WHEN $NbrJrsImp != 0 AND last_e.amo_imp = 0 AND $mon_douteux = 0 THEN last_e.tot_ech
             ELSE ROUND(last_e.amo_imp)
         END) AS MNTCAPSOUF,
 
         (CASE
-            WHEN $NbrJrsImp != 0 AND last_e.inte = 0 THEN (SELECT MIN(inte) FROM bkechprt WHERE eve = last_e.eve AND ave = last_e.ave)
+            WHEN $mon_douteux != 0 THEN $montant_agio
+            WHEN $NbrJrsImp != 0 AND $mon_douteux = 0 THEN NVL(last_e.inte + last_e.ini, 0)
             WHEN $NbrJrsImp = 0 THEN 0
-            ELSE (last_e.inte + NVL(last_e.ini, 0))
+            ELSE 0
         END) AS MNTINTSOUF,
 
         last_e.inte interet,
@@ -632,8 +703,8 @@ public function GetEncours(Request $request, $MyDateArr)
             ELSE last_e.tin
         END) AS MNTTAXSOUF,
 
-        '0' AS MNTAGIOSSOUF,
-        last_e.inte MNTERAT,
+        $montant_agio AS MNTAGIOSSOUF,
+        $montant_rattach MNTERAT,
         (CASE
             WHEN $mon_douteux != 0 THEN $montant_provision_dtx
             WHEN $mon_impaye != 0 THEN $montant_provision_imp

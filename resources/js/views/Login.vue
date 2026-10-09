@@ -4,10 +4,11 @@
             <div class="login-card">
                 <div class="login-header">
                     <div class="login-logo">
-                        <div class="logo-icon">
-                            <span class="material-icons">account_balance</span>
-                        </div>
-                        <h1 class="login-title">THOT Déclare</h1>
+                        <img
+                            class="login-brand-logo"
+                            :src="logoUrl"
+                            alt="THOT Declare"
+                        />
                     </div>
                     <p class="login-subtitle">
                         Connectez-vous pour accéder à votre espace
@@ -90,6 +91,7 @@ import { useRouter } from "vue-router";
 import axios from "axios";
 
 const router = useRouter();
+const logoUrl = `${window.location.origin}/logo.png`;
 
 const form = reactive({
     email: "",
@@ -142,12 +144,24 @@ const onLogin = async () => {
 
 <style scoped>
 .login-page {
+    position: relative;
+    isolation: isolate;
     min-height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
     background: radial-gradient(ellipse at top, #f0f4ff 0%, #ffffff 100%);
     padding: 1.5rem;
+}
+
+.login-page::before {
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    background: url("/logo.png") center / min(58vw, 720px) auto no-repeat;
+    content: "";
+    opacity: 0.035;
+    pointer-events: none;
 }
 
 .login-container {
@@ -171,32 +185,18 @@ const onLogin = async () => {
 
 .login-logo {
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: 0.75rem;
     margin-bottom: 0.5rem;
 }
 
-.logo-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 2.5rem;
-    height: 2.5rem;
-    background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
-    border-radius: 0.5rem;
-    color: white;
-}
-
-.logo-icon .material-icons {
-    font-size: 1.5rem;
-}
-
-.login-title {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: #1e293b;
-    margin: 0;
+.login-brand-logo {
+    display: block;
+    width: min(100%, 220px);
+    height: 84px;
+    object-fit: contain;
 }
 
 .login-subtitle {

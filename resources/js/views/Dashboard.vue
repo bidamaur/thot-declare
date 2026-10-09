@@ -73,7 +73,7 @@
         </section>
 
         <div v-if="loading" class="premium-card p-6 text-sm text-slate-500">
-            Chargement des statistiques Oracle...
+            Chargement des statistiques SQLite...
         </div>
         <div v-else-if="error" class="premium-card p-6 text-sm text-rose-700">
             {{ error }}
@@ -86,14 +86,14 @@
                 <div class="kpi-value">
                     {{ formatNumber(current.physical_clients) }}
                 </div>
-                <div class="kpi-trend"><span>Clients Oracle</span></div>
+                <div class="kpi-trend"><span>Snapshot SQLite</span></div>
             </div>
             <div class="kpi-card">
                 <div class="kpi-title">Personnes morales</div>
                 <div class="kpi-value">
                     {{ formatNumber(current.moral_clients) }}
                 </div>
-                <div class="kpi-trend"><span>Clients Oracle</span></div>
+                <div class="kpi-trend"><span>Snapshot SQLite</span></div>
             </div>
             <div class="kpi-card">
                 <div class="kpi-title">Engagements du mois</div>
@@ -130,12 +130,11 @@
                             Évolution mensuelle
                         </h2>
                         <p class="mt-1 text-sm text-slate-500">
-                            Snapshots conservés dans SQLite après comparaison
-                            avec Oracle.
+                            Historique des snapshots enregistrés dans SQLite.
                         </p>
                     </div>
                     <span class="text-xs text-slate-500"
-                        >Dernière extraction :
+                        >Données du {{ formatPeriod(current.period) }} ·
                         {{ formatDate(current.extracted_at) }}</span
                     >
                 </div>
@@ -184,7 +183,75 @@
                         </div>
                     </div>
                 </div>
+                <div class="mt-8 overflow-x-auto">
+                    <h3 class="mb-3 text-sm font-semibold text-slate-800">
+                        Détail mensuel
+                    </h3>
+                    <table
+                        class="w-full min-w-[720px] border-collapse text-left text-sm"
+                    >
+                        <thead>
+                            <tr
+                                class="border-b border-slate-200 text-xs uppercase text-slate-500"
+                            >
+                                <th class="px-3 py-2">Période</th>
+                                <th class="px-3 py-2">Personnes physiques</th>
+                                <th class="px-3 py-2">Personnes morales</th>
+                                <th class="px-3 py-2">Engagements</th>
+                                <th class="px-3 py-2">Montant engagements</th>
+                                <th class="px-3 py-2">Encours</th>
+                                <th class="px-3 py-2">Impayés</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr
+                                v-for="item in [...history].reverse()"
+                                :key="item.period"
+                                class="border-b border-slate-100"
+                            >
+                                <td class="px-3 py-2 font-medium">
+                                    {{ formatPeriod(item.period) }}
+                                </td>
+                                <td class="px-3 py-2">
+                                    {{ formatNumber(item.physical_clients) }}
+                                </td>
+                                <td class="px-3 py-2">
+                                    {{ formatNumber(item.moral_clients) }}
+                                </td>
+                                <td class="px-3 py-2">
+                                    {{ formatNumber(item.monthly_engagements) }}
+                                </td>
+                                <td class="px-3 py-2">
+                                    {{
+                                        formatAmount(
+                                            item.monthly_engagement_amount,
+                                        )
+                                    }}
+                                </td>
+                                <td class="px-3 py-2">
+                                    {{
+                                        formatAmount(
+                                            item.total_outstanding_amount,
+                                        )
+                                    }}
+                                </td>
+                                <td class="px-3 py-2">
+                                    {{ formatNumber(item.unpaid_clients) }}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
+        </section>
+        <section v-else-if="!loading && !error" class="premium-card p-6">
+            <h2 class="text-base font-semibold text-slate-900">
+                Aucun snapshot dans SQLite
+            </h2>
+            <p class="mt-1 text-sm text-slate-500">
+                La connexion SQLite fonctionne, mais aucun historique mensuel
+                n'est encore disponible.
+            </p>
         </section>
 
         <!-- Module Cards Grid -->
@@ -380,6 +447,8 @@ const current = ref({
 const history = ref([]);
 
 const chartMetrics = [
+    { key: "physical_clients", label: "Personnes physiques", amount: false },
+    { key: "moral_clients", label: "Personnes morales", amount: false },
     {
         key: "monthly_engagements",
         label: "Nombre d'engagements",
@@ -421,8 +490,10 @@ const barHeight = (metric, value) => {
 onMounted(async () => {
     try {
         const response = await axios.get("/dashboard/statistics");
-        current.value = response.data.current;
         history.value = response.data.history || [];
+        if (response.data.current) {
+            current.value = response.data.current;
+        }
     } catch (exception) {
         error.value =
             exception.response?.data?.message ||

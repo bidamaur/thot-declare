@@ -69,6 +69,24 @@ class CdrEngagementsController extends Controller
           AND p.ave = (SELECT MAX(ave) FROM bkcptprt WHERE eve = p.eve))";
   }
 
+  private function eveFilterForQuery(array $eves, bool $exclude): array
+  {
+      $placeholders = [];
+      $bindings = [];
+      foreach ($eves as $index => $eve) {
+          $placeholder = ':eve' . $index;
+          $placeholders[] = $placeholder;
+          $bindings[$placeholder] = $eve;
+      }
+
+      if (!$placeholders) {
+          return ['', []];
+      }
+
+      $operator = $exclude ? 'NOT IN' : 'IN';
+      return [' AND d.eve ' . $operator . ' (' . implode(', ', $placeholders) . ')', $bindings];
+  }
+
   /**
    * Display a listing of the resource.
    */
@@ -90,6 +108,44 @@ public function GetEngagements(Request $request, $MyDateArr)
       return false;
     }
 
+    $dmepMode = $request->query('dmepMode', 'month');
+    $dmepStart = $request->query('dmepStart');
+    $dmepEnd = $request->query('dmepEnd');
+    if (!in_array($dmepMode, ['month', 'range', 'all'], true)) {
+        return response()->json([
+            ['Erreur' => [
+                'type' => 'Paramètre',
+                'Description' => 'Mode de filtre DMEP invalide.',
+            ]],
+        ], 400);
+    }
+    if ($dmepMode === 'range') {
+        foreach ([$dmepStart, $dmepEnd] as $period) {
+            if (
+                !is_string($period) ||
+                !preg_match('/^(0[1-9]|1[0-2])\/\d{4}$/', $period) ||
+                !checkdate((int) substr($period, 0, 2), 1, (int) substr($period, 3, 4))
+            ) {
+                return response()->json([
+                    ['Erreur' => [
+                        'type' => 'Paramètre',
+                        'Description' => 'Les bornes DMEP doivent être au format MM/AAAA.',
+                    ]],
+                ], 400);
+            }
+        }
+        $startYearMonth = substr($dmepStart, 3, 4) . substr($dmepStart, 0, 2);
+        $endYearMonth = substr($dmepEnd, 3, 4) . substr($dmepEnd, 0, 2);
+        if ($startYearMonth > $endYearMonth) {
+            return response()->json([
+                ['Erreur' => [
+                    'type' => 'Paramètre',
+                    'Description' => 'Le début de période DMEP doit être antérieur ou égal à la fin.',
+                ]],
+            ], 400);
+        }
+    }
+
     $connection = $this->dbConnection->getConnection();
     $dateArret = Carbon::create((int) $GetPosition[1], (int) $GetPosition[0], 1)->endOfMonth();
     $DateArr = $dateArret->format('d/m/Y');
@@ -97,20 +153,22 @@ public function GetEngagements(Request $request, $MyDateArr)
     $eves = array_values(array_unique(array_filter(array_map(
         static fn ($eve) => trim((string) $eve),
         (array) $request->query('eves', [])
-    ), static fn ($eve) => $eve !== '')));
+    ), static fn ($eve) => $eve !== ''    )));
     $eveBindValues = [];
-    $dateArrMonthYear = $dateArret->format('m/Y');
-    $engagementPeriodFilter = "AND TO_CHAR(d.dmep, 'MM/YYYY') = '$dateArrMonthYear'";
-    $referenceContractSql = $this->referenceContractExpression($request);
-    if ($eves) {
-        $evePlaceholders = [];
-        foreach ($eves as $index => $eve) {
-            $placeholder = ':eve' . $index;
-            $evePlaceholders[] = $placeholder;
-            $eveBindValues[$placeholder] = $eve;
-        }
-        $engagementPeriodFilter .= ' AND d.eve IN (' . implode(', ', $evePlaceholders) . ')';
+    $engagementPeriodFilter = '';
+    if ($dmepMode === 'month') {
+        $eveBindValues[':dmep_month'] = $dateArret->format('m/Y');
+        $engagementPeriodFilter = "AND TRUNC(d.dmep, 'MM') = TO_DATE(:dmep_month, 'MM/YYYY')";
+    } elseif ($dmepMode === 'range') {
+        $eveBindValues[':dmep_start'] = $dmepStart;
+        $eveBindValues[':dmep_end'] = $dmepEnd;
+        $engagementPeriodFilter = "AND d.dmep >= TO_DATE(:dmep_start, 'MM/YYYY')
+            AND d.dmep < ADD_MONTHS(TO_DATE(:dmep_end, 'MM/YYYY'), 1)";
     }
+    $referenceContractSql = $this->referenceContractExpression($request);
+    [$eveFilterSql, $eveFilterBindings] = $this->eveFilterForQuery($eves, $request->boolean('excludeEves'));
+    $engagementPeriodFilter .= $eveFilterSql;
+    $eveBindValues = array_merge($eveBindValues, $eveFilterBindings);
 
     $notFound = '[{"Erreur": {
         "type": "404",
@@ -275,7 +333,7 @@ public function GetEngagements(Request $request, $MyDateArr)
      
        AND d.eta      in ('VA','DE')
      AND (EXTRACT(YEAR FROM d.ddec)>2022)
-    AND d.ave=(SELECT MAX(bb.ave) FROM bkdosprt bb WHERE bb.eve=d.eve)
+    --AND d.ave=(SELECT MAX(bb.ave) FROM bkdosprt bb WHERE bb.eve=d.eve)
     and e.ctr not in(3)
     $engagementPeriodFilter
     AND d.tau_int!=0
@@ -602,8 +660,9 @@ public function GetEngagementsEchus(Request $request, $MyDateArr = null, $MyDate
         static fn ($eve) => trim((string) $eve),
         $eves
     ), static fn ($eve) => $eve !== '')));
+    $excludeEves = $request->boolean('excludeEves');
 
-    if (!empty($eves)) {
+    if (!empty($eves) && !$excludeEves) {
         $MyDateArr = null;
         $MyDateDeb = null;
     }
@@ -611,13 +670,15 @@ public function GetEngagementsEchus(Request $request, $MyDateArr = null, $MyDate
     if (
         ($MyDateArr === null || $MyDateArr === '') &&
         ($MyDateDeb === null || $MyDateDeb === '') &&
-        empty($eves)
+        (empty($eves) || $excludeEves)
     ) {
         return response()->json([
             [
                 'Erreur' => [
                     'type' => 'Filtres',
-                    'Description' => 'Veuillez saisir au moins une date ou un numéro de dossier.',
+                    'Description' => $excludeEves
+                        ? 'En mode NOT IN, veuillez saisir au moins une date pour limiter la recherche.'
+                        : 'Veuillez saisir au moins une date ou un numéro de dossier.',
                 ],
             ],
         ]);
@@ -682,14 +743,8 @@ public function GetEngagementsEchus(Request $request, $MyDateArr = null, $MyDate
     $DateDeb = $dateDebut->format('d/m/Y');
     $eveBindValues = [];
     $selectionFilterSql = '';
-    if (!empty($eves)) {
-        $evePlaceholders = [];
-        foreach ($eves as $index => $eve) {
-            $placeholder = ':eve' . $index;
-            $evePlaceholders[] = $placeholder;
-            $eveBindValues[$placeholder] = $eve;
-        }
-        $selectionFilterSql = ' AND d.eve IN (' . implode(', ', $evePlaceholders) . ')';
+    if (!empty($eves) && !$excludeEves) {
+        [$selectionFilterSql, $eveBindValues] = $this->eveFilterForQuery($eves, false);
     }
     $clientsDtx="SELECT distinct cli
                     FROM bksld 
@@ -709,7 +764,7 @@ $mont_dtx="ABS(NVL((
                       
                 ), 0))";
     $DossierReglement_anticipe="SELECT eve FROM bkechprt WHERE (TO_DATE(dva, 'DD/MM/RR') BETWEEN TO_DATE('$DateDeb', 'DD/MM/RR') AND TO_DATE('$DateArr', 'DD/MM/RR')) AND ctr=3";  
-    if (empty($eves)) {
+    if (empty($eves) || $excludeEves) {
         $dateFilterSql = '';
         if ($MyDateArr) {
             $dateFilterSql .= " AND TO_DATE(d.dmep, 'DD/MM/RR') <= TO_DATE('$DateArr', 'DD/MM/RR')";
@@ -722,6 +777,11 @@ $mont_dtx="ABS(NVL((
               d.cli in($clientsDtx)
               or d.eve in ($DossierReglement_anticipe)
           )";
+        if (!empty($eves) && $excludeEves) {
+            [$eveFilterSql, $eveFilterBindings] = $this->eveFilterForQuery($eves, true);
+            $selectionFilterSql .= $eveFilterSql;
+            $eveBindValues = array_merge($eveBindValues, $eveFilterBindings);
+        }
     }
     $query = "SELECT DISTINCT 
             TRIM(c.cli) AS cli,

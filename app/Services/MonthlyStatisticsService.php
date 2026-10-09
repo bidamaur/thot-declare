@@ -87,10 +87,20 @@ class MonthlyStatisticsService
 
     public function dashboard(): array
     {
-        $current = $this->snapshot();
-        $history = MonthlyStatistic::orderBy('period')->get();
+        $history = MonthlyStatistic::query()->orderBy('period')->get();
+        $current = $history->last() ?? [
+            'period' => null,
+            'physical_clients' => 0,
+            'moral_clients' => 0,
+            'monthly_engagements' => 0,
+            'monthly_engagement_amount' => 0,
+            'total_outstanding_amount' => 0,
+            'unpaid_clients' => 0,
+            'extracted_at' => null,
+        ];
 
         return [
+            'source' => 'sqlite',
             'current' => $current,
             'history' => $history,
         ];

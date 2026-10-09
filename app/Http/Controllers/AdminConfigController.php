@@ -59,9 +59,13 @@ class AdminConfigController extends Controller
         ], $config['database'] ?? []);
         $database['password'] = '';
         $database['has_password'] = !empty($config['database']['password']);
+        $sqlite = [
+            'database' => $config['sqlite']['database'] ?? env('SQLITE_DATABASE', database_path('database.sqlite')),
+        ];
 
         return response()->json([
             'database' => $database,
+            'sqlite' => $sqlite,
             'application' => array_merge([
                 'name' => config('app.name'),
                 'language' => 'fr',
@@ -90,6 +94,8 @@ class AdminConfigController extends Controller
             'database.username' => ['sometimes', 'nullable', 'string', 'max:255'],
             'database.password' => ['sometimes', 'nullable', 'string', 'max:1000'],
             'database.service' => ['sometimes', 'nullable', 'string', 'max:500'],
+            'sqlite' => ['sometimes', 'array'],
+            'sqlite.database' => ['sometimes', 'required', 'string', 'max:1000'],
             'application' => ['sometimes', 'array'],
             'application.name' => ['sometimes', 'string', 'max:100'],
             'application.language' => ['sometimes', 'string', 'in:fr,en'],
@@ -106,6 +112,10 @@ class AdminConfigController extends Controller
             $config['database']['password'] = Crypt::encryptString($payload['database']['password']);
         }
         $this->writeConfig($config);
+        if (array_key_exists('sqlite', $payload)) {
+            config(['database.connections.sqlite.database' => $payload['sqlite']['database']]);
+            DB::purge('sqlite');
+        }
         if (array_key_exists('database', $payload)) {
             $this->writeDatabaseEnv(
                 $config['database'],
@@ -149,6 +159,21 @@ class AdminConfigController extends Controller
 
         if ($payload['driver'] === 'oci8' && !extension_loaded('oci8')) {
             return response()->json(['ok' => false, 'message' => "L'extension PHP OCI8 n'est pas chargée."], 422);
+        }
+
+        if ($payload['driver'] === 'sqlite') {
+            $connection = ['driver' => 'sqlite', 'database' => $payload['database'] ?: database_path('database.sqlite'), 'prefix' => ''];
+            $name = 'admin_connection_test';
+            config(["database.connections.$name" => $connection]);
+            try {
+                DB::purge($name);
+                DB::connection($name)->getPdo();
+                return response()->json(['ok' => true, 'message' => 'Connexion SQLite établie avec succès.']);
+            } catch (\Throwable $exception) {
+                return response()->json(['ok' => false, 'message' => $this->safeMessage($exception)], 422);
+            } finally {
+                DB::disconnect($name);
+            }
         }
 
         $name = 'admin_connection_test';

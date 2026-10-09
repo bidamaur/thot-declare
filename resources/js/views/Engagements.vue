@@ -36,10 +36,14 @@
                     />
                 </div>
                 <div class="w-full">
-                    <label class="block text-xs font-medium text-slate-600 mb-2">
+                    <label
+                        class="block text-xs font-medium text-slate-600 mb-2"
+                    >
                         Numéros de dossier (EVE)
                     </label>
-                    <div class="mb-3 flex flex-wrap gap-4 text-xs text-slate-700">
+                    <div
+                        class="mb-3 flex flex-wrap gap-4 text-xs text-slate-700"
+                    >
                         <label class="flex items-center gap-2">
                             <input
                                 v-model="eveInputMethod"
@@ -70,9 +74,7 @@
                         <table
                             class="w-full max-w-xl border-collapse border border-slate-200 text-xs"
                         >
-                            <thead
-                                class="bg-slate-50 text-left text-slate-600"
-                            >
+                            <thead class="bg-slate-50 text-left text-slate-600">
                                 <tr>
                                     <th
                                         class="border border-slate-200 px-2 py-1"
@@ -105,7 +107,9 @@
                                         <button
                                             type="button"
                                             @click="removeEveInput(index)"
-                                            :disabled="selectedEves.length === 1"
+                                            :disabled="
+                                                selectedEves.length === 1
+                                            "
                                             class="px-2 py-1 text-red-600 hover:bg-red-50 disabled:opacity-40"
                                             aria-label="Supprimer ce numéro de dossier"
                                         >
@@ -124,6 +128,15 @@
                             class="w-full rounded border border-slate-300 px-2 py-1 text-xs"
                         ></textarea>
                     </div>
+                    <label
+                        class="mt-3 flex items-center gap-2 text-xs text-slate-700"
+                    >
+                        <input v-model="excludeEves" type="checkbox" />
+                        Exclure les EVE saisis (NOT IN)
+                    </label>
+                    <p class="mt-1 text-xs text-slate-500">
+                        Décoché : rechercher uniquement les EVE saisis (IN).
+                    </p>
                 </div>
                 <button
                     @click="fetchEngagements"
@@ -579,10 +592,7 @@
                     required
                     class="w-full text-xs border border-slate-300 rounded px-2 py-1"
                 />
-                <p
-                    v-if="exportDateError"
-                    class="mt-2 text-xs text-red-600"
-                >
+                <p v-if="exportDateError" class="mt-2 text-xs text-red-600">
                     {{ exportDateError }}
                 </p>
                 <div class="mt-4 flex justify-end gap-2">
@@ -636,6 +646,7 @@ const selectedDateDeb = ref("");
 const eveInputMethod = ref("table");
 const selectedEves = ref([""]);
 const bulkEves = ref("");
+const excludeEves = ref(false);
 const itemsPerPage = ref(5);
 const rawData = ref([]);
 const corrections = ref({});
@@ -1026,17 +1037,28 @@ const removeEveInput = (index) => {
 const fetchEngagements = async () => {
     const dateArr = formatMonthForApi(selectedDateArr.value);
     const dateDeb = formatMonthForApi(selectedDateDeb.value);
-    const eves = [...new Set(
-        (eveInputMethod.value === "table"
-            ? selectedEves.value
-            : bulkEves.value.split(/[,\n;]+/))
-            .map((eve) => eve.trim())
-            .filter(Boolean),
-    )];
+    const eves = [
+        ...new Set(
+            (eveInputMethod.value === "table"
+                ? selectedEves.value
+                : bulkEves.value.split(/[,\n;]+/)
+            )
+                .map((eve) => eve.trim())
+                .filter(Boolean),
+        ),
+    ];
     if (!dateArr && !dateDeb && !eves.length) {
         searched.value = true;
         rawData.value = [];
-        error.value = "Veuillez choisir au moins une date ou saisir un numéro de dossier.";
+        error.value =
+            "Veuillez choisir au moins une date ou saisir un numéro de dossier.";
+        return;
+    }
+    if (excludeEves.value && eves.length && !dateArr && !dateDeb) {
+        searched.value = true;
+        rawData.value = [];
+        error.value =
+            "En mode NOT IN, choisissez une date d'arrêté ou de début pour limiter la recherche.";
         return;
     }
     error.value = null;
@@ -1047,7 +1069,7 @@ const fetchEngagements = async () => {
     progress.value = 0;
     try {
         const res = await axios.get("/api/cdr_engagements_echus", {
-            params: { dateArr, dateDeb, eves },
+            params: { dateArr, dateDeb, eves, excludeEves: excludeEves.value },
         });
         const payload = Array.isArray(res.data) ? res.data : [];
         const first = payload[0] || {};

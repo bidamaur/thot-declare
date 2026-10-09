@@ -25,15 +25,79 @@
                         class="text-xs border border-slate-300 rounded px-2 py-1"
                     />
                 </div>
-                <details class="w-full max-w-xl rounded border border-slate-200 bg-slate-50">
+                <details
+                    class="w-full max-w-xl rounded border border-slate-200 bg-slate-50"
+                >
+                    <summary
+                        class="cursor-pointer px-3 py-2 text-xs font-medium text-slate-700"
+                    >
+                        Filtre DMEP des engagements
+                    </summary>
+                    <div class="grid gap-2 px-3 pb-3 text-xs text-slate-700">
+                        <label class="flex items-center gap-2">
+                            <input
+                                type="radio"
+                                name="engagementDmepMode"
+                                :checked="engagementDmep.mode === 'month'"
+                                @change="setEngagementDmepMode('month')"
+                            />
+                            Limiter au mois d'arrêté ({{ selectedDate }})
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input
+                                type="radio"
+                                name="engagementDmepMode"
+                                :checked="engagementDmep.mode === 'range'"
+                                @change="setEngagementDmepMode('range')"
+                            />
+                            Limiter à une période
+                        </label>
+                        <div
+                            v-if="engagementDmep.mode === 'range'"
+                            class="flex flex-wrap items-center gap-2 pl-6"
+                        >
+                            <label class="flex items-center gap-1">
+                                Du
+                                <input
+                                    v-model="engagementDmep.start"
+                                    type="month"
+                                    class="rounded border border-slate-300 px-2 py-1"
+                                />
+                            </label>
+                            <label class="flex items-center gap-1">
+                                au
+                                <input
+                                    v-model="engagementDmep.end"
+                                    type="month"
+                                    class="rounded border border-slate-300 px-2 py-1"
+                                />
+                            </label>
+                        </div>
+                        <label class="flex items-center gap-2">
+                            <input
+                                type="radio"
+                                name="engagementDmepMode"
+                                :checked="engagementDmep.mode === 'all'"
+                                @change="setEngagementDmepMode('all')"
+                            />
+                            Ne pas limiter selon la date de mise en place
+                        </label>
+                    </div>
+                </details>
+                <details
+                    class="w-full max-w-xl rounded border border-slate-200 bg-slate-50"
+                >
                     <summary
                         class="cursor-pointer px-3 py-2 text-xs font-medium text-slate-700"
                     >
                         Paramètres d'extraction des encours
                     </summary>
-                    <div class="grid gap-2 px-3 pb-3 text-xs text-slate-700 sm:grid-cols-2">
+                    <div
+                        class="grid gap-2 px-3 pb-3 text-xs text-slate-700 sm:grid-cols-2"
+                    >
                         <p class="text-slate-500 sm:col-span-2">
-                            Si aucun statut n'est coché, aucun filtre de statut n'est appliqué.
+                            Si aucun statut n'est coché, aucun filtre de statut
+                            n'est appliqué.
                         </p>
                         <label class="flex items-center gap-2">
                             <input
@@ -70,7 +134,9 @@
                             <div class="grid gap-2">
                                 <label class="flex items-center gap-2">
                                     <input
-                                        v-model="extractionOptions.referenceMode"
+                                        v-model="
+                                            extractionOptions.referenceMode
+                                        "
                                         type="radio"
                                         name="referenceMode"
                                         value="eve"
@@ -79,7 +145,9 @@
                                 </label>
                                 <label class="flex items-center gap-2">
                                     <input
-                                        v-model="extractionOptions.referenceMode"
+                                        v-model="
+                                            extractionOptions.referenceMode
+                                        "
                                         type="radio"
                                         name="referenceMode"
                                         value="account_without_key"
@@ -88,22 +156,29 @@
                                 </label>
                                 <label class="flex items-center gap-2">
                                     <input
-                                        v-model="extractionOptions.referenceMode"
+                                        v-model="
+                                            extractionOptions.referenceMode
+                                        "
                                         type="radio"
                                         name="referenceMode"
                                         value="account_with_key"
                                     />
-                                    Numéro de compte avec la clé (comportement actuel)
+                                    Numéro de compte avec la clé (comportement
+                                    actuel)
                                 </label>
                             </div>
                         </div>
                     </div>
                 </details>
                 <div class="w-full">
-                    <label class="block text-xs font-medium text-slate-600 mb-2">
+                    <label
+                        class="block text-xs font-medium text-slate-600 mb-2"
+                    >
                         Numéros de crédit (EVE)
                     </label>
-                    <div class="mb-3 flex flex-wrap gap-4 text-xs text-slate-700">
+                    <div
+                        class="mb-3 flex flex-wrap gap-4 text-xs text-slate-700"
+                    >
                         <label class="flex items-center gap-2">
                             <input
                                 v-model="creditInputMethod"
@@ -134,11 +209,11 @@
                         <table
                             class="w-full max-w-xl border-collapse border border-slate-200 text-xs"
                         >
-                            <thead
-                                class="bg-slate-50 text-left text-slate-600"
-                            >
+                            <thead class="bg-slate-50 text-left text-slate-600">
                                 <tr>
-                                    <th class="border border-slate-200 px-2 py-1">
+                                    <th
+                                        class="border border-slate-200 px-2 py-1"
+                                    >
                                         Numéro de crédit (EVE)
                                     </th>
                                     <th
@@ -167,7 +242,9 @@
                                         <button
                                             type="button"
                                             @click="removeCreditInput(index)"
-                                            :disabled="selectedCredits.length === 1"
+                                            :disabled="
+                                                selectedCredits.length === 1
+                                            "
                                             class="px-2 py-1 text-red-600 hover:bg-red-50 disabled:opacity-40"
                                             aria-label="Supprimer ce numéro de crédit"
                                         >
@@ -186,6 +263,15 @@
                             class="w-full rounded border border-slate-300 px-2 py-1 text-xs"
                         ></textarea>
                     </div>
+                    <label
+                        class="mt-3 flex items-center gap-2 text-xs text-slate-700"
+                    >
+                        <input v-model="excludeEves" type="checkbox" />
+                        Exclure les EVE saisis (NOT IN)
+                    </label>
+                    <p class="mt-1 text-xs text-slate-500">
+                        Décoché : extraire uniquement les EVE saisis (IN).
+                    </p>
                 </div>
                 <p v-if="globalError" class="w-full text-xs text-red-600">
                     {{ globalError }}
@@ -202,7 +288,11 @@
                     :disabled="complexLoading"
                     class="px-3 py-1.5 text-xs bg-emerald-600 text-white rounded hover:bg-emerald-700 disabled:opacity-50"
                 >
-                    {{ complexLoading ? "Contrôle en cours..." : "Contrôle Complexe" }}
+                    {{
+                        complexLoading
+                            ? "Contrôle en cours..."
+                            : "Contrôle Complexe"
+                    }}
                 </button>
                 <button
                     @click="clearCorrections"
@@ -260,7 +350,29 @@
                     >Date d'arrêté calculée : {{ datArr }}</span
                 >
             </div>
-            <div class="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div
+                class="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"
+            >
+                <div
+                    v-if="engagementDmep.mode !== 'month'"
+                    class="sm:col-span-2 lg:col-span-3"
+                >
+                    <label
+                        class="block text-xs font-medium text-slate-600 mb-1"
+                    >
+                        Date d'arrêté du XML (mois / année) — obligatoire
+                    </label>
+                    <input
+                        v-model="xmlArreteMonth"
+                        type="month"
+                        required
+                        class="text-xs border border-slate-300 rounded px-2 py-1"
+                    />
+                    <p class="mt-1 text-xs text-slate-500">
+                        Le dernier jour du mois choisi sera utilisé dans le XML
+                        et le nom du fichier.
+                    </p>
+                </div>
                 <div>
                     <label class="block text-xs font-medium text-slate-600 mb-1"
                         >Numéro déclaration (NumDec)</label
@@ -339,28 +451,49 @@
                     />
                 </div>
             </div>
-            <div class="px-4 py-3 border-t border-slate-200 bg-white flex flex-wrap gap-x-6 gap-y-2">
+            <div
+                class="px-4 py-3 border-t border-slate-200 bg-white flex flex-wrap gap-x-6 gap-y-2"
+            >
                 <span class="text-xs font-semibold text-slate-600 self-center"
                     >Sections incluses :</span
                 >
-                <label class="inline-flex items-center gap-1 text-xs text-slate-600">
-                    <input type="checkbox" v-model="includeOptions.engagements" />
+                <label
+                    class="inline-flex items-center gap-1 text-xs text-slate-600"
+                >
+                    <input
+                        type="checkbox"
+                        v-model="includeOptions.engagements"
+                    />
                     Engagements
                 </label>
-                <label class="inline-flex items-center gap-1 text-xs text-slate-600">
+                <label
+                    class="inline-flex items-center gap-1 text-xs text-slate-600"
+                >
                     <input type="checkbox" v-model="includeOptions.encours" />
                     Encours
                 </label>
-                <label class="inline-flex items-center gap-1 text-xs text-slate-600">
-                    <input type="checkbox" v-model="includeOptions.encoursAjust" />
+                <label
+                    class="inline-flex items-center gap-1 text-xs text-slate-600"
+                >
+                    <input
+                        type="checkbox"
+                        v-model="includeOptions.encoursAjust"
+                    />
                     Encours ajustés
                 </label>
-                <label class="inline-flex items-center gap-1 text-xs text-slate-600">
+                <label
+                    class="inline-flex items-center gap-1 text-xs text-slate-600"
+                >
                     <input type="checkbox" v-model="includeOptions.garanties" />
                     Garanties (GarantieAffectee)
                 </label>
-                <label class="inline-flex items-center gap-1 text-xs text-slate-600">
-                    <input type="checkbox" v-model="includeOptions.compteDebiteur" />
+                <label
+                    class="inline-flex items-center gap-1 text-xs text-slate-600"
+                >
+                    <input
+                        type="checkbox"
+                        v-model="includeOptions.compteDebiteur"
+                    />
                     Compte Débiteur
                 </label>
             </div>
@@ -369,7 +502,9 @@
             >
                 <p class="text-xs text-slate-500">
                     Nom fichier :
-                    <span class="font-mono font-medium">{{ expectedFilename }}</span>
+                    <span class="font-mono font-medium">{{
+                        expectedFilename
+                    }}</span>
                     <span class="ml-2 text-slate-400"
                         >({{ totalLignes }} ligne(s) déclarée(s))</span
                     >
@@ -471,7 +606,11 @@
         <TableZone
             v-if="complexAnomalies.length || complexExecuted"
             title="Contrôle Complexe (Encours vs Engagements initiaux)"
-            :subtitle="complexExecuted ? `${complexAnomalies.length} anomalie(s) détectée(s)` : 'Non exécuté'"
+            :subtitle="
+                complexExecuted
+                    ? `${complexAnomalies.length} anomalie(s) détectée(s)`
+                    : 'Non exécuté'
+            "
             :columns="complexAnomaliesColumns"
             :data="complexAnomalies"
             :items-per-page="10"
@@ -501,15 +640,25 @@ import {
     normaliserDateVersCdr,
 } from "../validators/cdr_encours_engagement.js";
 import { runComplexValidationFromApi } from "../validators/cdr_encours_engagement_ctrComplexe.js";
-import { generateCdr51Xml, downloadCdr51Xml } from "../services/cdr51ExportService.js";
+import {
+    generateCdr51Xml,
+    downloadCdr51Xml,
+} from "../services/cdr51ExportService.js";
 
 const now = new Date();
 const selectedDate = ref(
     `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`,
 );
+const engagementDmep = reactive({
+    mode: "month",
+    start: "",
+    end: "",
+});
+const xmlArreteMonth = ref("");
 const creditInputMethod = ref("table");
 const selectedCredits = ref([""]);
 const bulkCredits = ref("");
+const excludeEves = ref(false);
 const extractionOptions = reactive({
     excludeExpired: true,
     excludeZeroRate: true,
@@ -529,6 +678,17 @@ const isLoadingRoutes = computed(
 const progressPercent = computed(() =>
     Math.round((completedRoutes.value / totalRoutes.value) * 100),
 );
+
+const setEngagementDmepMode = (mode) => {
+    if (mode === "range" && !engagementDmep.start && !engagementDmep.end) {
+        engagementDmep.start = selectedDate.value;
+        engagementDmep.end = selectedDate.value;
+    }
+    if (mode !== "month" && engagementDmep.mode === "month") {
+        xmlArreteMonth.value = "";
+    }
+    engagementDmep.mode = mode;
+};
 
 // --- Configuration de l'entête CDR (Type 51) & export XML ---
 const xmlConfig = ref({
@@ -550,10 +710,14 @@ const includeOptions = reactive({
 });
 
 // Date d'arrêté : dernier jour du mois/année sélectionné (JJMMAAAA)
+const xmlArreteMonthEffective = computed(() =>
+    engagementDmep.mode === "month" ? selectedDate.value : xmlArreteMonth.value,
+);
 const datArr = computed(() => {
-    const yyyymm = selectedDate.value;
+    const yyyymm = xmlArreteMonthEffective.value;
     if (!yyyymm) return "";
     const [y, m] = yyyymm.split("-").map(Number);
+    if (!y || !m || m < 1 || m > 12) return "";
     const lastDay = new Date(y, m, 0).getDate();
     return `${String(lastDay).padStart(2, "0")}${String(m).padStart(2, "0")}${y}`;
 });
@@ -564,7 +728,8 @@ const expectedFilename = computed(() => {
     const codDec = String(xmlConfig.value.CodDec || "00000").trim() || "00000";
     const numDec = String(xmlConfig.value.NumDec || "0001").trim() || "0001";
     const typDec = "51";
-    return `${codPay}-${codDec}-${numDec}-${datArr.value}-${typDec}-DEC.xml`;
+    const fileDatArr = datArr.value || "DATE-ARRETE-A-RENSEIGNER";
+    return `${codPay}-${codDec}-${numDec}-${fileDatArr}-${typDec}-DEC.xml`;
 });
 
 const totalLignes = computed(
@@ -575,6 +740,11 @@ const totalLignes = computed(
 );
 
 const exportXml = () => {
+    if (!xmlArreteMonthEffective.value || !datArr.value) {
+        globalError.value =
+            "Veuillez choisir la date d'arrêté du XML avant de le générer.";
+        return;
+    }
     const opts = includeOptions;
     const result = generateCdr51Xml({
         engagements: opts.engagements
@@ -587,7 +757,7 @@ const exportXml = () => {
             ? filterBySelection("encoursAjust", zones.encoursAjust.data)
             : [],
         xmlConfig: xmlConfig.value,
-        selectedDate: selectedDate.value,
+        selectedDate: xmlArreteMonthEffective.value,
         includeGaranties: opts.garanties,
         includeCompteDebiteur: opts.compteDebiteur,
     });
@@ -631,14 +801,18 @@ const fetching = ref(false);
 
 // --- Corrections manuelles (édition en place) persistées en localStorage ---
 const CORRECTIONS_KEY = "cdr51_corrections_v1";
-const corrections = reactive({ engagements: {}, encours: {}, encoursAjust: {} });
+const corrections = reactive({
+    engagements: {},
+    encours: {},
+    encoursAjust: {},
+});
 
 const loadCorrections = () => {
     try {
         const stored = localStorage.getItem(CORRECTIONS_KEY);
         if (stored) {
             const parsed = JSON.parse(stored);
-            (["engagements", "encours", "encoursAjust"]).forEach((z) => {
+            ["engagements", "encours", "encoursAjust"].forEach((z) => {
                 corrections[z] = parsed[z] || {};
             });
         }
@@ -678,10 +852,12 @@ const encoursEffective = computed(() => {
 });
 const encoursAjustEffective = computed(() => {
     const offset = zones.engagements.raw.length + zones.encours.raw.length;
-    return applyCorrections(zones.encoursAjust.raw, "encoursAjust").map((row, i) => ({
-        ...row,
-        __globalIdx: offset + i,
-    }));
+    return applyCorrections(zones.encoursAjust.raw, "encoursAjust").map(
+        (row, i) => ({
+            ...row,
+            __globalIdx: offset + i,
+        }),
+    );
 });
 
 const onCellEdit = (zone, { idx, colKey, value }) => {
@@ -694,7 +870,7 @@ const onCellEdit = (zone, { idx, colKey, value }) => {
     saveCorrections();
 };
 const clearCorrections = () => {
-    (["engagements", "encours", "encoursAjust"]).forEach((z) => {
+    ["engagements", "encours", "encoursAjust"].forEach((z) => {
         corrections[z] = {};
         zones[z].raw = zones[z].raw.map((r) => ({ ...r }));
         zones[z].data = applyCorrections(zones[z].raw, z);
@@ -707,7 +883,7 @@ const clearCorrections = () => {
 };
 const totalCorrections = computed(() => {
     let n = 0;
-    (["engagements", "encours", "encoursAjust"]).forEach((z) => {
+    ["engagements", "encours", "encoursAjust"].forEach((z) => {
         n += Object.keys(corrections[z] || {}).length;
     });
     return n;
@@ -752,6 +928,16 @@ const fetchAll = async () => {
         globalError.value = "Veuillez choisir une date d'arrêté.";
         return;
     }
+    if (
+        engagementDmep.mode === "range" &&
+        (!/^\d{4}-(0[1-9]|1[0-2])$/.test(engagementDmep.start) ||
+            !/^\d{4}-(0[1-9]|1[0-2])$/.test(engagementDmep.end) ||
+            engagementDmep.start > engagementDmep.end)
+    ) {
+        globalError.value =
+            "Veuillez saisir une période DMEP valide, avec un début antérieur ou égal à la fin.";
+        return;
+    }
     const credits = getSelectedCredits();
     if (credits.some((credit) => !/^[A-Za-z0-9_-]+$/.test(credit))) {
         globalError.value =
@@ -767,11 +953,22 @@ const fetchAll = async () => {
     completedRoutes.value = 0;
     loadingProgress.value = 0;
     const bd = toBackendDate(selectedDate.value);
-    const params = credits.length ? { eves: credits } : {};
+    const params = credits.length
+        ? { eves: credits, excludeEves: excludeEves.value }
+        : {};
     const engagementParams = {
         ...params,
         referenceMode: extractionOptions.referenceMode,
+        dmepMode: engagementDmep.mode,
     };
+    if (engagementDmep.mode === "range") {
+        const toMonthYear = (month) => {
+            const [year, monthNumber] = month.split("-");
+            return `${monthNumber}/${year}`;
+        };
+        engagementParams.dmepStart = toMonthYear(engagementDmep.start);
+        engagementParams.dmepEnd = toMonthYear(engagementDmep.end);
+    }
     const encoursParams = {
         ...params,
         excludeExpired: extractionOptions.excludeExpired,
@@ -786,8 +983,16 @@ const fetchAll = async () => {
             url: `/api/cdr_engagements/${bd}`,
             params: engagementParams,
         },
-        { key: "encours", url: `/api/cdr_encours/${bd}`, params: encoursParams },
-        { key: "encoursAjust", url: `/api/cdr_encours_ajust/${bd}`, params: encoursParams },
+        {
+            key: "encours",
+            url: `/api/cdr_encours/${bd}`,
+            params: encoursParams,
+        },
+        {
+            key: "encoursAjust",
+            url: `/api/cdr_encours_ajust/${bd}`,
+            params: encoursParams,
+        },
     ];
 
     const runCall = async (c) => {
@@ -827,7 +1032,14 @@ const fetchAll = async () => {
 
     await Promise.all(calls.map(runCall));
     fetching.value = false;
-    console.log("[fetchAll] terminé. Engagements:", zones.engagements.data.length, "Encours:", zones.encours.data.length, "Ajust:", zones.encoursAjust.data.length);
+    console.log(
+        "[fetchAll] terminé. Engagements:",
+        zones.engagements.data.length,
+        "Encours:",
+        zones.encours.data.length,
+        "Ajust:",
+        zones.encoursAjust.data.length,
+    );
 };
 
 const engagementsColumns = [
@@ -868,11 +1080,27 @@ const encoursColumns = [
     { key: "MNTPAY", label: "Montant Payé", format: "number" },
     { key: "MNTAGI", label: "Montant Agios", format: "number" },
     { key: "ESTSENSIBLE", label: "Est Sensible" },
-    { key: "MNTCRESOUF", label: "Montant Créance Souffrance", format: "number" },
-    { key: "MNTCAPSOUF", label: "Montant Capital Souffrance", format: "number" },
-    { key: "MNTINTSOUF", label: "Montant Intérêt Souffrance", format: "number" },
+    {
+        key: "MNTCRESOUF",
+        label: "Montant Créance Souffrance",
+        format: "number",
+    },
+    {
+        key: "MNTCAPSOUF",
+        label: "Montant Capital Souffrance",
+        format: "number",
+    },
+    {
+        key: "MNTINTSOUF",
+        label: "Montant Intérêt Souffrance",
+        format: "number",
+    },
     { key: "MNTTAXSOUF", label: "Montant Taxe Souffrance", format: "number" },
-    { key: "MNTAGIOSSOUF", label: "Montant Agios Souffrance", format: "number" },
+    {
+        key: "MNTAGIOSSOUF",
+        label: "Montant Agios Souffrance",
+        format: "number",
+    },
     { key: "MNTPRO", label: "Montant Provision", format: "number" },
     { key: "NBRJRSIMP", label: "Nb Jours Impayés" },
     { key: "INTERET", label: "Intérêt", format: "number" },
@@ -897,11 +1125,27 @@ const encoursAjustColumns = [
     { key: "CLADEPREC", label: "Classe Dépréciation" },
     { key: "MNTAGI", label: "Montant Agios", format: "number" },
     { key: "ESTSENSIBLE", label: "Est Sensible" },
-    { key: "MNTCRESOUF", label: "Montant Créance Souffrance", format: "number" },
-    { key: "MNTCAPSOUF", label: "Montant Capital Souffrance", format: "number" },
-    { key: "MNTINTSOUF", label: "Montant Intérêt Souffrance", format: "number" },
+    {
+        key: "MNTCRESOUF",
+        label: "Montant Créance Souffrance",
+        format: "number",
+    },
+    {
+        key: "MNTCAPSOUF",
+        label: "Montant Capital Souffrance",
+        format: "number",
+    },
+    {
+        key: "MNTINTSOUF",
+        label: "Montant Intérêt Souffrance",
+        format: "number",
+    },
     { key: "MNTTAXSOUF", label: "Montant Taxe Souffrance", format: "number" },
-    { key: "MNTAGIOSSOUF", label: "Montant Agios Souffrance", format: "number" },
+    {
+        key: "MNTAGIOSSOUF",
+        label: "Montant Agios Souffrance",
+        format: "number",
+    },
     { key: "MNTERAT", label: "Montant Échéance", format: "number" },
     { key: "MNTPRO", label: "Montant Provision", format: "number" },
     { key: "NBRJRSIMP", label: "Nb Jours Impayés" },
@@ -1044,10 +1288,11 @@ const runControleComplexe = async () => {
     complexExecuted.value = true;
     globalError.value = null;
     try {
-        console.log("[CtrlComplexe] encours envoyés :", zones.encours.data.length);
-        const result = await runComplexValidationFromApi(
-            zones.encours.data,
+        console.log(
+            "[CtrlComplexe] encours envoyés :",
+            zones.encours.data.length,
         );
+        const result = await runComplexValidationFromApi(zones.encours.data);
         console.log("[CtrlComplexe] anomalies :", result.length, result);
         complexAnomalies.value = result;
     } catch (e) {
@@ -1069,7 +1314,10 @@ const anomalies = computed(() => {
         try {
             res = validerLigneCdr(line, { client, contrat });
         } catch (e) {
-            console.error(`[Anomalies] erreur validation ${type} ${client}/${contrat}:`, e);
+            console.error(
+                `[Anomalies] erreur validation ${type} ${client}/${contrat}:`,
+                e,
+            );
             return;
         }
         (res.erreurs || []).forEach((err) => {
@@ -1083,9 +1331,19 @@ const anomalies = computed(() => {
             });
         });
     };
-    console.log("[Anomalies] engagements:", zones.engagements.data.length, "encours:", zones.encours.data.length, "encoursAjust:", zones.encoursAjust.data.length);
+    console.log(
+        "[Anomalies] engagements:",
+        zones.engagements.data.length,
+        "encours:",
+        zones.encours.data.length,
+        "encoursAjust:",
+        zones.encoursAjust.data.length,
+    );
     if (zones.engagements.data.length) {
-        console.log("[Anomalies] sample engagement:", zones.engagements.data[0]);
+        console.log(
+            "[Anomalies] sample engagement:",
+            zones.engagements.data[0],
+        );
     }
     if (zones.encours.data.length) {
         console.log("[Anomalies] sample encours:", zones.encours.data[0]);

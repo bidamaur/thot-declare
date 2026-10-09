@@ -247,6 +247,46 @@
                     {{ databaseMessage }}
                 </p>
             </div>
+            <div class="premium-card premium-card-header">
+                <h2 class="text-base font-semibold text-slate-900">
+                    Stockage des statistiques SQLite
+                </h2>
+                <p class="mt-1 text-xs text-slate-500">
+                    Ce fichier contient l'historique des statistiques et reste
+                    indépendant de la connexion Oracle.
+                </p>
+                <label class="field mt-4">
+                    Fichier SQLite
+                    <input
+                        v-model="sqliteConfig.database"
+                        type="text"
+                        placeholder="D:/data/thot-statistics.sqlite"
+                    />
+                </label>
+                <div class="mt-4 flex flex-wrap items-center gap-2">
+                    <button
+                        @click="testSQLite"
+                        :disabled="busy"
+                        class="button secondary"
+                    >
+                        Tester SQLite
+                    </button>
+                    <button
+                        @click="saveSQLite"
+                        :disabled="busy"
+                        class="button primary"
+                    >
+                        Enregistrer SQLite
+                    </button>
+                </div>
+                <p
+                    v-if="sqliteMessage"
+                    class="mt-3 text-sm"
+                    :class="sqliteOk ? 'text-emerald-700' : 'text-rose-700'"
+                >
+                    {{ sqliteMessage }}
+                </p>
+            </div>
         </section>
 
         <section v-else-if="activeTab === 'application'" class="max-w-3xl">
@@ -401,6 +441,7 @@ const database = ref({
     service: "",
     has_password: false,
 });
+const sqliteConfig = ref({ database: "" });
 const productionConfig = ref(null);
 const isTestMode = ref(false);
 const application = ref({
@@ -410,6 +451,8 @@ const application = ref({
 });
 const databaseMessage = ref("");
 const databaseOk = ref(false);
+const sqliteMessage = ref("");
+const sqliteOk = ref(false);
 const applicationMessage = ref("");
 const applicationOk = ref(false);
 const themeMessage = ref("");
@@ -548,6 +591,10 @@ const load = async () => {
         ...config.data.database,
         password: "",
     };
+    sqliteConfig.value = {
+        ...sqliteConfig.value,
+        ...config.data.sqlite,
+    };
     productionConfig.value = { ...config.data.database };
     isTestMode.value = false;
     application.value = { ...application.value, ...config.data.application };
@@ -574,8 +621,7 @@ const testDatabase = async () => {
             ...database.value,
         });
         databaseOk.value = true;
-        databaseMessage.value =
-            `${response.data.message} Cliquez sur « Enregistrer la base » pour appliquer ces identifiants aux extractions.`;
+        databaseMessage.value = `${response.data.message} Cliquez sur « Enregistrer la base » pour appliquer ces identifiants aux extractions.`;
     } catch (error) {
         databaseOk.value = false;
         databaseMessage.value =
@@ -594,6 +640,40 @@ const saveDatabase = async () => {
         databaseOk.value = false;
         databaseMessage.value =
             error.response?.data?.message || "Enregistrement impossible.";
+    }
+};
+const testSQLite = async () => {
+    busy.value = true;
+    sqliteMessage.value = "";
+    try {
+        const response = await axios.post("/api/admin/database/test", {
+            driver: "sqlite",
+            database: sqliteConfig.value.database,
+        });
+        sqliteOk.value = true;
+        sqliteMessage.value = response.data.message;
+    } catch (error) {
+        sqliteOk.value = false;
+        sqliteMessage.value =
+            error.response?.data?.message || "Test SQLite impossible.";
+    } finally {
+        busy.value = false;
+    }
+};
+const saveSQLite = async () => {
+    busy.value = true;
+    sqliteMessage.value = "";
+    try {
+        await axios.put("/api/admin/config", { sqlite: sqliteConfig.value });
+        sqliteOk.value = true;
+        sqliteMessage.value = "Chemin SQLite enregistré.";
+    } catch (error) {
+        sqliteOk.value = false;
+        sqliteMessage.value =
+            error.response?.data?.message ||
+            "Enregistrement SQLite impossible.";
+    } finally {
+        busy.value = false;
     }
 };
 const saveApplication = async () => {

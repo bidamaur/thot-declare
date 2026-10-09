@@ -16,8 +16,12 @@ class ApplyConfiguredDatabase
             $database = $config['database'] ?? [];
             if (!empty($database['driver'])) {
                 config(['database.connections.oracle' => $this->connectionConfig($database)]);
-                config(['database.default' => 'sqlite']);
             }
+            $sqlite = $config['sqlite'] ?? [];
+            if (!empty($sqlite['database'])) {
+                config(['database.connections.sqlite.database' => $sqlite['database']]);
+            }
+            config(['database.default' => 'sqlite']);
         }
 
         return $next($request);

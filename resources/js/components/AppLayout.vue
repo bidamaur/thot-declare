@@ -1,5 +1,5 @@
 <template>
-    <div :class="themeClass" class="flex min-h-screen">
+    <div :class="themeClass" class="app-shell flex min-h-screen">
         <Sidebar />
         <div class="flex flex-col flex-1 overflow-hidden">
             <AppHeader />

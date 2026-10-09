@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class MonthlyStatistic extends Model
 {
+    protected $connection = 'sqlite';
+
     protected $fillable = [
         'period',
         'physical_clients',
