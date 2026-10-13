@@ -193,32 +193,42 @@ public function GetEngagements(Request $request, $MyDateArr)
            )
          ) ncp_ori,
          '10030' CodAge,
-    (CASE
-    WHEN e.ctr=3 THEN '02'
-    WHEN (SELECT DVA FROM bkechprt where res=0 and eve=d.eve and ave=(SELECT MAX(ave) FROM bkechprt  WHERE eve=d.eve) and 
-    ( TO_DATE(dva, 'DD/MM/RR') 
-    between TO_DATE('01$DateMonthYear', 'DD/MM/RR') and add_months(TO_DATE('01$DateMonthYear', 'DD/MM/RR'),1)   ))=d.ddec THEN '02'
-    WHEN (SELECT max(ctr) from bkechprt where eve=d.eve AND ave=(SELECT MAX(ave) FROM bkechprt  WHERE eve=d.eve) AND ( TO_DATE(dva, 'DD/MM/RR') 
-    between TO_DATE('$DateArr', 'DD/MM/RR') and add_months(TO_DATE('$DateArr', 'DD/MM/RR'),1)   ))=3 THEN '02'
+    -- (CASE
+    -- WHEN e.ctr=3 THEN '02'
+    -- WHEN (SELECT DVA FROM bkechprt where res=0 and eve=d.eve and ave=(SELECT MAX(ave) FROM bkechprt  WHERE eve=d.eve) and 
+    -- ( TO_DATE(dva, 'DD/MM/RR') 
+    -- between TO_DATE('01$DateMonthYear', 'DD/MM/RR') and add_months(TO_DATE('01$DateMonthYear', 'DD/MM/RR'),1)   ))=d.ddec THEN '02'
+    -- WHEN (SELECT max(ctr) from bkechprt where eve=d.eve AND ave=(SELECT MAX(ave) FROM bkechprt  WHERE eve=d.eve) AND ( TO_DATE(dva, 'DD/MM/RR') 
+    -- between TO_DATE('$DateArr', 'DD/MM/RR') and add_months(TO_DATE('$DateArr', 'DD/MM/RR'),1)   ))=3 THEN '02'
+    -- ELSE '00'
+    -- END
+    -- ) 
+    
+    
+    (CASE 
+    
+    WHEN d.ctr in(9,5)  THEN '02'
     ELSE '00'
-    END
-    ) Statut,
+    
+    END)
+    
+    Statut,
          '' NatConso,--non
          '' TypConso,--non
     (
     CASE
-     WHEN d.ctr=9 and d.ddec>=TO_DATE('$DateArr', 'DD/MM/RR') 
-     THEN ''
-     WHEN d.ctr=9 and d.ddec<TO_DATE('$DateArr', 'DD/MM/RR') 
+     WHEN d.ctr=9  AND d.eta='VA'and not EXISTS 
+     (
+     select 1 from bkechprt where eve=d.eve and ave=d.ave and ctr in(8,3,7,8) and eta='VA'
+     ) 
      THEN '01'
-     
-     WHEN d.ctr=5 and d.ddec>=TO_DATE('$DateArr', 'DD/MM/RR') 
-     THEN ''
-     WHEN d.ctr=5 and d.ddec<TO_DATE('$DateArr', 'DD/MM/RR') 
+     WHEN EXISTS(select 1 from bkechprt where eve=d.eve and ave=d.ave and ctr in(3) and eta='VA' ) 
+     AND not EXISTS(select 1 from bkcom where cli=d.cli and (ncp like '344%' or ncp like '345%') and sde!=0)
      THEN '02'
      
-     WHEN d.ctr not IN(9,5) 
-     THEN ''
+     WHEN EXISTS(select 1 from bkcom where cli=d.cli and (ncp like '344%' or ncp like '345%') and sde!=0)
+     THEN '05'
+     ELSE 'NAN'
      
     END ) Motif,
          '01' TypEng, --type de credit avec échéancier

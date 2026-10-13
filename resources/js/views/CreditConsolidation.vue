@@ -1049,6 +1049,7 @@ const engagementsColumns = [
     { key: "REFINT", label: "Réf. Interne" },
     { key: "CODAGE", label: "Code Agence" },
     { key: "STATUT", label: "Statut" },
+    { key: "MOTIF", label: "Motif" },
     { key: "TYPENG", label: "Type Eng." },
     { key: "NATENG", label: "Nature Eng." },
     { key: "MNTENG", label: "Montant Eng.", format: "number" },
