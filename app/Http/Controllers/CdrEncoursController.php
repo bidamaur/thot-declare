@@ -77,6 +77,9 @@ class CdrEncoursController extends Controller
       if ($mode === 'eve') {
           return 'd.eve';
       }
+      if ($mode === 'combined') {
+          return "d.cli || d.eve || d.ave";
+      }
 
       $accountNumber = "CASE
           WHEN TRIM(p.ncp) LIKE '313%' THEN '311' || SUBSTR(TRIM(p.ncp), 4)

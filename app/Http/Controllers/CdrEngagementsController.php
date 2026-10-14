@@ -36,6 +36,28 @@ class CdrEngagementsController extends Controller
     $this->dbConnection = $dbConnection;
   }
 
+  private function motifExpression(): string
+  {
+      return "(CASE
+          WHEN d.ctr = 9 AND d.eta = 'VA' AND NOT EXISTS (
+              SELECT 1 FROM bkechprt
+              WHERE eve = d.eve AND ave = d.ave AND ctr IN (8, 3, 7, 8) AND eta = 'VA'
+          ) THEN '01'
+          WHEN EXISTS (
+              SELECT 1 FROM bkechprt
+              WHERE eve = d.eve AND ave = d.ave AND ctr = 3 AND eta = 'VA'
+          ) AND NOT EXISTS (
+              SELECT 1 FROM bkcom
+              WHERE cli = d.cli AND (ncp LIKE '344%' OR ncp LIKE '345%') AND sde != 0
+          ) THEN '02'
+          WHEN EXISTS (
+              SELECT 1 FROM bkcom
+              WHERE cli = d.cli AND (ncp LIKE '344%' OR ncp LIKE '345%') AND sde != 0
+          ) THEN '05'
+          ELSE ''
+      END)";
+  }
+
   private function referenceContractExpression(Request $request): string
   {
     $mode = $request->query('referenceMode');
@@ -111,7 +133,7 @@ public function GetEngagements(Request $request, $MyDateArr)
     $dmepMode = $request->query('dmepMode', 'month');
     $dmepStart = $request->query('dmepStart');
     $dmepEnd = $request->query('dmepEnd');
-    if (!in_array($dmepMode, ['month', 'range', 'all'], true)) {
+    if (!in_array($dmepMode, ['month', 'range', 'all', 'before', 'after'], true)) {
         return response()->json([
             ['Erreur' => [
                 'type' => 'Paramètre',
@@ -164,8 +186,13 @@ public function GetEngagements(Request $request, $MyDateArr)
         $eveBindValues[':dmep_end'] = $dmepEnd;
         $engagementPeriodFilter = "AND d.dmep >= TO_DATE(:dmep_start, 'MM/YYYY')
             AND d.dmep < ADD_MONTHS(TO_DATE(:dmep_end, 'MM/YYYY'), 1)";
+    } elseif ($dmepMode === 'before' || $dmepMode === 'after') {
+        $eveBindValues[':dmep_month'] = $dateArret->format('m/Y');
+        $operator = $dmepMode === 'before' ? '<' : '>';
+        $engagementPeriodFilter = "AND TRUNC(d.dmep, 'MM') $operator TO_DATE(:dmep_month, 'MM/YYYY')";
     }
     $referenceContractSql = $this->referenceContractExpression($request);
+    $motifExpression = $this->motifExpression();
     [$eveFilterSql, $eveFilterBindings] = $this->eveFilterForQuery($eves, $request->boolean('excludeEves'));
     $engagementPeriodFilter .= $eveFilterSql;
     $eveBindValues = array_merge($eveBindValues, $eveFilterBindings);
@@ -215,22 +242,7 @@ public function GetEngagements(Request $request, $MyDateArr)
     Statut,
          '' NatConso,--non
          '' TypConso,--non
-    (
-    CASE
-     WHEN d.ctr=9  AND d.eta='VA'and not EXISTS 
-     (
-     select 1 from bkechprt where eve=d.eve and ave=d.ave and ctr in(8,3,7,8) and eta='VA'
-     ) 
-     THEN '01'
-     WHEN EXISTS(select 1 from bkechprt where eve=d.eve and ave=d.ave and ctr in(3) and eta='VA' ) 
-     AND not EXISTS(select 1 from bkcom where cli=d.cli and (ncp like '344%' or ncp like '345%') and sde!=0)
-     THEN '02'
-     
-     WHEN EXISTS(select 1 from bkcom where cli=d.cli and (ncp like '344%' or ncp like '345%') and sde!=0)
-     THEN '05'
-     ELSE 'NAN'
-     
-    END ) Motif,
+            $motifExpression Motif,
          '01' TypEng, --type de credit avec échéancier
          (
          CASE
@@ -438,7 +450,7 @@ public function ctrEngagements()
         }
 
         $dateArret = Carbon::create((int) $GetPosition[1], (int) $GetPosition[0], 1)->endOfMonth();
-    $DateArr = $dateArret->format('d/m/Y');
+     $DateArr = $dateArret->format('d/m/Y');
         $DateArrYear = $dateArret->year;
         $DateArrMonth = ($dateArret->month < 10 ? '0'.$dateArret->month : $dateArret->month);
         $DateMonthYear = '/'.$DateArrMonth.'/'.$DateArrYear;
@@ -466,6 +478,7 @@ public function ctrEngagements()
         oci_free_statement($stid);
 
         // 2. Récupérer les engagements détaillés (avec Statut et Motif)
+        $motifExpression = $this->motifExpression();
         $engQuery = "SELECT DISTINCT trim(c.cli) as cli,
             d.eve,
             d.ave,
@@ -501,19 +514,7 @@ public function ctrEngagements()
             ) Statut,
             '' NatConso,
             '' TypConso,
-            (
-            CASE
-             WHEN d.ctr=9 and d.ddec>=TO_DATE('$DateArr', 'DD/MM/RR')
-             THEN ''
-             WHEN d.ctr=9 and d.ddec<TO_DATE('$DateArr', 'DD/MM/RR')
-             THEN '01'
-             WHEN d.ctr=5 and d.ddec>=TO_DATE('$DateArr', 'DD/MM/RR')
-             THEN ''
-             WHEN d.ctr=5 and d.ddec<TO_DATE('$DateArr', 'DD/MM/RR')
-             THEN '02'
-             WHEN d.ctr not IN(9,5)
-             THEN ''
-            END ) Motif,
+            $motifExpression Motif,
             d.mon MNTENG,
             d.dmep DatMep,
             d.tech Duree,
@@ -734,8 +735,6 @@ public function GetEngagementsEchus(Request $request, $MyDateArr = null, $MyDate
         }
     }
 
-    $connection = $this->dbConnection->getConnection();
-
     // La date d'arrêté reste utile au calcul des statuts si la recherche se fait uniquement par dossier.
     $GetPositionArr = $MyDateArr ? explode('-', $MyDateArr) : null;
     $dateArret = $GetPositionArr
@@ -746,15 +745,102 @@ public function GetEngagementsEchus(Request $request, $MyDateArr = null, $MyDate
     $DateArrMonth = ($dateArret->month < 10 ? '0' . $dateArret->month : $dateArret->month);
     $DateMonthYear = '/' . $DateArrMonth . '/' . $DateArrYear;
 
+    $dmepMode = $request->query('dmepMode', 'month');
+    $dmepDate = $request->query('dmepDate') ?: $dateArret->format('m/Y');
+    if (!in_array($dmepMode, ['month', 'range', 'all', 'before', 'after'], true)) {
+        return response()->json([
+            ['Erreur' => [
+                'type' => 'Paramètre',
+                'Description' => 'Mode de filtre DMEP invalide.',
+            ]],
+        ], 400);
+    }
+    if (in_array($dmepMode, ['month', 'before', 'after'], true) && (
+        !is_string($dmepDate) ||
+        !preg_match('/^(0[1-9]|1[0-2])\/\d{4}$/', $dmepDate) ||
+        !checkdate((int) substr($dmepDate, 0, 2), 1, (int) substr($dmepDate, 3, 4))
+    )) {
+        return response()->json([
+            ['Erreur' => [
+                'type' => 'Paramètre',
+                'Description' => 'La date DMEP doit être au format MM/AAAA.',
+            ]],
+        ], 400);
+    }
+
+    $dmepFilterSql = '';
+    $dmepBindValues = [];
+    if ($dmepMode === 'month') {
+        $dmepBindValues[':dmep_month'] = $dmepDate;
+        $dmepFilterSql = " AND TRUNC(d.dmep, 'MM') = TO_DATE(:dmep_month, 'MM/YYYY')";
+    } elseif ($dmepMode === 'range') {
+        $dmepStart = $request->query('dmepStart');
+        $dmepEnd = $request->query('dmepEnd');
+        foreach ([$dmepStart, $dmepEnd] as $period) {
+            if (
+                !is_string($period) ||
+                !preg_match('/^(0[1-9]|1[0-2])\/\d{4}$/', $period) ||
+                !checkdate((int) substr($period, 0, 2), 1, (int) substr($period, 3, 4))
+            ) {
+                return response()->json([
+                    ['Erreur' => [
+                        'type' => 'Paramètre',
+                        'Description' => 'Les bornes DMEP doivent être au format MM/AAAA.',
+                    ]],
+                ], 400);
+            }
+        }
+        $startYearMonth = substr($dmepStart, 3, 4) . substr($dmepStart, 0, 2);
+        $endYearMonth = substr($dmepEnd, 3, 4) . substr($dmepEnd, 0, 2);
+        if ($startYearMonth > $endYearMonth) {
+            return response()->json([
+                ['Erreur' => [
+                    'type' => 'Paramètre',
+                    'Description' => 'Le début de période DMEP doit être antérieur ou égal à la fin.',
+                ]],
+            ], 400);
+        }
+        $dmepBindValues[':dmep_start'] = $dmepStart;
+        $dmepBindValues[':dmep_end'] = $dmepEnd;
+        $dmepFilterSql = " AND d.dmep >= TO_DATE(:dmep_start, 'MM/YYYY')
+            AND d.dmep < ADD_MONTHS(TO_DATE(:dmep_end, 'MM/YYYY'), 1)";
+    } elseif ($dmepMode === 'before' || $dmepMode === 'after') {
+        $dmepBindValues[':dmep_month'] = $dmepDate;
+        $operator = $dmepMode === 'before' ? '<' : '>';
+        $dmepFilterSql = " AND TRUNC(d.dmep, 'MM') $operator TO_DATE(:dmep_month, 'MM/YYYY')";
+    }
+
+    $connection = $this->dbConnection->getConnection();
+
+    $statuses = [];
+    if ($request->boolean('includeValidated', true)) {
+        $statuses[] = "'VA'";
+    }
+    if ($request->boolean('includeDoubtful', true)) {
+        $statuses[] = "'DE'";
+    }
+    $statusFilterSql = $statuses
+        ? ' AND d.eta IN (' . implode(', ', $statuses) . ')'
+        : '';
+    $rateFilterSql = $request->boolean('excludeZeroRate', true)
+        ? ' AND d.tau_int != 0'
+        : '';
+    $versionFilterSql = $request->boolean('latestVersionOnly')
+        ? ' AND d.ave = (SELECT MAX(latest.ave) FROM bkdosprt latest WHERE latest.eve = d.eve)'
+        : '';
+    $referenceContractSql = $this->referenceContractExpression($request);
+
     $GetPositionDeb = $MyDateDeb ? explode('-', $MyDateDeb) : null;
     $dateDebut = $GetPositionDeb
         ? Carbon::create((int) $GetPositionDeb[1], (int) $GetPositionDeb[0], 1)->startOfMonth()
         : Carbon::create(1900, 1, 1)->startOfMonth();
     $DateDeb = $dateDebut->format('d/m/Y');
-    $eveBindValues = [];
-    $selectionFilterSql = '';
+    $eveBindValues = $dmepBindValues;
+    $selectionFilterSql = $dmepFilterSql;
     if (!empty($eves) && !$excludeEves) {
-        [$selectionFilterSql, $eveBindValues] = $this->eveFilterForQuery($eves, false);
+        [$eveFilterSql, $eveFilterBindings] = $this->eveFilterForQuery($eves, false);
+        $selectionFilterSql .= $eveFilterSql;
+        $eveBindValues = array_merge($eveBindValues, $eveFilterBindings);
     }
     $clientsDtx="SELECT distinct cli
                     FROM bksld 
@@ -775,18 +861,13 @@ $mont_dtx="ABS(NVL((
                 ), 0))";
     $DossierReglement_anticipe="SELECT eve FROM bkechprt WHERE (TO_DATE(dva, 'DD/MM/RR') BETWEEN TO_DATE('$DateDeb', 'DD/MM/RR') AND TO_DATE('$DateArr', 'DD/MM/RR')) AND ctr=3";  
     if (empty($eves) || $excludeEves) {
-        $dateFilterSql = '';
-        if ($MyDateArr) {
-            $dateFilterSql .= " AND TO_DATE(d.dmep, 'DD/MM/RR') <= TO_DATE('$DateArr', 'DD/MM/RR')";
-        }
-        if ($MyDateDeb) {
-            $dateFilterSql .= " AND TO_DATE(d.dmep, 'DD/MM/RR') > TO_DATE('$DateDeb', 'DD/MM/RR')";
-        }
-        $selectionFilterSql = $dateFilterSql . "
-          AND (
-              d.cli in($clientsDtx)
-              or d.eve in ($DossierReglement_anticipe)
-          )";
+                if ($request->boolean('onlyDueEngagements')) {
+                        $selectionFilterSql .= "
+                            AND (
+                                    d.cli in($clientsDtx)
+                                    or d.eve in ($DossierReglement_anticipe)
+                            )";
+                }
         if (!empty($eves) && $excludeEves) {
             [$eveFilterSql, $eveFilterBindings] = $this->eveFilterForQuery($eves, true);
             $selectionFilterSql .= $eveFilterSql;
@@ -798,16 +879,7 @@ $mont_dtx="ABS(NVL((
             TRIM(c.tcli) AS tcli,
             d.eve,
             d.ave,
-            (SELECT CASE WHEN TRIM(p.ncp) LIKE '313%' THEN '311' || SUBSTR(TRIM(p.ncp), 4) WHEN TRIM(p.ncp) LIKE '322%' OR TRIM(p.ncp) LIKE '326%' OR TRIM(p.ncp) LIKE '323%' THEN '321' || SUBSTR(TRIM(p.ncp), 4) ELSE TRIM(p.ncp) END || 
-                    (CASE 
-                        WHEN TO_DATE(d.dmep, 'DD/MM/RR') > TO_DATE('30/11/2023', 'DD/MM/RR') 
-                        THEN (SELECT clc FROM bkcom WHERE ncp = p.ncp)
-                     END)
-             FROM bkcptprt p
-             WHERE p.eve = d.eve
-               AND p.nat = '004'
-               AND p.ave = (SELECT MAX(ave) FROM bkcptprt WHERE eve = p.eve)
-            ) RefContCmpt,
+                $referenceContractSql RefContCmpt,
             (SELECT p.ncp
              FROM bkcptprt p
              WHERE p.eve = d.eve
@@ -949,8 +1021,10 @@ $mont_dtx="ABS(NVL((
         FROM bkdosprt d
         JOIN bkechprt e ON e.eve = d.eve
         JOIN bkcli c ON c.cli = d.cli
-        WHERE d.eta IN ('VA', 'DE')
-          AND d.tau_int != 0
+                WHERE 1 = 1
+                    $statusFilterSql
+                    $rateFilterSql
+                    $versionFilterSql
          -- and d.ave=(SELECT MAX(bb.ave) FROM bkdosprt bb WHERE bb.eve=d.eve)
           /* Date de déclaration = DateArr, Date de début = DateDeb */
           $selectionFilterSql

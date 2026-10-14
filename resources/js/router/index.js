@@ -8,6 +8,7 @@ import EncoursAjust from "../views/EncoursAjust.vue";
 import Engagements from "../views/Engagements.vue";
 import Garanties from "../views/Garanties.vue";
 import CreditConsolidation from "../views/CreditConsolidation.vue";
+import ReferenceUpdate from "../views/ReferenceUpdate.vue";
 import Admin from "../views/Admin.vue";
 import Login from "../views/Login.vue";
 import UserProfile from "../views/UserProfile.vue";
@@ -78,6 +79,11 @@ const routes = [
                 path: "credit-consolidation",
                 component: CreditConsolidation,
                 name: "CreditConsolidation",
+            },
+            {
+                path: "maj-reference",
+                component: ReferenceUpdate,
+                name: "ReferenceUpdate",
             },
             { path: "garanties", component: Garanties, name: "Garanties" },
             {

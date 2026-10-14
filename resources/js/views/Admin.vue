@@ -313,6 +313,20 @@
                             <option value="system">Système</option>
                         </select></label
                     >
+                    <label class="field"
+                        >Code pays (CodPay)<input
+                            v-model="application.codPay"
+                            type="text"
+                            maxlength="2"
+                            autocomplete="off"
+                    /></label>
+                    <label class="field"
+                        >Code déclarant (CodDec)<input
+                            v-model="application.codDec"
+                            type="text"
+                            maxlength="10"
+                            autocomplete="off"
+                    /></label>
                 </div>
                 <button
                     @click="saveApplication"
@@ -448,6 +462,8 @@ const application = ref({
     name: "THOT Declare",
     language: "fr",
     theme: "light",
+    codPay: "CM",
+    codDec: "10030",
 });
 const databaseMessage = ref("");
 const databaseOk = ref(false);

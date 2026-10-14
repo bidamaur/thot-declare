@@ -70,6 +70,8 @@ class AdminConfigController extends Controller
                 'name' => config('app.name'),
                 'language' => 'fr',
                 'theme' => 'thot_light',
+                'codPay' => 'CM',
+                'codDec' => '10030',
             ], $config['application'] ?? []),
             'themes' => collect(self::THEMES)->mapWithKeys(function ($theme, $key) {
                 return [$key => [
@@ -101,6 +103,8 @@ class AdminConfigController extends Controller
             'application.language' => ['sometimes', 'string', 'in:fr,en'],
             'application.theme' => ['sometimes', 'string', 'in:' . implode(',', array_merge(['light', 'dark', 'system'], array_keys(self::THEMES)))],
             'application.custom_theme_name' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'application.codPay' => ['sometimes', 'string', 'size:2'],
+            'application.codDec' => ['sometimes', 'string', 'max:10'],
         ]);
 
         $config = $this->readConfig();

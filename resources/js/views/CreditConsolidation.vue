@@ -82,6 +82,28 @@
                             />
                             Ne pas limiter selon la date de mise en place
                         </label>
+                        <label class="flex items-center gap-2">
+                            <input
+                                type="radio"
+                                name="engagementDmepMode"
+                                :checked="engagementDmep.mode === 'before'"
+                                @change="setEngagementDmepMode('before')"
+                            />
+                            Inférieur à la date d'arrêté ({{
+                                selectedDateMonthYear
+                            }})
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input
+                                type="radio"
+                                name="engagementDmepMode"
+                                :checked="engagementDmep.mode === 'after'"
+                                @change="setEngagementDmepMode('after')"
+                            />
+                            Supérieur à la date d'arrêté ({{
+                                selectedDateMonthYear
+                            }})
+                        </label>
                     </div>
                 </details>
                 <details
@@ -142,6 +164,17 @@
                                         value="eve"
                                     />
                                     Utiliser le numéro d'événement (EVE)
+                                </label>
+                                <label class="flex items-center gap-2">
+                                    <input
+                                        v-model="
+                                            extractionOptions.referenceMode
+                                        "
+                                        type="radio"
+                                        name="referenceMode"
+                                        value="combined"
+                                    />
+                                    Référence combinée (CLI + EVE + AVE)
                                 </label>
                                 <label class="flex items-center gap-2">
                                     <input
@@ -391,6 +424,7 @@
                     >
                     <select
                         v-model="xmlConfig.CodPay"
+                        disabled
                         class="w-full text-xs border border-slate-300 rounded px-2 py-1"
                     >
                         <option value="CM">CM - Cameroun</option>
@@ -407,9 +441,10 @@
                     >
                     <input
                         v-model="xmlConfig.CodDec"
+                        disabled
                         type="text"
                         maxlength="10"
-                        class="w-full text-xs border border-slate-300 rounded px-2 py-1"
+                        class="w-full text-xs border border-slate-300 rounded px-2 py-1 bg-slate-100 text-slate-500 cursor-not-allowed"
                         placeholder="20009"
                     />
                 </div>
@@ -649,6 +684,10 @@ const now = new Date();
 const selectedDate = ref(
     `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`,
 );
+const selectedDateMonthYear = computed(() => {
+    const [year, month] = selectedDate.value.split("-");
+    return `${month}/${year}`;
+});
 const engagementDmep = reactive({
     mode: "month",
     start: "",
@@ -698,6 +737,17 @@ const xmlConfig = ref({
     TypDec: "51",
     NatDec: "01",
     comment: "",
+});
+
+onMounted(async () => {
+    try {
+        const response = await axios.get("/api/admin/config");
+        const application = response.data.application || {};
+        xmlConfig.value.CodPay = application.codPay ?? "CM";
+        xmlConfig.value.CodDec = application.codDec ?? "10030";
+    } catch (error) {
+        console.error("Chargement des codes de déclaration impossible:", error);
+    }
 });
 
 // Sections incluses dans le XML généré (par défaut : engagements + encours + ajustements)

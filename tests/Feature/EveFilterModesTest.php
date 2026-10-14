@@ -41,4 +41,27 @@ class EveFilterModesTest extends TestCase
         $this->assertSame(' AND d.eve IN (:eve0)', $includeSql);
         $this->assertSame(' AND d.eve NOT IN (:eve0)', $excludeSql);
     }
+
+    public function test_encours_reference_can_combine_cli_eve_and_ave(): void
+    {
+        $controller = new CdrEncoursController(new DatabaseConnection());
+        $method = new \ReflectionMethod($controller, 'referenceContractExpression');
+        $request = Request::create('/api/cdr_encours/09-2026');
+        $request->query->set('referenceMode', 'combined');
+
+        $this->assertSame('d.cli || d.eve || d.ave', $method->invoke($controller, $request));
+    }
+
+    public function test_engagement_motif_expression_uses_the_get_engagement_rules(): void
+    {
+        $controller = new CdrEngagementsController(new DatabaseConnection());
+        $method = new \ReflectionMethod($controller, 'motifExpression');
+
+        $expression = $method->invoke($controller);
+
+        $this->assertStringContainsString("d.ctr = 9 AND d.eta = 'VA'", $expression);
+        $this->assertStringContainsString("WHERE eve = d.eve AND ave = d.ave AND ctr = 3 AND eta = 'VA'", $expression);
+        $this->assertStringContainsString("ncp LIKE '344%' OR ncp LIKE '345%'", $expression);
+        $this->assertStringContainsString("THEN '05'", $expression);
+    }
 }

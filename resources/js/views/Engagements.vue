@@ -35,6 +35,176 @@
                         class="text-xs border border-slate-300 rounded px-2 py-1"
                     />
                 </div>
+                <details
+                    class="w-full max-w-xl rounded border border-slate-200 bg-slate-50"
+                >
+                    <summary
+                        class="cursor-pointer px-3 py-2 text-xs font-medium text-slate-700"
+                    >
+                        Paramètres d'extraction
+                    </summary>
+                    <div
+                        class="grid gap-2 px-3 pb-3 text-xs text-slate-700 sm:grid-cols-2"
+                    >
+                        <label class="flex items-center gap-2">
+                            <input
+                                v-model="extractionOptions.includeValidated"
+                                type="checkbox"
+                            />
+                            Inclure les dossiers validés (VA)
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input
+                                v-model="extractionOptions.includeDoubtful"
+                                type="checkbox"
+                            />
+                            Inclure les dossiers douteux (DE)
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input
+                                v-model="extractionOptions.excludeZeroRate"
+                                type="checkbox"
+                            />
+                            Exclure les crédits à taux zéro
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input
+                                v-model="extractionOptions.latestVersionOnly"
+                                type="checkbox"
+                            />
+                            Limiter à la dernière version du dossier
+                        </label>
+                        <label class="flex items-center gap-2 sm:col-span-2">
+                            <input
+                                v-model="extractionOptions.onlyDueEngagements"
+                                type="checkbox"
+                            />
+                            Appliquer les critères d'échéance (solde débiteur ou
+                            remboursement anticipé)
+                        </label>
+                        <div class="sm:col-span-2">
+                            <p class="mb-1 font-medium text-slate-600">
+                                Référence du contrat
+                            </p>
+                            <div class="grid gap-2">
+                                <label class="flex items-center gap-2">
+                                    <input
+                                        v-model="
+                                            extractionOptions.referenceMode
+                                        "
+                                        type="radio"
+                                        name="engagementReferenceMode"
+                                        value="eve"
+                                    />
+                                    Numéro d'événement (EVE)
+                                </label>
+                                <label class="flex items-center gap-2">
+                                    <input
+                                        v-model="
+                                            extractionOptions.referenceMode
+                                        "
+                                        type="radio"
+                                        name="engagementReferenceMode"
+                                        value="account_without_key"
+                                    />
+                                    Numéro de compte sans clé
+                                </label>
+                                <label class="flex items-center gap-2">
+                                    <input
+                                        v-model="
+                                            extractionOptions.referenceMode
+                                        "
+                                        type="radio"
+                                        name="engagementReferenceMode"
+                                        value="account_with_key"
+                                    />
+                                    Numéro de compte avec clé
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </details>
+                <details
+                    class="w-full max-w-xl rounded border border-slate-200 bg-slate-50"
+                >
+                    <summary
+                        class="cursor-pointer px-3 py-2 text-xs font-medium text-slate-700"
+                    >
+                        Filtre DMEP des engagements
+                    </summary>
+                    <div class="grid gap-2 px-3 pb-3 text-xs text-slate-700">
+                        <label class="flex items-center gap-2">
+                            <input
+                                v-model="dmepMode"
+                                type="radio"
+                                name="engagementsDmepMode"
+                                value="month"
+                            />
+                            Limiter au mois d'arrêté ({{ selectedDateArr }})
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input
+                                v-model="dmepMode"
+                                type="radio"
+                                name="engagementsDmepMode"
+                                value="range"
+                            />
+                            Limiter à une période
+                        </label>
+                        <div
+                            v-if="dmepMode === 'range'"
+                            class="flex flex-wrap items-center gap-2 pl-6"
+                        >
+                            <label class="flex items-center gap-1">
+                                Du
+                                <input
+                                    v-model="dmepStart"
+                                    type="month"
+                                    class="rounded border border-slate-300 px-2 py-1"
+                                />
+                            </label>
+                            <label class="flex items-center gap-1">
+                                au
+                                <input
+                                    v-model="dmepEnd"
+                                    type="month"
+                                    class="rounded border border-slate-300 px-2 py-1"
+                                />
+                            </label>
+                        </div>
+                        <label class="flex items-center gap-2">
+                            <input
+                                v-model="dmepMode"
+                                type="radio"
+                                name="engagementsDmepMode"
+                                value="all"
+                            />
+                            Ne pas limiter selon la date de mise en place
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input
+                                v-model="dmepMode"
+                                type="radio"
+                                name="engagementsDmepMode"
+                                value="before"
+                            />
+                            Inférieur à la date d'arrêté ({{
+                                selectedDateArrLabel
+                            }})
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input
+                                v-model="dmepMode"
+                                type="radio"
+                                name="engagementsDmepMode"
+                                value="after"
+                            />
+                            Supérieur à la date d'arrêté ({{
+                                selectedDateArrLabel
+                            }})
+                        </label>
+                    </div>
+                </details>
                 <div class="w-full">
                     <label
                         class="block text-xs font-medium text-slate-600 mb-2"
@@ -212,6 +382,7 @@
                     >
                     <select
                         v-model="xmlConfig.CodPay"
+                        disabled
                         class="w-full text-xs border border-slate-300 rounded px-2 py-1"
                     >
                         <option value="CM">CM</option>
@@ -228,9 +399,10 @@
                     >
                     <input
                         v-model="xmlConfig.CodDec"
+                        disabled
                         type="text"
                         maxlength="10"
-                        class="w-full text-xs border border-slate-300 rounded px-2 py-1"
+                        class="w-full text-xs border border-slate-300 rounded px-2 py-1 bg-slate-100 text-slate-500 cursor-not-allowed"
                     />
                 </div>
                 <div>
@@ -616,7 +788,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from "vue";
+import { ref, computed, watch, onMounted } from "vue";
 import axios from "axios";
 import TableZone from "../components/TableZone.vue";
 import {
@@ -641,12 +813,29 @@ const errorModalMessage = ref("");
 const showExportDateModal = ref(false);
 const exportDateArr = ref("");
 const exportDateError = ref("");
-const selectedDateArr = ref("");
+const currentMonth = new Date();
+const selectedDateArr = ref(
+    `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, "0")}`,
+);
+const selectedDateArrLabel = computed(() =>
+    formatMonthForApi(selectedDateArr.value).replace("-", "/"),
+);
 const selectedDateDeb = ref("");
+const dmepMode = ref("month");
+const dmepStart = ref(selectedDateArr.value);
+const dmepEnd = ref(selectedDateArr.value);
 const eveInputMethod = ref("table");
 const selectedEves = ref([""]);
 const bulkEves = ref("");
 const excludeEves = ref(false);
+const extractionOptions = ref({
+    includeValidated: true,
+    includeDoubtful: true,
+    excludeZeroRate: true,
+    latestVersionOnly: false,
+    onlyDueEngagements: false,
+    referenceMode: "account_with_key",
+});
 const itemsPerPage = ref(5);
 const rawData = ref([]);
 const corrections = ref({});
@@ -662,6 +851,17 @@ const xmlConfig = ref({
     DatDec: "",
     DatArr: "",
     comment: "",
+});
+
+onMounted(async () => {
+    try {
+        const response = await axios.get("/api/admin/config");
+        const application = response.data.application || {};
+        xmlConfig.value.CodPay = application.codPay ?? "CM";
+        xmlConfig.value.CodDec = application.codDec ?? "10030";
+    } catch (error) {
+        console.error("Chargement des codes de déclaration impossible:", error);
+    }
 });
 
 // Date d'arrêté calculée : dernier jour du mois/année sélectionné (JJMMAAAA)
@@ -1061,6 +1261,18 @@ const fetchEngagements = async () => {
             "En mode NOT IN, choisissez une date d'arrêté ou de début pour limiter la recherche.";
         return;
     }
+    if (
+        dmepMode.value === "range" &&
+        (!/^\d{4}-(0[1-9]|1[0-2])$/.test(dmepStart.value) ||
+            !/^\d{4}-(0[1-9]|1[0-2])$/.test(dmepEnd.value) ||
+            dmepStart.value > dmepEnd.value)
+    ) {
+        searched.value = true;
+        rawData.value = [];
+        error.value =
+            "Veuillez saisir une période DMEP valide, avec un début antérieur ou égal à la fin.";
+        return;
+    }
     error.value = null;
     loading.value = true;
     searched.value = true;
@@ -1069,7 +1281,30 @@ const fetchEngagements = async () => {
     progress.value = 0;
     try {
         const res = await axios.get("/api/cdr_engagements_echus", {
-            params: { dateArr, dateDeb, eves, excludeEves: excludeEves.value },
+            params: {
+                dateArr,
+                dateDeb,
+                eves,
+                excludeEves: excludeEves.value,
+                dmepMode: dmepMode.value,
+                dmepDate: formatMonthForApi(selectedDateArr.value).replace(
+                    "-",
+                    "/",
+                ),
+                ...(dmepMode.value === "range"
+                    ? {
+                          dmepStart: formatMonthForApi(dmepStart.value).replace(
+                              "-",
+                              "/",
+                          ),
+                          dmepEnd: formatMonthForApi(dmepEnd.value).replace(
+                              "-",
+                              "/",
+                          ),
+                      }
+                    : {}),
+                ...extractionOptions.value,
+            },
         });
         const payload = Array.isArray(res.data) ? res.data : [];
         const first = payload[0] || {};
@@ -1079,6 +1314,14 @@ const fetchEngagements = async () => {
             error.value =
                 first.Erreur.Description ||
                 "Aucune donnée trouvée pour cette période.";
+            return;
+        }
+
+        if (first && (first.type === "Erreur OCI" || first.Description)) {
+            rawData.value = [];
+            error.value =
+                first.Description ||
+                "Erreur lors du chargement des engagements.";
             return;
         }
 
@@ -1092,7 +1335,11 @@ const fetchEngagements = async () => {
         error.value = null;
     } catch (e) {
         rawData.value = [];
-        const message = e?.response?.data?.[0]?.Erreur?.Description;
+        const responseData = e?.response?.data;
+        const message = Array.isArray(responseData)
+            ? responseData[0]?.Erreur?.Description ||
+              responseData[0]?.Description
+            : responseData?.message;
         error.value = message || "Erreur lors du chargement des engagements.";
     } finally {
         loading.value = false;

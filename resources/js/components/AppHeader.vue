@@ -1,9 +1,15 @@
 <template>
     <header class="premium-header">
-        <div class="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+        <div
+            class="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8"
+        >
             <!-- Breadcrumb -->
             <nav class="breadcrumb" aria-label="breadcrumb">
-                <span class="material-icons text-sm" style="color: rgb(var(--muted));">chevron_right</span>
+                <span
+                    class="material-icons text-sm"
+                    style="color: rgb(var(--muted))"
+                    >chevron_right</span
+                >
                 <span class="breadcrumb-item">{{ currentPageLabel }}</span>
             </nav>
 
@@ -18,7 +24,7 @@
                     />
                     <span
                         class="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-sm"
-                        style="color: rgb(var(--muted-foreground));"
+                        style="color: rgb(var(--muted-foreground))"
                         >search</span
                     >
                 </div>
@@ -30,10 +36,24 @@
 
                 <!-- Theme Toggle -->
                 <div class="flex items-center gap-2">
-                    <span class="material-icons text-sm" :style="{ color: currentThemeClass === 'theme-dark' ? 'rgb(var(--muted))' : 'rgb(var(--muted))' }">
-                        {{ currentThemeClass === 'theme-dark' ? 'light_mode' : 'dark_mode' }}
+                    <span
+                        class="material-icons text-sm"
+                        :style="{
+                            color:
+                                currentThemeClass === 'theme-dark'
+                                    ? 'rgb(var(--muted))'
+                                    : 'rgb(var(--muted))',
+                        }"
+                    >
+                        {{
+                            currentThemeClass === "theme-dark"
+                                ? "light_mode"
+                                : "dark_mode"
+                        }}
                     </span>
-                    <label class="relative inline-flex h-5 w-10 items-center rounded-full transition-colors cursor-pointer">
+                    <label
+                        class="relative inline-flex h-5 w-10 items-center rounded-full transition-colors cursor-pointer"
+                    >
                         <input
                             type="checkbox"
                             class="sr-only"
@@ -42,7 +62,9 @@
                         />
                         <div
                             class="theme-switch"
-                            :class="{ 'checked': currentThemeClass === 'theme-dark' }"
+                            :class="{
+                                checked: currentThemeClass === 'theme-dark',
+                            }"
                         ></div>
                     </label>
                 </div>
@@ -53,13 +75,19 @@
                     class="flex items-center gap-2 rounded-full border px-2 py-1.5 transition-opacity hover:opacity-80"
                     :style="{
                         borderColor: 'rgb(var(--border))',
-                        color: 'rgb(var(--muted))'
+                        color: 'rgb(var(--muted))',
                     }"
                     title="Profil"
                 >
                     <div
                         class="flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold text-white"
-                        style="background: linear-gradient(135deg, rgb(var(--primary)) 0%, rgb(var(--primary-hover)) 100%);"
+                        style="
+                            background: linear-gradient(
+                                135deg,
+                                rgb(var(--primary)) 0%,
+                                rgb(var(--primary-hover)) 100%
+                            );
+                        "
                     >
                         {{ userInitials }}
                     </div>
@@ -71,11 +99,13 @@
                     class="flex items-center gap-2 rounded-full border px-2 py-1.5 transition-opacity hover:opacity-80"
                     :style="{
                         borderColor: 'rgb(var(--border))',
-                        color: 'rgb(var(--muted))'
+                        color: 'rgb(var(--muted))',
                     }"
                     title="Administration"
                 >
-                    <span class="material-icons text-sm">admin_panel_settings</span>
+                    <span class="material-icons text-sm"
+                        >admin_panel_settings</span
+                    >
                 </button>
 
                 <button
@@ -83,7 +113,7 @@
                     class="flex items-center justify-center rounded-full border p-2 text-slate-600 shadow-sm transition-opacity hover:opacity-80"
                     :style="{
                         borderColor: 'rgb(var(--border))',
-                        color: 'rgb(var(--muted))'
+                        color: 'rgb(var(--muted))',
                     }"
                     title="Déconnexion"
                 >
@@ -109,6 +139,7 @@ const routeLabels = {
     "/encours-ajust": "Ajustements",
     "/engagements": "Engagements",
     "/credit-consolidation": "Consolidation Crédit",
+    "/maj-reference": "MAJ reference",
     "/garanties": "Garanties",
     "/admin": "Administration",
     "/profil": "Mon Profil",
@@ -131,7 +162,11 @@ const loadUser = async () => {
 const userInitials = computed(() => {
     if (!currentUser.value) return "";
     const parts = currentUser.value.name.split(" ");
-    return parts.map((p) => p[0]).join("").toUpperCase().slice(0, 2);
+    return parts
+        .map((p) => p[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2);
 });
 
 const goToAdmin = () => {
@@ -162,12 +197,19 @@ const toggleTheme = () => {
     }
     localStorage.setItem("thot_theme", currentThemeClass.value);
 
-    axios.post("/api/admin/themes/select", {
-        theme: currentThemeClass.value === "theme-dark" ? "thot_dark" : "thot_light",
-    }).catch(() => {});
+    axios
+        .post("/api/admin/themes/select", {
+            theme:
+                currentThemeClass.value === "theme-dark"
+                    ? "thot_dark"
+                    : "thot_light",
+        })
+        .catch(() => {});
 
-    window.dispatchEvent(new CustomEvent("thot-theme-change", {
-        detail: { theme: currentThemeClass.value }
-    }));
+    window.dispatchEvent(
+        new CustomEvent("thot-theme-change", {
+            detail: { theme: currentThemeClass.value },
+        }),
+    );
 };
 </script>

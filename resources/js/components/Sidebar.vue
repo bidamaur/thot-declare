@@ -78,6 +78,19 @@
                     Consolidation
                 </router-link>
                 <router-link
+                    to="/maj-reference"
+                    class="premium-sidebar-item"
+                    :class="{
+                        'premium-sidebar-item-active':
+                            $route.path === '/maj-reference',
+                    }"
+                >
+                    <span class="material-icons premium-sidebar-icon"
+                        >sync_alt</span
+                    >
+                    MAJ reference
+                </router-link>
+                <router-link
                     to="/garanties"
                     class="premium-sidebar-item"
                     :class="{
