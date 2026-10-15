@@ -1120,6 +1120,7 @@ const encoursColumns = [
     { key: "EVE", label: "Événement" },
     { key: "CLI", label: "Client" },
     { key: "DVA", label: "Date Échéance", format: "date" },
+    { key: "DATECH", label: "Date Échéance (DECH)", format: "date" },
     { key: "REFCONTCMPT", label: "Réf Contrat" },
     { key: "DATPAI", label: "Date Paiement", format: "date" },
     { key: "MNTCRD", label: "Montant Crédit", format: "number" },

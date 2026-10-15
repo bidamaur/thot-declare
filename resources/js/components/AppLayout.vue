@@ -46,7 +46,13 @@
             </div>
             <main class="flex-1 overflow-auto px-4 py-6 sm:px-6 lg:px-8">
                 <div class="mx-auto max-w-7xl">
-                    <router-view />
+                    <router-view v-slot="{ Component }">
+                        <KeepAlive
+                            include="CdrPp,CdrPm,Encours,EncoursAjust,Engagements,CreditConsolidation,Garanties"
+                        >
+                            <component :is="Component" />
+                        </KeepAlive>
+                    </router-view>
                 </div>
             </main>
         </div>

@@ -615,7 +615,7 @@ $mon_impaye = "
            AND TO_DATE(aa.dco, 'DD/MM/RR') <= TO_DATE('$DateArr', 'DD/MM/RR')
         ) datPai,
 
-        TO_CHAR(TO_DATE(last_e.dva, 'DD/MM/RR'), 'DD') || '/$MoisAnneeStr' AS DatEch,
+        TO_CHAR(d.dpec, 'DD') || '/$MoisAnneeStr' AS DatEch,
 
         -- Récupération du dernier montant payé réel
         (SELECT MAX(mon)

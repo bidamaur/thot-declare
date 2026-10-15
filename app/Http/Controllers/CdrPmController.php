@@ -13,11 +13,18 @@ class CdrPmController extends Controller
         $bindings = [];
 
         $dateParam = trim((string) $request->query('date', $DateArr ?? ''));
-        $clientParam = trim((string) $request->query('client_id', $request->query('clientId', $clientId ?? '')));
+        $rawClientParam = $request->query('client_id', $request->query('clientId', $clientId ?? ''));
+        $clientIds = is_array($rawClientParam)
+            ? $rawClientParam
+            : preg_split('/[\s,;]+/', (string) $rawClientParam, -1, PREG_SPLIT_NO_EMPTY);
+        $clientIds = array_values(array_unique(array_filter(array_map(
+            static fn ($id) => trim((string) $id),
+            $clientIds
+        ), static fn ($id) => $id !== '')));
         $searchTerm = trim((string) $request->query('q', ''));
 
-        if ($clientParam === '' && preg_match('/^\d+$/', $searchTerm)) {
-            $clientParam = $searchTerm;
+        if (!$clientIds && preg_match('/^\d+(?:[\s,;]+\d+)*$/', $searchTerm)) {
+            $clientIds = preg_split('/[\s,;]+/', $searchTerm, -1, PREG_SPLIT_NO_EMPTY);
             $searchTerm = '';
         }
 
@@ -43,9 +50,10 @@ class CdrPmController extends Controller
         }
 
         $customerFilter = '';
-        if ($clientParam !== '') {
-            $customerFilter = "AND TRIM(c.cli) = ?";
-            $bindings[] = $clientParam;
+        if ($clientIds) {
+            $placeholders = implode(', ', array_fill(0, count($clientIds), '?'));
+            $customerFilter = "AND TRIM(c.cli) IN ($placeholders)";
+            $bindings = array_merge($bindings, $clientIds);
         }
 
         $searchFilter = '';

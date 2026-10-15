@@ -18,7 +18,7 @@
 
             <div
                 v-if="enableFilters && filterColumn"
-                class="flex items-center gap-2"
+                class="flex flex-wrap items-center gap-2"
             >
                 <label class="text-xs font-medium text-slate-600"
                     >Filtrer {{ getColumnLabel(filterColumn) }} :</label
@@ -27,21 +27,28 @@
                     <input
                         type="month"
                         v-model="filterDate"
-                        class="date-input"
+                        class="date-input pl-6"
                     />
                     <span
                         class="material-icons text-slate-400 absolute left-2 top-1/2 -translate-y-1/2 text-xs pointer-events-none"
                         >filter_list</span
                     >
                 </div>
-                <div class="relative">
+                <label
+                    class="flex flex-col gap-1 text-xs font-medium text-slate-600"
+                >
+                    Recherche client
+                    <span class="text-[10px] font-normal text-slate-500">
+                        Plusieurs IDs : virgule, point-virgule ou espace
+                    </span>
                     <input
                         type="text"
                         v-model="filterQuery"
-                        class="date-input"
-                        placeholder="Recherche (nom, prénom, sexe, id)"
+                        autocomplete="off"
+                        class="date-input w-56"
+                        placeholder="Nom ou numéro(s)"
                     />
-                </div>
+                </label>
                 <button
                     v-if="filterDate || filterQuery"
                     @click="clearFilter"
@@ -64,6 +71,32 @@
                     "
                 >
                     Excel
+                </button>
+            </div>
+            <label
+                class="flex items-center gap-2 text-xs font-medium text-slate-600"
+            >
+                N° ligne
+                <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    inputmode="numeric"
+                    v-model="lineSearchQuery"
+                    class="date-input w-24"
+                    placeholder="Ex. 12"
+                    aria-label="Rechercher par numéro de ligne"
+                />
+            </label>
+            <div class="flex items-center gap-2">
+                <button
+                    v-if="lineSearchQuery"
+                    @click="lineSearchQuery = ''"
+                    class="action-btn"
+                    aria-label="Effacer la recherche par numéro de ligne"
+                    title="Effacer le numéro de ligne"
+                >
+                    Effacer
                 </button>
             </div>
         </div>
@@ -99,17 +132,25 @@
                 </p>
             </div>
 
-            <div v-show="data.length > 0" class="overflow-x-auto">
+            <div v-show="data.length > 0" class="max-h-[70vh] overflow-auto">
                 <table class="premium-table">
                     <thead class="table-header">
                         <tr>
                             <th
-                                class="px-2 py-1 text-left font-semibold w-8"
-                                style="color: rgb(var(--muted))"
+                                class="sticky top-0 z-10 px-2 py-1 text-left font-semibold w-8"
+                                style="
+                                    color: rgb(var(--muted));
+                                    background: rgb(var(--surface-secondary));
+                                "
                             >
                                 #
                             </th>
-                            <th class="px-2 py-1 text-left">
+                            <th
+                                class="sticky top-0 z-10 px-2 py-1 text-left"
+                                style="
+                                    background: rgb(var(--surface-secondary));
+                                "
+                            >
                                 <input
                                     type="checkbox"
                                     @change="toggleAll"
@@ -120,11 +161,20 @@
                             <th
                                 v-for="col in columns"
                                 :key="col.key"
-                                class="table-header px-2 py-1 cursor-pointer select-none"
+                                class="table-header sticky top-0 z-10 px-2 py-1 cursor-pointer select-none"
+                                style="
+                                    background: rgb(var(--surface-secondary));
+                                "
                                 @click="sortBy(col.key)"
                             >
                                 <div class="flex items-center gap-1">
-                                    <span>{{ col.label }}</span>
+                                    <div class="flex min-w-0 flex-col">
+                                        <span>{{ col.label }}</span>
+                                        <span
+                                            class="font-mono text-[10px] font-normal normal-case tracking-normal opacity-70"
+                                            >{{ col.key }}</span
+                                        >
+                                    </div>
                                     <span
                                         v-if="sortKey === col.key"
                                         class="material-icons text-xs"
@@ -152,9 +202,7 @@
                                 class="px-2 py-1"
                                 style="color: rgb(var(--muted))"
                             >
-                                {{
-                                    (currentPage - 1) * itemsPerPage + index + 1
-                                }}
+                                {{ row.__displayLineNumber }}
                             </td>
                             <td class="px-2 py-1">
                                 <input
@@ -221,9 +269,8 @@
         >
             <div class="flex items-center gap-2">
                 <p style="color: rgb(var(--muted))">
-                    {{ data.length }} résultats - Page {{ currentPage }}/{{
-                        totalPages
-                    }}
+                    {{ lineFilteredData.length }} résultats - Page
+                    {{ currentPage }}/{{ totalPages }}
                 </p>
             </div>
             <div class="flex items-center gap-1">
@@ -346,6 +393,7 @@ const formatCurrency = (val) => {
 const data = ref([]);
 const filterDate = ref("");
 const filterQuery = ref("");
+const lineSearchQuery = ref("");
 const loading = ref(false);
 const error = ref(null);
 const currentPage = ref(1);
@@ -365,20 +413,28 @@ const fetchData = async () => {
     selectedRows.value = [];
     sortKey.value = "";
     sortOrder.value = "asc";
+    lineSearchQuery.value = "";
     try {
         const params = new URLSearchParams();
         if (filterDate.value) params.set("date", filterDate.value);
+        const normalizedQuery = String(filterQuery.value ?? "").trim();
+        const clientIds = /^\d+(?:[\s,;]+\d+)*$/.test(normalizedQuery)
+            ? [...new Set(normalizedQuery.split(/[\s,;]+/))]
+            : [];
         if (filterQuery.value) {
-            const normalizedQuery = String(filterQuery.value).trim();
-            if (/^\d+$/.test(normalizedQuery)) {
-                params.set("client_id", normalizedQuery);
+            if (clientIds.length) {
+                params.set("client_id", clientIds.join(","));
             } else {
                 params.set("q", normalizedQuery);
             }
         }
 
         const url = props.endpoint
-            ? props.endpoint(filterDate.value, filterQuery.value)
+            ? props.endpoint(
+                  filterDate.value,
+                  clientIds.length ? "" : filterQuery.value,
+                  clientIds.join(","),
+              )
             : params.toString()
               ? `/api/cdr_pp?${params.toString()}`
               : "/api/cdr_pp";
@@ -428,12 +484,14 @@ const fetchData = async () => {
 const clearFilter = () => {
     filterDate.value = "";
     filterQuery.value = "";
+    lineSearchQuery.value = "";
     fetchData();
 };
 
 const showAll = () => {
     filterDate.value = "";
     filterQuery.value = "";
+    lineSearchQuery.value = "";
     fetchData();
 };
 
@@ -488,18 +546,32 @@ const sortedData = computed(() => {
     });
 });
 
+const lineFilteredData = computed(() => {
+    const rows = sortedData.value.map((row, index) => ({
+        ...row,
+        __displayLineNumber: index + 1,
+    }));
+    const query = String(lineSearchQuery.value ?? "").trim();
+    return query
+        ? rows.filter((row) => String(row.__displayLineNumber) === query)
+        : rows;
+});
+
 const totalPages = computed(() => {
     if (internalItemsPerPage.value === -1) return 1;
     return Math.max(
         1,
-        Math.ceil(sortedData.value.length / internalItemsPerPage.value),
+        Math.ceil(lineFilteredData.value.length / internalItemsPerPage.value),
     );
 });
 
 const paginatedData = computed(() => {
-    if (internalItemsPerPage.value === -1) return sortedData.value;
+    if (internalItemsPerPage.value === -1) return lineFilteredData.value;
     const start = (currentPage.value - 1) * internalItemsPerPage.value;
-    return sortedData.value.slice(start, start + internalItemsPerPage.value);
+    return lineFilteredData.value.slice(
+        start,
+        start + internalItemsPerPage.value,
+    );
 });
 
 const prevPage = () => {
@@ -530,6 +602,9 @@ const sortBy = (key) => {
 watch(internalItemsPerPage, (newVal) => {
     currentPage.value = 1;
 });
+watch(lineSearchQuery, () => {
+    currentPage.value = 1;
+});
 
 onMounted(() => {
     fetchData();
@@ -543,7 +618,7 @@ defineExpose({
 
 <style scoped>
 .date-input {
-    @apply pl-6 pr-2 py-1 border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none text-xs;
+    @apply px-2 py-1 border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none text-xs;
     background: rgb(var(--surface));
     color: rgb(var(--foreground));
 }

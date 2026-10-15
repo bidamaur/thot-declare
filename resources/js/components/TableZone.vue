@@ -1,7 +1,7 @@
 <template>
     <div class="premium-card overflow-hidden">
         <div
-            class="px-4 py-3 border-b flex items-center justify-between"
+            class="px-4 py-3 border-b flex flex-wrap items-center justify-between gap-3"
             style="border-color: rgb(var(--border))"
         >
             <div>
@@ -19,23 +19,40 @@
                     {{ subtitle }}
                 </p>
             </div>
-            <div class="flex items-center gap-3">
-                <div class="relative">
+            <div class="flex flex-wrap items-end justify-end gap-3">
+                <label
+                    class="flex flex-col gap-1 text-xs font-medium"
+                    style="color: rgb(var(--muted))"
+                >
+                    Recherche
                     <input
                         v-model="searchQuery"
                         type="text"
-                        placeholder="Recherche rapide"
-                        class="w-44 text-xs border rounded pl-7 pr-2 py-1 focus:outline-none focus:ring-1"
+                        autocomplete="off"
+                        placeholder="Dans le tableau"
+                        class="w-44 text-xs border rounded px-2 py-1 focus:outline-none focus:ring-1"
                         style="background: rgb(var(--surface)), border-color: rgb(var(--border)), color: rgb(var(--foreground));"
                     />
-                    <span
-                        class="absolute left-2 top-1/2 -translate-y-1/2 text-sm pointer-events-none"
-                        style="color: rgb(var(--muted))"
-                        >search</span
-                    >
-                </div>
+                </label>
+                <label
+                    class="flex flex-col gap-1 text-xs font-medium"
+                    style="color: rgb(var(--muted))"
+                >
+                    N° ligne
+                    <input
+                        v-model="lineSearchQuery"
+                        type="number"
+                        min="1"
+                        step="1"
+                        inputmode="numeric"
+                        aria-label="Rechercher par numéro de ligne"
+                        placeholder="Ex. 12"
+                        class="w-24 text-xs border rounded px-2 py-1 focus:outline-none focus:ring-1"
+                        style="background: rgb(var(--surface)), border-color: rgb(var(--border)), color: rgb(var(--foreground));"
+                    />
+                </label>
                 <span class="text-xs" style="color: rgb(var(--muted))">
-                    {{ filteredData.length }} ligne(s)</span
+                    {{ lineFilteredData.length }} ligne(s)</span
                 >
                 <button
                     v-if="selectable"
@@ -80,14 +97,17 @@
             </p>
         </div>
 
-        <div v-else class="overflow-x-auto">
+        <div v-else class="max-h-[70vh] overflow-auto">
             <table class="w-full text-xs">
                 <thead class="table-header">
                     <tr style="border-bottom-color: rgb(var(--border))">
                         <th
                             v-if="selectable"
-                            class="px-2 py-1 text-center font-semibold w-8"
-                            style="color: rgb(var(--muted))"
+                            class="sticky top-0 z-10 px-2 py-1 text-center font-semibold w-8"
+                            style="
+                                color: rgb(var(--muted));
+                                background: rgb(var(--surface-secondary));
+                            "
                         >
                             <input
                                 type="checkbox"
@@ -97,19 +117,29 @@
                             />
                         </th>
                         <th
-                            class="px-2 py-1 text-left font-semibold w-8"
-                            style="color: rgb(var(--muted))"
+                            class="sticky top-0 z-10 px-2 py-1 text-left font-semibold w-8"
+                            style="
+                                color: rgb(var(--muted));
+                                background: rgb(var(--surface-secondary));
+                            "
                         >
                             #
                         </th>
                         <th
                             v-for="col in columns"
                             :key="col.key"
-                            class="table-header px-2 py-1 cursor-pointer select-none"
+                            class="table-header sticky top-0 z-10 px-2 py-1 cursor-pointer select-none"
+                            style="background: rgb(var(--surface-secondary))"
                             @click="sortBy(col.key)"
                         >
                             <div class="flex items-center gap-1">
-                                <span>{{ col.label }}</span>
+                                <div class="flex min-w-0 flex-col">
+                                    <span>{{ col.label }}</span>
+                                    <span
+                                        class="font-mono text-[10px] font-normal normal-case tracking-normal opacity-70"
+                                        >{{ col.key }}</span
+                                    >
+                                </div>
                                 <span
                                     v-if="sortKey === col.key"
                                     class="material-icons text-xs"
@@ -143,14 +173,7 @@
                             />
                         </td>
                         <td class="px-2 py-1" style="color: rgb(var(--muted))">
-                            {{
-                                row.__globalIdx !== undefined
-                                    ? row.__globalIdx + 1
-                                    : (props.startIndex || 0) +
-                                      (currentPage - 1) * itemsPerPage +
-                                      index +
-                                      1
-                            }}
+                            {{ row.__displayLineNumber }}
                         </td>
                         <td
                             v-for="col in columns"
@@ -206,9 +229,8 @@
             style="border-color: rgb(var(--border))"
         >
             <p style="color: rgb(var(--muted))">
-                {{ data.length }} résultats - Page {{ currentPage }}/{{
-                    totalPages
-                }}
+                {{ lineFilteredData.length }} résultats - Page
+                {{ currentPage }}/{{ totalPages }}
             </p>
             <div class="flex items-center gap-1">
                 <select
@@ -298,6 +320,7 @@ const clearSelection = () => {
 };
 
 const searchQuery = ref("");
+const lineSearchQuery = ref("");
 const normalizeText = (value) => {
     if (value === null || value === undefined) return "";
     return String(value)
@@ -440,18 +463,35 @@ const sortedData = computed(() => {
     });
 });
 
+const lineFilteredData = computed(() => {
+    const rows = sortedData.value.map((row, index) => ({
+        ...row,
+        __displayLineNumber:
+            row.__globalIdx !== undefined
+                ? row.__globalIdx + 1
+                : (props.startIndex || 0) + index + 1,
+    }));
+    const query = String(lineSearchQuery.value ?? "").trim();
+    return query
+        ? rows.filter((row) => String(row.__displayLineNumber) === query)
+        : rows;
+});
+
 const totalPages = computed(() => {
     if (internalItemsPerPage.value === -1) return 1;
     return Math.max(
         1,
-        Math.ceil(sortedData.value.length / internalItemsPerPage.value),
+        Math.ceil(lineFilteredData.value.length / internalItemsPerPage.value),
     );
 });
 
 const paginatedData = computed(() => {
-    if (internalItemsPerPage.value === -1) return sortedData.value;
+    if (internalItemsPerPage.value === -1) return lineFilteredData.value;
     const start = (currentPage.value - 1) * internalItemsPerPage.value;
-    return sortedData.value.slice(start, start + internalItemsPerPage.value);
+    return lineFilteredData.value.slice(
+        start,
+        start + internalItemsPerPage.value,
+    );
 });
 
 const prevPage = () => {
@@ -479,6 +519,9 @@ watch(internalItemsPerPage, () => {
     currentPage.value = 1;
 });
 watch(searchQuery, () => {
+    currentPage.value = 1;
+});
+watch(lineSearchQuery, () => {
     currentPage.value = 1;
 });
 watch(

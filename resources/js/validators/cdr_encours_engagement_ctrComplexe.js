@@ -30,7 +30,9 @@ function toNumber(val) {
  * Normalise une clé de jointure pour tolérer les écarts de casse / espaces.
  */
 function normKey(val) {
-    return String(val ?? "").trim().toUpperCase();
+    return String(val ?? "")
+        .trim()
+        .toUpperCase();
 }
 
 /**
@@ -94,7 +96,7 @@ function pushAnomalie(
 // --- CONTRÔLES LOGIQUES ---
 
 /**
- * 1. Cohérence Durée : somme des échéances (payées+impayées+restantes) <= DUREE.
+ * 1. Cohérence échéances : payées + impayées + restantes = total de l'engagement.
  */
 function controleDuree(enc, eng, ctx, erreurs) {
     const nbrPay = toNumber(enc.NBRECHPAY);
@@ -105,13 +107,13 @@ function controleDuree(enc, eng, ctx, erreurs) {
     if ([nbrPay, nbrImp, nbrRes, duree].some((v) => Number.isNaN(v))) return;
 
     const somme = nbrPay + nbrImp + nbrRes;
-    if (somme > duree) {
+    if (somme !== duree) {
         pushAnomalie(erreurs, {
             ...ctx,
             type: "erreur",
             field: "NBRECHPAY+NBRECHIMP+NBRECHRES",
             code: "CX_DUREE_001",
-            message: `La somme des échéances (${somme}) dépasse la durée initiale du contrat (${duree}).`,
+            message: `La somme des échéances payées, impayées et restantes (${somme}) doit être égale au total de l'engagement (${duree}).`,
             value: somme,
         });
     }
